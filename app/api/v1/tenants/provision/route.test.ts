@@ -158,7 +158,13 @@ describe("ligada: o provisionamento", () => {
     expect(res.status).toBe(201);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({
-      data: { organization_id: "org-1", api_key: "dsk_abcd1234_segredo", replay: false },
+      data: expect.objectContaining({
+        organization_id: "org-1",
+        api_key: "dsk_abcd1234_segredo",
+        provisioning_token: expect.any(String),
+        provisioning_token_expires_in: 900,
+        replay: false,
+      }),
     });
     expect(h.provision).toHaveBeenCalledWith({
       integration: "clinicfx",

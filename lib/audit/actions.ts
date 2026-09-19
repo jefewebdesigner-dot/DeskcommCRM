@@ -705,6 +705,8 @@ export const AUDIT_ACTIONS = [
   "ai.followup_sem_agente_reconciliado",
   /** POST /api/v1/tenants/provision — organização criada por um sistema externo (doc 38 b). */
   "tenant.created_by_provisioning",
+  /** Business Blueprint aplicado por capability curta do provisionador externo. */
+  "tenant.blueprint_applied",
   /**
    * A repetição do provisionamento completou o que a tentativa anterior não
    * chegou a gravar — hoje, o vínculo de admin do dono. Sai SÓ quando houve

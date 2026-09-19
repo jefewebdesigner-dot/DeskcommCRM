@@ -34,9 +34,16 @@ import { env } from "@/lib/env";
 import { ipDoCliente } from "@/lib/http/ip-do-cliente";
 import { logger } from "@/lib/logger";
 import { extractBearer } from "@/lib/mcp/auth";
-import { provisionTenantSchema, type ProvisionTenantInput } from "@/lib/schemas/tenant-provisioning";
+import {
+  provisionTenantSchema,
+  type ProvisionTenantInput,
+} from "@/lib/schemas/tenant-provisioning";
 import { validateRequest } from "@/lib/schemas/_validate";
 import { rotateIntegrationApiKey } from "@/lib/tenants/api-key";
+import {
+  BLUEPRINT_CAPABILITY_TTL_SECONDS,
+  mintBlueprintCapability,
+} from "@/lib/tenants/provisioning-capability";
 
 export const dynamic = "force-dynamic";
 
@@ -139,9 +146,20 @@ export async function POST(req: NextRequest): Promise<Response> {
       name: `${input.integration} (integração)`,
       requestId,
     });
+    const provisioningToken = mintBlueprintCapability({
+      organizationId,
+      integration: input.integration,
+      externalId: input.external_id,
+    });
 
     return ok(
-      { organization_id: organizationId, api_key: apiKey, replay },
+      {
+        organization_id: organizationId,
+        api_key: apiKey,
+        provisioning_token: provisioningToken,
+        provisioning_token_expires_in: BLUEPRINT_CAPABILITY_TTL_SECONDS,
+        replay,
+      },
       {
         status: replay ? 200 : 201,
         requestId,
@@ -170,6 +188,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       requestId,
       erro: err instanceof Error ? err.message : String(err),
     });
-    return fail("internal_error", "Não foi possível provisionar a organização.", 500, { requestId });
+    return fail("internal_error", "Não foi possível provisionar a organização.", 500, {
+      requestId,
+    });
   }
 }
