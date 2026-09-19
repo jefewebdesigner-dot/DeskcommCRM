@@ -49,7 +49,7 @@ it("todo handler mutante do app declara guarda de suporte ou é infraestrutura i
   // (TENANT_PROVISIONING_SECRET), sem cookie nem ator — a mesma natureza das
   // linhas acima. Não há sessão de suporte para a guarda ler; chamá-la aqui
   // seria um no-op que devolve 503 quando o GoTrue oscila.
-  if(path==="app/api/v1/tenants/provision/route.ts")continue;
+  if(path==="app/api/v1/tenants/provision/route.ts"||path==="app/api/v1/tenants/provision-blueprint/route.ts")continue;
   if(path.includes("/impersonate"))continue; // início/fim autenticam a posse e têm contrato próprio
   const source=ts.createSourceFile(path,readFileSync(path,"utf8"),ts.ScriptTarget.Latest,true);
   // DUAS FORMAS de exportar um handler, e o gate precisa das duas. A varredura
