@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { publishFirstVersion } from "@/lib/ai/agents/first-publication";
 import { publishAgentVersion } from "@/lib/ai/agents/publish";
 import { publicarMemoriaDaOrg } from "@/lib/ai/memoria-da-org";
+import { aplicarAutomacoesDoBlueprint } from "@/lib/tenants/apply-blueprint-automations";
 import { audit } from "@/lib/audit";
 import { slugify } from "@/lib/auth/provision";
 import type { Json } from "@/lib/database.types";
@@ -36,9 +37,11 @@ export type AppliedBlueprintResult = {
   };
   automations: {
     planned: number;
+    prepared: number;
     materialized: number;
     pending: number;
-    state: "none" | "planned_waiting_channel";
+    state: "none" | "active" | "prepared_waiting_channel" | "partial";
+    pointer_ids: string[];
   };
   warnings: Warning[];
 };
@@ -643,13 +646,26 @@ export async function applySalesTwinBlueprint(params: {
     warnings,
   );
 
-  const automationCount = params.blueprint.automations.length;
-  if (automationCount > 0) {
-    warnings.push({
-      code: "automation_plan_waiting_channel",
-      message:
-        "O plano de automações foi salvo, mas automações de mensagem/follow-up só são materializadas depois que o canal do cliente estiver conectado.",
-    });
+  const previousManagedIds = Array.isArray(currentSalesTwin.automation_pointer_ids)
+    ? currentSalesTwin.automation_pointer_ids.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  const automations = await aplicarAutomacoesDoBlueprint({
+    admin,
+    organizationId: params.organizationId,
+    ownerId,
+    deploymentId: params.blueprint.deployment_id,
+    organizationName: params.blueprint.organization.name,
+    automations: params.blueprint.automations,
+    stages: pipeline.stages,
+    agentId: agent.id,
+    replay,
+    previousManagedIds,
+    warnings,
+  });
+  if (automations.agentVersionId) {
+    agent.versionId = automations.agentVersionId;
   }
 
   const nextSettings: Record<string, unknown> = {
@@ -664,6 +680,7 @@ export async function applySalesTwinBlueprint(params: {
       pipeline_id: pipeline.id,
       agent_id: agent.id,
       automation_plan: params.blueprint.automations,
+      automation_pointer_ids: automations.pointer_ids,
       tracking: params.blueprint.tracking,
       required_sources: params.blueprint.knowledge.required_sources,
       missing_facts: params.blueprint.knowledge.missing_facts,
@@ -694,7 +711,9 @@ export async function applySalesTwinBlueprint(params: {
       pipeline_id: pipeline.id,
       agent_id: agent.id,
       agent_published: agent.published,
-      automation_plan_count: automationCount,
+      automation_plan_count: automations.planned,
+      automation_prepared_count: automations.prepared,
+      automation_materialized_count: automations.materialized,
       warnings: warnings.map((w) => w.code),
     },
   });
@@ -721,10 +740,12 @@ export async function applySalesTwinBlueprint(params: {
       missing_facts: params.blueprint.knowledge.missing_facts,
     },
     automations: {
-      planned: automationCount,
-      materialized: 0,
-      pending: automationCount,
-      state: automationCount > 0 ? "planned_waiting_channel" : "none",
+      planned: automations.planned,
+      prepared: automations.prepared,
+      materialized: automations.materialized,
+      pending: automations.pending,
+      state: automations.state,
+      pointer_ids: automations.pointer_ids,
     },
     warnings,
   };
