@@ -175,7 +175,14 @@ export function prepararAutomacao(
   stages: Stage[],
 ): PreparedSpec {
   const action = normalizar(automation.action);
-  if (!/(whatsapp|followup|follow up|mensagem|message)/.test(action)) {
+  const actionTokens = new Set(action.split(/\s+/).filter(Boolean));
+  const supportedAction =
+    actionTokens.has("whatsapp") ||
+    actionTokens.has("followup") ||
+    (actionTokens.has("follow") && actionTokens.has("up")) ||
+    actionTokens.has("mensagem") ||
+    actionTokens.has("message");
+  if (!supportedAction) {
     return { ok: false, reason: "unsupported_action" };
   }
 
