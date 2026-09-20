@@ -42,7 +42,9 @@ import { validateRequest } from "@/lib/schemas/_validate";
 import { rotateIntegrationApiKey } from "@/lib/tenants/api-key";
 import {
   BLUEPRINT_CAPABILITY_TTL_SECONDS,
+  CHANNEL_CAPABILITY_TTL_SECONDS,
   mintBlueprintCapability,
+  mintChannelCapability,
 } from "@/lib/tenants/provisioning-capability";
 
 export const dynamic = "force-dynamic";
@@ -151,6 +153,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       integration: input.integration,
       externalId: input.external_id,
     });
+    const channelProvisioningToken = mintChannelCapability({
+      organizationId,
+      integration: input.integration,
+      externalId: input.external_id,
+    });
 
     return ok(
       {
@@ -158,6 +165,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         api_key: apiKey,
         provisioning_token: provisioningToken,
         provisioning_token_expires_in: BLUEPRINT_CAPABILITY_TTL_SECONDS,
+        channel_provisioning_token: channelProvisioningToken,
+        channel_provisioning_token_expires_in: CHANNEL_CAPABILITY_TTL_SECONDS,
         replay,
       },
       {

@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({ env: { TENANT_PROVISIONING_SECRET: "" } }));
 vi.mock("@/lib/env", () => ({ env: h.env }));
 
-const { mintBlueprintCapability, verifyBlueprintCapability, tenantProvisioningEnabled } =
-  await import("./provisioning-capability");
+const {
+  mintBlueprintCapability,
+  mintChannelCapability,
+  verifyBlueprintCapability,
+  verifyChannelCapability,
+  tenantProvisioningEnabled,
+} = await import("./provisioning-capability");
 
 describe("tenant blueprint capability", () => {
   beforeEach(() => {
@@ -42,6 +47,31 @@ describe("tenant blueprint capability", () => {
       external_id: "dep-42",
       iat: 1000,
       exp: 1300,
+    });
+  });
+
+  it("separa capability de Blueprint da capability de canal", () => {
+    const blueprint = mintBlueprintCapability({
+      organizationId: "org-1",
+      integration: "zheus",
+      externalId: "dep-1",
+      nowSeconds: 1000,
+      ttlSeconds: 300,
+    });
+    const channel = mintChannelCapability({
+      organizationId: "org-1",
+      integration: "zheus",
+      externalId: "dep-1",
+      nowSeconds: 1000,
+      ttlSeconds: 300,
+    });
+
+    expect(verifyChannelCapability(blueprint, { nowSeconds: 1100 })).toBeNull();
+    expect(verifyBlueprintCapability(channel, { nowSeconds: 1100 })).toBeNull();
+    expect(verifyChannelCapability(channel, { nowSeconds: 1100 })).toMatchObject({
+      scope: "tenant:channel",
+      organization_id: "org-1",
+      external_id: "dep-1",
     });
   });
 

@@ -163,6 +163,8 @@ describe("ligada: o provisionamento", () => {
         api_key: "dsk_abcd1234_segredo",
         provisioning_token: expect.any(String),
         provisioning_token_expires_in: 900,
+        channel_provisioning_token: expect.any(String),
+        channel_provisioning_token_expires_in: 900,
         replay: false,
       }),
     });
