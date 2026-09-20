@@ -23,6 +23,25 @@ export type SalesTwinAutomationResult = {
   pointer_ids: string[];
 };
 
+export function erroDeSurfaceDeFollowupAusente(error: unknown): boolean {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : String(error ?? "");
+  return /Could not find the 'surface' column of 'followup_flow_pointers' in the schema cache/i.test(
+    message,
+  );
+}
+
+function avisarSurfaceLegada(warnings: Warning[]): void {
+  if (warnings.some((w) => w.code === "followup_pointer_legacy_without_surface")) return;
+  warnings.push({
+    code: "followup_pointer_legacy_without_surface",
+    message:
+      "O banco ainda não tem a coluna surface dos fluxos; a automação foi preparada em modo compatível.",
+  });
+}
+
 type PreparedSpec =
   | {
       ok: true;
@@ -333,44 +352,60 @@ async function reconciliarPonteiros(params: {
     }
 
     let pointer = existing;
+    const basePointerPayload = {
+      draft_graph: spec.graph as unknown as Json,
+      trigger_config: spec.trigger,
+      handoff_policy: "pause",
+    };
     if (!pointer) {
-      const { data: created, error } = await params.admin
+      const createPayload = {
+        organization_id: params.organizationId,
+        name,
+        ...basePointerPayload,
+      };
+      let result = await params.admin
         .from("followup_flow_pointers")
-        .insert({
-          organization_id: params.organizationId,
-          name,
-          surface: "crm_automation",
-          draft_graph: spec.graph as unknown as Json,
-          trigger_config: spec.trigger,
-          handoff_policy: "pause",
-        })
+        .insert({ ...createPayload, surface: "crm_automation" })
         .select("id,status,active_version_id")
         .single();
-      if (error || !created) {
+      if (result.error && erroDeSurfaceDeFollowupAusente(result.error)) {
+        avisarSurfaceLegada(params.warnings);
+        result = await params.admin
+          .from("followup_flow_pointers")
+          .insert(createPayload)
+          .select("id,status,active_version_id")
+          .single();
+      }
+      if (result.error || !result.data) {
         throw new Error(
-          "blueprint: followup pointer create failed: " + (error?.message ?? "no_row"),
+          "blueprint: followup pointer create failed: " + (result.error?.message ?? "no_row"),
         );
       }
-      pointer = created;
+      pointer = result.data;
     } else if (!params.replay || pointer.status !== "active") {
-      const { data: updated, error } = await params.admin
+      let result = await params.admin
         .from("followup_flow_pointers")
-        .update({
-          surface: "crm_automation",
-          draft_graph: spec.graph as unknown as Json,
-          trigger_config: spec.trigger,
-          handoff_policy: "pause",
-        })
+        .update({ ...basePointerPayload, surface: "crm_automation" })
         .eq("organization_id", params.organizationId)
         .eq("id", pointer.id)
         .select("id,status,active_version_id")
         .single();
-      if (error || !updated) {
+      if (result.error && erroDeSurfaceDeFollowupAusente(result.error)) {
+        avisarSurfaceLegada(params.warnings);
+        result = await params.admin
+          .from("followup_flow_pointers")
+          .update(basePointerPayload)
+          .eq("organization_id", params.organizationId)
+          .eq("id", pointer.id)
+          .select("id,status,active_version_id")
+          .single();
+      }
+      if (result.error || !result.data) {
         throw new Error(
-          "blueprint: followup pointer update failed: " + (error?.message ?? "no_row"),
+          "blueprint: followup pointer update failed: " + (result.error?.message ?? "no_row"),
         );
       }
-      pointer = updated;
+      pointer = result.data;
     }
 
     if (!params.replay || pointer.status !== "active" || !pointer.active_version_id) {
