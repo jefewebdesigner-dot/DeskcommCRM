@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { prepararAutomacao } from "./apply-blueprint-automations";
+import { erroDeSurfaceDeFollowupAusente, prepararAutomacao } from "./apply-blueprint-automations";
 
 const stages = [
   {
@@ -41,6 +41,18 @@ function automation(
     ...overrides,
   };
 }
+
+describe("compatibilidade de schema legado", () => {
+  it("reconhece ausência da coluna surface sem engolir outros erros", () => {
+    expect(
+      erroDeSurfaceDeFollowupAusente({
+        message:
+          "Could not find the 'surface' column of 'followup_flow_pointers' in the schema cache",
+      }),
+    ).toBe(true);
+    expect(erroDeSurfaceDeFollowupAusente({ message: "permission denied" })).toBe(false);
+  });
+});
 
 describe("Sales Twin native follow-up mapping", () => {
   it("transforma lead sem resposta em trigger nativo de silêncio", () => {
