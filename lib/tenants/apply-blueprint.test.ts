@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hashBlueprint, stageSemantics } from "./apply-blueprint";
+import { erroDeColunaDeAuditoriaDeEtapaAusente, hashBlueprint, stageSemantics } from "./apply-blueprint";
 import { salesTwinBlueprintSchema } from "@/lib/schemas/tenant-blueprint";
 
 function sample() {
@@ -47,6 +47,20 @@ describe("Sales Twin blueprint domain", () => {
       lostIndex: 3,
     });
     expect(stageSemantics(["Novo", "Contato"])).toEqual({ wonIndex: null, lostIndex: null });
+  });
+
+  it("reconhece banco legado sem colunas de auditoria de etapas", () => {
+    expect(
+      erroDeColunaDeAuditoriaDeEtapaAusente({
+        message:
+          "Could not find the 'last_change_actor_kind' column of 'crm_stages' in the schema cache",
+      }),
+    ).toBe(true);
+    expect(
+      erroDeColunaDeAuditoriaDeEtapaAusente({
+        message: "permission denied for table crm_stages",
+      }),
+    ).toBe(false);
   });
 
   it("hash é estável para o mesmo Blueprint", () => {
