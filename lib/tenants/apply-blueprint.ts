@@ -71,6 +71,25 @@ export function hashBlueprint(blueprint: SalesTwinBlueprint): string {
     .digest("hex");
 }
 
+export function erroDeColunaDeAuditoriaDeEtapaAusente(error: unknown): boolean {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : String(error ?? "");
+  return /Could not find the 'last_change_(actor_kind|at)' column of 'crm_stages' in the schema cache/i.test(
+    message,
+  );
+}
+
+function registrarAvisoDeCompatibilidadeDeEtapa(warnings: Warning[]): void {
+  if (warnings.some((w) => w.code === "crm_stages_legacy_without_audit_columns")) return;
+  warnings.push({
+    code: "crm_stages_legacy_without_audit_columns",
+    message:
+      "O banco desta instalação ainda não tem as colunas de auditoria de etapas; o Blueprint foi aplicado em modo compatível.",
+  });
+}
+
 function uniqueSlug(name: string, used: Set<string>): string {
   const raw = slugify(name).slice(0, 40) || "etapa";
   let out = raw;
@@ -307,52 +326,75 @@ async function aplicarPipeline(
 
   const usedSlugs = new Set(stages.map((s) => s.slug));
   const resultStages: Array<{ id: string; name: string; is_won: boolean; is_lost: boolean }> = [];
+  let auditoriaDeEtapaDisponivel = true;
 
   for (let i = 0; i < blueprint.pipeline.stages.length; i++) {
     const name = blueprint.pipeline.stages[i]!;
     const isWon = semantic.wonIndex === i;
     const isLost = semantic.lostIndex === i;
     const existing = stages[i];
+    const audit = auditoriaDeEtapaDisponivel
+      ? { last_change_actor_kind: "sales_twin", last_change_at: new Date().toISOString() }
+      : {};
 
     if (existing) {
-      const { data, error } = await admin
+      const basePayload = {
+        name,
+        position: (i + 1) * 1000,
+        is_archived: false,
+        is_won: isWon,
+        is_lost: isLost,
+      };
+      let result = await admin
         .from("crm_stages")
-        .update({
-          name,
-          position: (i + 1) * 1000,
-          is_archived: false,
-          is_won: isWon,
-          is_lost: isLost,
-          last_change_actor_kind: "sales_twin",
-          last_change_at: new Date().toISOString(),
-        })
+        .update({ ...basePayload, ...audit })
         .eq("organization_id", organizationId)
         .eq("pipeline_id", pipeline.id)
         .eq("id", existing.id)
         .select("id,name,is_won,is_lost")
         .single();
-      if (error || !data)
-        throw new Error("blueprint: stage update failed: " + (error?.message ?? "no_row"));
-      resultStages.push(data);
+      if (result.error && auditoriaDeEtapaDisponivel && erroDeColunaDeAuditoriaDeEtapaAusente(result.error)) {
+        auditoriaDeEtapaDisponivel = false;
+        registrarAvisoDeCompatibilidadeDeEtapa(warnings);
+        result = await admin
+          .from("crm_stages")
+          .update(basePayload)
+          .eq("organization_id", organizationId)
+          .eq("pipeline_id", pipeline.id)
+          .eq("id", existing.id)
+          .select("id,name,is_won,is_lost")
+          .single();
+      }
+      if (result.error || !result.data)
+        throw new Error("blueprint: stage update failed: " + (result.error?.message ?? "no_row"));
+      resultStages.push(result.data);
     } else {
-      const { data, error } = await admin
+      const basePayload = {
+        organization_id: organizationId,
+        pipeline_id: pipeline.id,
+        name,
+        slug: uniqueSlug(name, usedSlugs),
+        position: (i + 1) * 1000,
+        is_won: isWon,
+        is_lost: isLost,
+      };
+      let result = await admin
         .from("crm_stages")
-        .insert({
-          organization_id: organizationId,
-          pipeline_id: pipeline.id,
-          name,
-          slug: uniqueSlug(name, usedSlugs),
-          position: (i + 1) * 1000,
-          is_won: isWon,
-          is_lost: isLost,
-          last_change_actor_kind: "sales_twin",
-          last_change_at: new Date().toISOString(),
-        })
+        .insert({ ...basePayload, ...audit })
         .select("id,name,is_won,is_lost")
         .single();
-      if (error || !data)
-        throw new Error("blueprint: stage create failed: " + (error?.message ?? "no_row"));
-      resultStages.push(data);
+      if (result.error && auditoriaDeEtapaDisponivel && erroDeColunaDeAuditoriaDeEtapaAusente(result.error)) {
+        auditoriaDeEtapaDisponivel = false;
+        registrarAvisoDeCompatibilidadeDeEtapa(warnings);
+        result = await admin
+          .from("crm_stages")
+          .insert(basePayload)
+          .select("id,name,is_won,is_lost")
+          .single();
+      }
+      if (result.error || !result.data)
+        throw new Error("blueprint: stage create failed: " + (result.error?.message ?? "no_row"));
+      resultStages.push(result.data);
     }
   }
 
@@ -360,19 +402,27 @@ async function aplicarPipeline(
   if (extras.length) {
     if ((leadCount ?? 0) === 0) {
       const ids = extras.map((s) => s.id);
-      const { error } = await admin
+      const basePayload = { is_archived: true, is_won: false, is_lost: false };
+      const audit = auditoriaDeEtapaDisponivel
+        ? { last_change_actor_kind: "sales_twin", last_change_at: new Date().toISOString() }
+        : {};
+      let result = await admin
         .from("crm_stages")
-        .update({
-          is_archived: true,
-          is_won: false,
-          is_lost: false,
-          last_change_actor_kind: "sales_twin",
-          last_change_at: new Date().toISOString(),
-        })
+        .update({ ...basePayload, ...audit })
         .in("id", ids)
         .eq("organization_id", organizationId)
         .eq("pipeline_id", pipeline.id);
-      if (error) throw new Error("blueprint: extra stages archive failed: " + error.message);
+      if (result.error && auditoriaDeEtapaDisponivel && erroDeColunaDeAuditoriaDeEtapaAusente(result.error)) {
+        auditoriaDeEtapaDisponivel = false;
+        registrarAvisoDeCompatibilidadeDeEtapa(warnings);
+        result = await admin
+          .from("crm_stages")
+          .update(basePayload)
+          .in("id", ids)
+          .eq("organization_id", organizationId)
+          .eq("pipeline_id", pipeline.id);
+      }
+      if (result.error) throw new Error("blueprint: extra stages archive failed: " + result.error.message);
     } else {
       warnings.push({
         code: "extra_stages_preserved",
