@@ -32,6 +32,13 @@ export const PUBLIC_PATHS: RegExp[] = [
   // Aplicação do Business Blueprint: capability curta tenant:blueprint,
   // emitida pela rota acima e presa a UMA organização. Auth vive na rota.
   /^\/api\/v1\/tenants\/provision-blueprint$/,
+  // Preparação do canal gerenciado: capability curta tenant:channel, emitida
+  // pela rota de provisionamento e verificada DENTRO destas rotas. Sem estas
+  // entradas o proxy tenta autenticação por cookie primeiro e devolve 401 antes
+  // que a capability Bearer seja validada. Âncoras exatas: nenhum sub-path
+  // futuro deve nascer público por herança.
+  /^\/api\/v1\/tenants\/provision-channel$/,
+  /^\/api\/v1\/tenants\/provision-channel\/qr$/,
   // Relógio Hobby (GitHub Actions / cron-job.org). Auth é Bearer na própria
   // rota — sem isto o proxy devolve 401 e o follow-up waiting_reply nunca anda.
   /^\/api\/v1\/system\/relogio\/tick$/,

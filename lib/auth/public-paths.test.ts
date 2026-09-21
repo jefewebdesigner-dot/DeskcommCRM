@@ -19,6 +19,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/v1/system/relogio/tick/extra")).toBe(false);
   });
 
+  it("libera somente as rotas de provisionamento de canal protegidas por capability", () => {
+    expect(isPublicPath("/api/v1/tenants/provision-channel")).toBe(true);
+    expect(isPublicPath("/api/v1/tenants/provision-channel/qr")).toBe(true);
+    expect(isPublicPath("/api/v1/tenants/provision-channel/qualquer")).toBe(false);
+    expect(isPublicPath("/api/v1/tenants/provision-channel/qr/extra")).toBe(false);
+  });
+
   it("a âncora `$` impede que um sub-path passe de carona", () => {
     expect(isPublicPath("/api/v1/system/agent/qualquer")).toBe(false);
   });
