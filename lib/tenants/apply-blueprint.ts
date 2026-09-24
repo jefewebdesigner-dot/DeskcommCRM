@@ -200,7 +200,7 @@ async function donoDaOrganizacao(
       .limit(1)
       .maybeSingle();
     if (memberErr) throw new Error("blueprint: admin lookup failed: " + memberErr.message);
-    ownerId = member?.user_id as string | undefined;
+    ownerId = (member?.user_id as string | undefined) ?? null;
   }
   if (!ownerId) throw new Error("blueprint: organization_without_admin");
 

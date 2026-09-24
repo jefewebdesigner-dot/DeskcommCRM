@@ -66,52 +66,40 @@ function motivoDoStatusHttp(status: number): MotivoDeFalha {
   return status === 401 || status === 403 ? "credencial_recusada" : "resposta_inesperada";
 }
 
-async function checkSupabase(): Promise<Check> {
+async function checkNeon(): Promise<Check> {
   const t0 = Date.now();
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const dataApi = env.NEON_DATA_API_URL;
   try {
-    // Ping leve via REST com anon key — não precisa de service_role pra health check.
-    // Se chegar 200/401/empty body, conexão e API key estão OK.
-    const key = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const res = await withTimeout(
-      fetch(`${url}/rest/v1/organizations?select=id&limit=1`, {
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          // O SCHEMA VAI EXPLÍCITO, como o resto do app faz.
-          //
-          // Este `fetch` é cru, então ele cai no schema DEFAULT do PostgREST —
-          // o primeiro da lista "Exposed schemas" do projeto. Que esse default
-          // seja `public` é costume de projeto novo, não garantia do Supabase:
-          // num projeto que já servia outra aplicação (schema próprio primeiro
-          // na lista), o ping procurava `<outro>.organizations`, levava
-          // `404 PGRST205` e o check declarava o banco `down` — com o CRM
-          // atendendo normalmente ao lado.
-          //
-          // Não é falso alarme de menos importância: `update.sh` termina em
-          // `wait_app_healthy`, e sair diferente de zero é o sinal que o
-          // `agent.sh` usa para REVERTER a imagem. Uma atualização boa era
-          // desfeita por uma configuração de painel que o CRM não controla.
-          //
-          // Nenhum client do CRM declara `db.schema` (`lib/supabase/*.ts`), e o
-          // default do supabase-js é `public` — então é `public` que o app
-          // usa de verdade, e é o que esta sonda tem de perguntar para estar
-          // medindo o mesmo banco que o app enxerga.
-          "Accept-Profile": "public",
-        },
-        cache: "no-store",
-      }),
-    );
-    // 200 (lista vazia por RLS) ou 401/403 (auth ok mas RLS bloqueia anon) → conexão OK
-    if (res.status === 200 || res.status === 401 || res.status === 403) {
-      return { status: "ok", latency_ms: Date.now() - t0, target: alvoDe(url) };
+    // Duas superfícies essenciais do backend: Data API e chaves públicas do
+    // Neon Auth. A Data API pode responder 401/403 sem JWT; isso prova que o
+    // serviço está alcançável e recusou corretamente a chamada anônima.
+    const [dataRes, jwksRes] = await Promise.all([
+      withTimeout(
+        fetch(`${dataApi.replace(/\/$/, "")}/organizations?select=id&limit=1`, {
+          headers: { "Accept-Profile": "public" },
+          cache: "no-store",
+        }),
+      ),
+      withTimeout(fetch(env.NEON_AUTH_JWKS_URL, { cache: "no-store" })),
+    ]);
+
+    const dataOk =
+      dataRes.status === 200 || dataRes.status === 401 || dataRes.status === 403;
+    if (dataOk && jwksRes.ok) {
+      return {
+        status: "ok",
+        latency_ms: Date.now() - t0,
+        target: alvoDe(dataApi),
+      };
     }
+
+    const falhou = dataOk ? jwksRes : dataRes;
     return {
       status: "down",
       latency_ms: Date.now() - t0,
-      error: `http_${res.status}`,
-      reason: motivoDoStatusHttp(res.status),
-      target: alvoDe(url),
+      error: `http_${falhou.status}`,
+      reason: motivoDoStatusHttp(falhou.status),
+      target: alvoDe(dataApi),
     };
   } catch (e) {
     return {
@@ -119,7 +107,7 @@ async function checkSupabase(): Promise<Check> {
       latency_ms: Date.now() - t0,
       error: e instanceof Error ? e.message : String(e),
       reason: classificarFalhaDeAlcance(e),
-      target: alvoDe(url),
+      target: alvoDe(dataApi),
     };
   }
 }
@@ -285,15 +273,15 @@ function semAlvo(check: Check): Check {
 }
 
 export async function GET(req: NextRequest) {
-  const [supabase, redis, waha] = await Promise.all([
-    checkSupabase(),
+  const [neon, redis, waha] = await Promise.all([
+    checkNeon(),
     checkRedis(),
     checkWaha(),
   ]);
 
   const verboso = req.nextUrl.searchParams.get("verbose") === "1" && segredoInternoConfere(req);
   const filtrar = verboso ? (c: Check) => c : semAlvo;
-  const checks = { supabase: filtrar(supabase), redis: filtrar(redis), waha: filtrar(waha) };
+  const checks = { neon: filtrar(neon), redis: filtrar(redis), waha: filtrar(waha) };
 
   const anyDown = Object.values(checks).some((c) => c.status === "down");
   const anyDegraded = Object.values(checks).some((c) => c.status === "degraded");

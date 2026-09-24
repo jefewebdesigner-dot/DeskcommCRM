@@ -13,6 +13,9 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/500$/,
   /^\/503$/,
   /^\/api\/v1\/health$/,
+  // Logo da marca no login. A rota só entrega caminhos validados do bucket
+  // lógico brand-logos; o bucket físico do Neon permanece privado.
+  /^\/api\/public\/brand-logo$/,
   /^\/api\/v1\/webhooks\//,
   /^\/api\/v1\/cron\//,
   // Landing page de captura de clique do Google Ads (migration 0306). Quem

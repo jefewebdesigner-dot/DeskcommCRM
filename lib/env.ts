@@ -65,10 +65,33 @@ const schema = z.object({
   // Node
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
-  // Supabase — obrigatórias sempre (até pra dev local)
-  NEXT_PUBLIC_SUPABASE_URL: requiredAlways("NEXT_PUBLIC_SUPABASE_URL").url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: requiredAlways("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  SUPABASE_SERVICE_ROLE_KEY: requiredAlways("SUPABASE_SERVICE_ROLE_KEY"),
+  // Backend padrão: Neon. URLs públicas de Auth/Data API podem ir ao browser;
+  // credenciais Postgres/S3 e o segredo de cookie permanecem server-only.
+  DATABASE_URL: requiredAlways("DATABASE_URL"),
+  MIGRATIONS_DATABASE_URL: z.string().optional().default(""),
+  NEON_AUTH_BASE_URL: requiredAlways("NEON_AUTH_BASE_URL").url(),
+  NEON_AUTH_JWKS_URL: requiredAlways("NEON_AUTH_JWKS_URL").url(),
+  NEON_AUTH_COOKIE_SECRET: requiredAlways("NEON_AUTH_COOKIE_SECRET").min(
+    32,
+    "NEON_AUTH_COOKIE_SECRET precisa ter pelo menos 32 caracteres",
+  ),
+  NEON_SERVICE_USER_ID: requiredAlways("NEON_SERVICE_USER_ID"),
+  NEON_SERVICE_EMAIL: requiredAlways("NEON_SERVICE_EMAIL").email(),
+  NEON_SERVICE_PASSWORD: requiredAlways("NEON_SERVICE_PASSWORD").min(32),
+  NEON_DATA_API_URL: requiredAlways("NEON_DATA_API_URL").url(),
+  NEON_PROJECT_ID: requiredAlways("NEON_PROJECT_ID"),
+  AWS_ACCESS_KEY_ID: requiredAlways("AWS_ACCESS_KEY_ID"),
+  AWS_SECRET_ACCESS_KEY: requiredAlways("AWS_SECRET_ACCESS_KEY"),
+  AWS_ENDPOINT_URL_S3: requiredAlways("AWS_ENDPOINT_URL_S3").url(),
+  AWS_REGION: requiredAlways("AWS_REGION"),
+  S3_BUCKET: requiredAlways("S3_BUCKET"),
+
+  // Compatibilidade transitória com instalações antigas. O runtime novo não
+  // depende destas chaves; mantê-las opcionais evita quebrar scripts/testes
+  // históricos enquanto a remoção física do código Supabase é concluída.
+  NEXT_PUBLIC_SUPABASE_URL: z.string().optional().default(""),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional().default(""),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(""),
 
   // Cron / interno
   INTERNAL_SECRET: required("INTERNAL_SECRET"),
@@ -131,9 +154,9 @@ const schema = z.object({
    */
   AI_CRED_AES_KEY: required("AI_CRED_AES_KEY"),
 
-  // Postgres direto do Supabase (Settings → Database) — só as rotas de skills
-  // instaláveis (import/install) usam `pg` cru (mesmo pool do agent-engine).
-  SUPABASE_DB_URL: required("SUPABASE_DB_URL"),
+  // Alias legado para módulos que ainda usam o nome antigo ao abrir `pg`.
+  // Em instalações Neon ele cai para DATABASE_URL depois do parse.
+  SUPABASE_DB_URL: z.string().optional().default(""),
   /**
    * A conexão de DDL do KIT (install.sh/update.sh/backup.sh), não do app —
    * declarada aqui só porque o `docker-compose.prod.yml` entrega o `.env`
@@ -482,7 +505,11 @@ let parsed = schema.safeParse(process.env);
 if (!parsed.success && isBuildPhase) {
   const seeded: Record<string, string | undefined> = { ...process.env };
   for (const key of Object.keys(parsed.error.flatten().fieldErrors)) {
-    if (!seeded[key]) seeded[key] = "https://build-placeholder.invalid";
+    if (seeded[key]) continue;
+    seeded[key] =
+      key === "NEON_SERVICE_EMAIL"
+        ? "build@placeholder.invalid"
+        : "https://build-placeholder.invalid/abcdefghijklmnopqrstuvwxyz0123456789";
   }
   parsed = schema.safeParse(seeded);
 }
@@ -497,6 +524,13 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// Compatibilidade interna enquanto os últimos módulos deixam o nome histórico.
+// Nunca promove a URL de migrations: código de aplicação usa somente a role
+// restrita de DATABASE_URL.
+if (!env.SUPABASE_DB_URL) {
+  env.SUPABASE_DB_URL = env.DATABASE_URL;
+}
 
 if (env.NODE_ENV === "production") {
   const vercelCron = process.env.CRON_SECRET?.trim();

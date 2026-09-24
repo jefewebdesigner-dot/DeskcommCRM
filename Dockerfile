@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # DeskcommCRM — imagem de produção self-host (Next.js standalone).
-# Build: docker build --build-arg NEXT_PUBLIC_SUPABASE_URL=... -t deskcomm-app .
+# Build: docker build -t deskcomm-app .
 
 # ---- deps: instala dependências (layer cacheável) ----
 FROM node:22-alpine AS deps
@@ -17,13 +17,9 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# IMAGEM GENÉRICA: os NEXT_PUBLIC_* recebem placeholders no build. Os valores
-# REAIS do usuário são injetados em RUNTIME — no browser via <PublicEnvScript/>
-# (window.__PUBLIC_ENV__) e no servidor via lib/env.ts (parseia process.env em
-# runtime). Assim UMA imagem serve qualquer projeto Supabase, sem rebuild.
-# (Segredos de runtime NUNCA entram no build — guarda de fase em lib/env.ts.)
-ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+# IMAGEM GENÉRICA: o backend Neon é 100% runtime. URLs públicas de Auth/Data
+# API entram no browser por <PublicEnvScript/> e os segredos permanecem só no
+# ambiente do servidor. O build não recebe credenciais Neon como ARG.
 ARG NEXT_PUBLIC_APP_URL=https://placeholder.invalid
 ARG NEXT_PUBLIC_ADMIN_URL=https://placeholder.invalid
 # O build do Next é faminto: o heap default do Node (~2GB) estoura. NODE_OPTIONS
@@ -31,9 +27,7 @@ ARG NEXT_PUBLIC_ADMIN_URL=https://placeholder.invalid
 # caminho normal do self-hoster é `docker compose pull`, e o install.sh não
 # builda o app. Buildar na VPS é o override opcional de docker-compose.build.yml,
 # e é lá que o requisito de RAM de build se aplica (docs/runbooks/deploy.md §4).
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL \
     NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

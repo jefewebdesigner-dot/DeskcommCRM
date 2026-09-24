@@ -1,5 +1,3 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { isPublicPath } from "@/lib/auth/public-paths";
@@ -8,79 +6,96 @@ import {
   IMPERSONATE_COOKIE_NAME_EDGE,
 } from "@/lib/impersonate/cookie-edge";
 
-const COOKIE_NAME = "sb-deskcomm-auth";
+function cookieHeader(request: NextRequest): string {
+  return request.cookies
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join("; ");
+}
+
+async function sessaoNeon(request: NextRequest) {
+  const res = await fetch(
+    `${env.NEON_AUTH_BASE_URL.replace(/\/$/, "")}/get-session`,
+    {
+      method: "GET",
+      headers: {
+        cookie: cookieHeader(request),
+        origin: new URL(request.url).origin,
+      },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => null)) as
+    | { user?: { id?: string } }
+    | null;
+  return data?.user?.id ? data : null;
+}
+
+async function jwtNeon(request: NextRequest): Promise<string | null> {
+  const res = await fetch(
+    `${env.NEON_AUTH_BASE_URL.replace(/\/$/, "")}/token`,
+    {
+      method: "GET",
+      headers: {
+        cookie: cookieHeader(request),
+        origin: new URL(request.url).origin,
+      },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => null)) as { token?: string } | null;
+  return data?.token ?? null;
+}
+
+async function ehPlatformAdmin(request: NextRequest): Promise<boolean> {
+  const token = await jwtNeon(request);
+  if (!token) return false;
+  const res = await fetch(
+    `${env.NEON_DATA_API_URL.replace(/\/$/, "")}/rpc/fn_is_platform_admin`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: "{}",
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return false;
+  return (await res.json().catch(() => false)) === true;
+}
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: request.headers } });
-
-  // Inject X-Request-Id for downstream correlation (audit log, error wrappers).
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   response.headers.set("x-request-id", requestId);
 
   const { pathname, search } = request.nextUrl;
-  // Expose pathname to Server Components via header (used by onboarding layout).
   response.headers.set("x-pathname", pathname);
   request.headers.set("x-pathname", pathname);
 
-  // EPIC-11: the admin surface is reached by PATH (`/admin/*`) — the self-host kit
-  // points `NEXT_PUBLIC_ADMIN_URL` at the same host as the app and maps no `admin.`
-  // sub-domain. The host-based branch below stays a NOOP today and only exists as
-  // documentation of the intended deploy topology.
   const host = request.headers.get("host") ?? "";
-  const isAdminSurface = host.startsWith("admin.") || pathname.startsWith("/admin");
+  const isAdminSurface =
+    host.startsWith("admin.") || pathname.startsWith("/admin");
 
-  if (isPublicPath(pathname)) {
+  if (isPublicPath(pathname) || pathname.startsWith("/api/auth/")) {
     return response;
   }
 
-  const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-      cookieOptions: {
-        name: COOKIE_NAME,
-        sameSite: "strict",
-        httpOnly: true,
-        secure: cookieSecure(),
-        path: "/",
-      },
-    },
-  );
-
-  // Validate JWT server-side (NEVER use getSession on backend per CLAUDE.md).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    // API routes must respond with JSON envelope (contract: {error:{code,message}})
-    // — never redirect HTML to JSON consumers. UI routes redirect to /login as before.
+  const session = await sessaoNeon(request);
+  if (!session) {
     if (pathname.startsWith("/api/")) {
-      return new NextResponse(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           error: {
             code: "unauthenticated",
             message: "Authentication required",
           },
-        }),
-        {
-          status: 401,
-          headers: {
-            "content-type": "application/json",
-            "x-request-id": requestId,
-          },
         },
+        { status: 401, headers: { "x-request-id": requestId } },
       );
     }
     const loginUrl = new URL("/login", request.url);
@@ -88,10 +103,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // EPIC-11 S-11.07: validate impersonate cookie on /app/* paths. Middleware
-  // runs in Edge — no DB access, only HMAC + expiry. On any failure we delete
-  // the presentation cookie. The database support session remains authoritative:
-  // expired/revoked support still blocks the app until explicit exit.
   if (pathname.startsWith("/app")) {
     const impCookie = request.cookies.get(IMPERSONATE_COOKIE_NAME_EDGE)?.value;
     if (impCookie) {
@@ -108,12 +119,12 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // /admin/* additionally requires platform_admin (early gate — authoritative
-  // check is server-side in `requirePlatformAdmin`). Skip the RPC for
-  // `/admin/forbidden` (rendered to non-admins, would otherwise loop).
-  if (isAdminSurface && pathname.startsWith("/admin") && pathname !== "/admin/forbidden") {
-    const { data: isAdmin, error } = await supabase.rpc("fn_is_platform_admin");
-    if (error || !isAdmin) {
+  if (
+    isAdminSurface &&
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/forbidden"
+  ) {
+    if (!(await ehPlatformAdmin(request))) {
       return NextResponse.redirect(new URL("/admin/forbidden", request.url));
     }
   }
@@ -123,7 +134,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all paths except static assets / Next internals.
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
   ],
 };

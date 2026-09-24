@@ -1,14 +1,11 @@
 /**
- * Canonical realtime channel factory helpers.
- * Centralizes channel-name strings so every consumer stays in sync.
- */
-
-import { createClient } from "@/lib/supabase/browser";
-
-/**
- * Platform-wide alerts broadcast channel.
- * Subscribed by useAlertsRealtime to receive cross-tenant alert broadcasts.
+ * Compatibilidade histórica.
+ *
+ * Supabase Realtime não faz parte do backend Neon. Os consumidores ativos usam
+ * useRealtimeChannel(), que reconcilia pela API protegida por Auth/RLS.
  */
 export function alertsPlatform() {
-  return createClient().channel("alerts-platform");
+  return {
+    name: "alerts-platform",
+  };
 }

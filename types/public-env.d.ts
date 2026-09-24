@@ -7,8 +7,8 @@
  * process.env.NEXT_PUBLIC_* (baked), então nada muda lá.
  */
 interface PublicEnv {
-  NEXT_PUBLIC_SUPABASE_URL?: string;
-  NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+  NEON_AUTH_BASE_URL?: string;
+  NEON_DATA_API_URL?: string;
   SENTRY_DSN?: string;
   /**
    * Marca da instalação (white-label), já RESOLVIDA — banco acima, arquivo de

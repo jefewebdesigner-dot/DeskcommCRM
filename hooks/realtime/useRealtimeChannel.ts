@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
-import { createClient, prepareRealtimeAuthentication } from "@/lib/supabase/browser";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { prepareRealtimeAuthentication } from "@/lib/supabase/browser";
 
 export type RealtimeStatus =
   | "connecting"
@@ -23,218 +23,90 @@ export interface UseRealtimeChannelOpts {
   enabled?: boolean;
 }
 
+const POLLING_MS = 3_000;
+
 /**
- * ONDE MORA A AUTENTICAÇÃO DESTE CANAL — não é aqui, e isso é o conserto.
+ * Compatibilidade de atualização ao vivo para o backend 100% Neon.
  *
- * Este hook já teve um bloco que buscava o token e chamava
- * `supabase.realtime.setAuth(token)` antes de cada `subscribe`, com memo,
- * corrida contra um teto de 4s e remontagem quando o token chegava atrasado.
- * Tudo isso existia para compensar o cookie httpOnly, que deixa o supabase-js
- * do browser sem enxergar a sessão.
- *
- * ⚠️ AQUELE BLOCO PAROU DE FUNCIONAR NUM BUMP DE DEPENDÊNCIA, e ficou verde.
- * A partir do realtime-js 2.112.x a callback `accessToken` do client vence o
- * token manual — a própria biblioteca documenta isso — e a callback PADRÃO,
- * sem sessão visível, devolve a anon key. Medido no socket: o token do usuário
- * durava ~2ms, e todo canal criado depois joinava anônimo. Anônimo assina,
- * responde SUBSCRIBED e não recebe nada, porque a RLS filtra do outro lado.
- *
- * Os testes não pegaram porque exercitavam `authenticateRealtime` contra um
- * cliente FAKE: provavam que `setAuth` era CHAMADO, e o que quebrou foi o
- * EFEITO de chamá-lo. Guardar a chamada em vez do comportamento é o que os
- * deixou verdes enquanto o inbox não atualizava.
- *
- * A fonte do token agora é única e mora em `lib/supabase/browser.ts`, na
- * callback que o socket chama sozinho — no join, em cada reconexão e a cada
- * heartbeat. Duas fontes de token eram o defeito; não se conserta somando uma
- * terceira.
+ * O Supabase Realtime saiu da arquitetura. Em vez de abrir um socket paralelo
+ * sem RLS equivalente, este hook dispara reconciliações periódicas; cada
+ * consumidor refaz sua consulta normal pela API/Data API, portanto a mesma
+ * autenticação e as mesmas policies continuam sendo a fronteira de acesso.
  */
-export function useRealtimeChannel(opts: UseRealtimeChannelOpts): {
+export function useRealtimeChannel(
+  opts: UseRealtimeChannelOpts,
+): {
   status: RealtimeStatus;
-  /**
-   * Instante da última entrega deste canal (`.current` é null se nunca entregou).
-   *
-   * ⚠️ DEVOLVE A REF, NÃO O VALOR, e isso é correção e não estilo: ler
-   * `.current` aqui no render entregaria um número CONGELADO naquele render —
-   * a ref muda depois e nada redesenha, então quem recebeu ficaria com carimbo
-   * velho até algo mais causar um render. Funcionava por acidente (a query
-   * redesenha ao invalidar), e falharia justamente na janela entre a entrega e
-   * esse redesenho, que é onde o detector de perda dispara.
-   *
-   * Virar `useState` resolveria a propagação e criaria pior: o valor entra nas
-   * dependências do efeito e o canal RE-ASSINA a cada evento, perdendo eventos
-   * na reassinatura. Quem lê isto é um timer — roda fora do render e enxerga
-   * `.current` sempre fresco.
-   */
   ultimaEntrega: RefObject<number | null>;
 } {
-  const { name, postgresChanges, broadcast, onChange, enabled = true } = opts;
-
-  // ref makes onChange identity-stable so changing handler doesn't re-subscribe
+  const { onChange, enabled = true } = opts;
   const onChangeRef = useRef(onChange);
+  const ultimaEntrega = useRef<number | null>(null);
+  const [status, setStatus] = useState<RealtimeStatus>(
+    enabled ? "connecting" : "closed",
+  );
+
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  /**
-   * QUANDO este canal entregou algo pela última vez.
-   *
-   * Existe para o refetch de segurança poder responder "houve entrega
-   * recente?" — sem esse sinal, uma diferença entre o que o servidor tem e o
-   * que a tela mostra é indistinguível de "nada aconteceu no intervalo", e a
-   * checagem só consegue REPROVAR, nunca aprovar.
-   *
-   * `useRef` e não `useState` porque virar dependência de efeito faria o canal
-   * re-assinar a cada evento, perdendo eventos na janela da reassinatura. A
-   * ref ATRAVESSA a fronteira do hook em vez de ser lida aqui — ver o tipo de
-   * retorno, onde está por que ler `.current` no render seria defeito.
-   */
-  const ultimaEntrega = useRef<number | null>(null);
-
-  const [status, setStatus] = useState<RealtimeStatus>(enabled ? "connecting" : "closed");
-
-  // React 19 strict mode mounts effects twice in dev. If two consumers ever
-  // share the same logical channel name (or the same component re-mounts),
-  // Supabase reuses the existing channel object — calling `.on()` after the
-  // prior `.subscribe()` errors out. Append a stable per-instance suffix so
-  // every hook call owns its own channel topology.
-  const instanceId = useId();
-
   useEffect(() => {
-    if (!enabled) {
-      setStatus("closed");
-      return;
-    }
-    const supabase = createClient();
-    const channelName = `${name}::${instanceId}`;
+    if (!enabled) return;
 
-    const handler = (payload: unknown) => {
-      // Carimba ANTES de entregar: se o consumidor lançar, a entrega ainda
-      // aconteceu — e o refetch de segurança precisa saber disso para não
-      // acusar o canal de ter perdido o que ele trouxe.
-      ultimaEntrega.current = Date.now();
-      onChangeRef.current(payload);
-    };
-
-    // `active` guarda o canal VIGENTE. Cada tentativa cria um objeto novo, e a
-    // comparação `active !== novo` nos callbacks descarta o que sobrou de uma
-    // tentativa anterior — sem ela, um canal velho que responde tarde
-    // sobrescreveria o estado do canal que já está de pé.
-    let active: RealtimeChannel | null = null;
     let cancelado = false;
-    let tentativas = 0;
-    let retomada: ReturnType<typeof setTimeout> | null = null;
-    setStatus("connecting");
+    let timer: ReturnType<typeof setInterval> | null = null;
 
-    /**
-     * Monta o canal do zero e assina.
-     *
-     * DO ZERO, e não `subscribe()` de novo no mesmo objeto: um canal que entrou
-     * em erro não volta — o socket já derrubou a topologia dele, e reassinar o
-     * mesmo objeto devolve SUBSCRIBED sem nunca mais entregar. Morte silenciosa,
-     * a mesma classe de defeito que a memo de auth já tinha aqui.
-     */
-    const agendarRetomada = () => {
-      if (cancelado) return;
-      const espera = Math.min(30_000, 1_000 * 2 ** tentativas);
-      tentativas++;
-      if (retomada) clearTimeout(retomada);
-      retomada = setTimeout(() => {
-        if (cancelado) return;
-        // `active` é SOLTO antes de remover, e a ordem é o conserto. Num canal
-        // que ainda não entrou, `removeChannel` chama o callback do `subscribe`
-        // com CLOSED ANTES de retornar (medido no realtime-js 2.112.3 instalado:
-        // `joining | cb:CLOSED | depois-da-chamada`). Com `active` ainda
-        // apontando o canal velho, esse CLOSED passava pela guarda
-        // `active !== novo` e armava OUTRA retomada — um timer órfão que, 2^n s
-        // depois, derrubava o canal que já tinha voltado saudável, numa janela
-        // em que eventos se perdem e nenhum "reassinado" é emitido.
-        const velho = active;
-        active = null;
-        if (velho) supabase.removeChannel(velho);
-        montar();
-      }, espera);
+    const reconciliar = () => {
+      if (cancelado || document.visibilityState === "hidden") return;
+      ultimaEntrega.current = Date.now();
+      onChangeRef.current({ tipo: "reassinado", source: "neon-poll" });
     };
-    const montar = async () => {
-      if (cancelado) return;
+
+    const iniciar = async () => {
+      setStatus("connecting");
       try {
         await prepareRealtimeAuthentication();
+        if (cancelado) return;
+        setStatus("subscribed");
+
+        // Primeira reconciliação fecha a janela entre o render inicial e a
+        // autenticação do polling. Depois, mantém a UI fresca sem baixar tabelas.
+        reconciliar();
+        timer = setInterval(reconciliar, POLLING_MS);
       } catch {
         if (cancelado) return;
         setStatus("channel_error");
-        agendarRetomada();
-        return;
-      }
-      if (cancelado) return;
-
-      let novo: RealtimeChannel = supabase.channel(`${channelName}#${tentativas}`);
-      if (postgresChanges) {
-        novo = novo.on(
-          "postgres_changes",
-          {
-            event: postgresChanges.event,
-            schema: postgresChanges.schema ?? "public",
-            table: postgresChanges.table,
-            ...(postgresChanges.filter ? { filter: postgresChanges.filter } : {}),
-          },
-          handler,
-        );
-      }
-      if (broadcast) novo = novo.on("broadcast", { event: broadcast.event }, handler);
-      active = novo;
-
-      // Bootstrap concluído antes do primeiro join; a callback do client mantém
-      // a renovação. Nenhum canal anônimo nasce enquanto o token está em voo.
-      novo.subscribe((s) => {
-        if (cancelado || active !== novo) return;
-        // s is one of "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED"
-        const map: Record<string, RealtimeStatus> = {
-          SUBSCRIBED: "subscribed",
-          CHANNEL_ERROR: "channel_error",
-          TIMED_OUT: "timed_out",
-          CLOSED: "closed",
-        };
-        setStatus(map[s] ?? "connecting");
-
-        if (s === "SUBSCRIBED") {
-          // Voltou depois de ter caído. O que aconteceu enquanto ele estava
-          // morto NÃO vai chegar — o Realtime não guarda nada para entregar
-          // depois. Uma entrega sintética força quem escuta a buscar de novo,
-          // e é ela que fecha o buraco de verdade: sem isso o canal volta a
-          // funcionar para o PRÓXIMO evento e a tela segue sem o anterior.
-          if (tentativas > 0) {
-            tentativas = 0;
-            handler({ tipo: "reassinado" });
+        timer = setInterval(async () => {
+          if (cancelado) return;
+          try {
+            await prepareRealtimeAuthentication();
+            if (cancelado) return;
+            setStatus("subscribed");
+            reconciliar();
+          } catch {
+            setStatus("channel_error");
           }
-          return;
-        }
-
-        if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
-          // Antes daqui não havia NADA: o estado era anotado e o canal ficava
-          // morto até a pessoa recarregar a página. Foi o sintoma relatado —
-          // "às vezes preciso atualizar para a mensagem aparecer".
-          //
-          // Recuo exponencial com teto de 30s: reconectar em rajada contra um
-          // socket que caiu por sobrecarga piora a sobrecarga, e o teto evita
-          // que uma queda longa deixe a espera em minutos.
-          agendarRetomada();
-        }
-      });
+        }, Math.max(POLLING_MS, 5_000));
+      }
     };
 
-    montar();
+    void iniciar();
+
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && !cancelado) reconciliar();
+    };
+    window.addEventListener("focus", reconciliar);
+    window.addEventListener("online", reconciliar);
+    document.addEventListener("visibilitychange", aoVoltar);
 
     return () => {
       cancelado = true;
-      if (retomada) clearTimeout(retomada);
-      if (active) {
-        supabase.removeChannel(active);
-        active = null;
-      }
+      if (timer) clearInterval(timer);
+      window.removeEventListener("focus", reconciliar);
+      window.removeEventListener("online", reconciliar);
+      document.removeEventListener("visibilitychange", aoVoltar);
     };
-    // intentionally omit onChange (ref); only re-subscribe when channel topology changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, enabled, instanceId, postgresChanges?.event, postgresChanges?.table, postgresChanges?.filter, postgresChanges?.schema, broadcast?.event]);
+  }, [enabled, opts.name]);
 
-  return { status, ultimaEntrega };
+  return { status: enabled ? status : "closed", ultimaEntrega };
 }
