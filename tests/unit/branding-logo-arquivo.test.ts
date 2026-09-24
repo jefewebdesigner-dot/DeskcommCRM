@@ -167,17 +167,15 @@ describe("caminhoBateComPrefixo / podeApagar — o prefixo asseverado", () => {
 });
 
 describe("urlPublicaDoLogo / logoDaCamada — o que a camada mostra", () => {
-  it("monta a URL pública do bucket, normalizando barra sobrando", () => {
-    const esperada = `https://p.supabase.co/storage/v1/object/public/${BUCKET_DE_LOGOS}/platform/${NOME}`;
-    expect(urlPublicaDoLogo(`platform/${NOME}`, "https://p.supabase.co")).toBe(esperada);
-    // Barra no fim é grafia legítima do `.env` do operador, e sem a normalização
-    // produziria `//storage`.
-    expect(urlPublicaDoLogo(`platform/${NOME}`, "https://p.supabase.co/")).toBe(esperada);
+  it("monta a URL pública controlada do próprio CRM", () => {
+    const esperada = `/api/public/brand-logo?path=${encodeURIComponent(`platform/${NOME}`)}`;
+    expect(urlPublicaDoLogo(`platform/${NOME}`, "https://ignorado.example")).toBe(esperada);
+    expect(urlPublicaDoLogo(`platform/${NOME}`)).toBe(esperada);
   });
 
   it("o ARQUIVO subido vence a URL colada, dentro da mesma camada", () => {
-    expect(logoDaCamada(`platform/${NOME}`, "https://cdn/antigo.png", "https://p.co")).toBe(
-      `https://p.co/storage/v1/object/public/${BUCKET_DE_LOGOS}/platform/${NOME}`,
+    expect(logoDaCamada(`platform/${NOME}`, "https://cdn/antigo.png", "/")).toBe(
+      `/api/public/brand-logo?path=${encodeURIComponent(`platform/${NOME}`)}`,
     );
   });
 
@@ -190,12 +188,9 @@ describe("urlPublicaDoLogo / logoDaCamada — o que a camada mostra", () => {
     );
   });
 
-  it("sem base do Storage, o caminho NÃO vira URL relativa — desce para a camada de baixo", () => {
-    // Uma URL relativa faria o `<img>` pedir `/storage/v1/...` ao próprio app e
-    // receber HTML de 404 — logo quebrado em vez de logo ausente.
-    expect(logoDaCamada(`platform/${NOME}`, null, "")).toBeNull();
-    expect(logoDaCamada(`platform/${NOME}`, "https://cdn/antigo.png", "")).toBe(
-      "https://cdn/antigo.png",
+  it("sem base externa, o caminho continua resolvendo pela rota pública do CRM", () => {
+    expect(logoDaCamada(`platform/${NOME}`, null, "/")).toBe(
+      `/api/public/brand-logo?path=${encodeURIComponent(`platform/${NOME}`)}`,
     );
   });
 

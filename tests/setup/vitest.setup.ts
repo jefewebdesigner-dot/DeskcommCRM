@@ -61,6 +61,23 @@ for (const envFile of [".env", ".env.local"]) {
  * bater em algum lugar existente.
  */
 const PLACEHOLDERS: Record<string, string> = {
+  DATABASE_URL: "postgresql://app:test@test-placeholder.invalid/neondb",
+  MIGRATIONS_DATABASE_URL: "postgresql://migration:test@test-placeholder.invalid/neondb",
+  NEON_AUTH_BASE_URL: "https://auth.test-placeholder.invalid/auth",
+  NEON_AUTH_JWKS_URL: "https://auth.test-placeholder.invalid/auth/.well-known/jwks.json",
+  NEON_AUTH_COOKIE_SECRET: "test-cookie-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  NEON_SERVICE_USER_ID: "00000000-0000-4000-8000-000000000001",
+  NEON_SERVICE_EMAIL: "gravity-service@test-placeholder.invalid",
+  NEON_SERVICE_PASSWORD: "test-service-password-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  NEON_DATA_API_URL: "https://data.test-placeholder.invalid",
+  NEON_PROJECT_ID: "test-project",
+  AWS_ACCESS_KEY_ID: "test-access-key",
+  AWS_SECRET_ACCESS_KEY: "test-secret-key",
+  AWS_ENDPOINT_URL_S3: "https://storage.test-placeholder.invalid",
+  AWS_REGION: "us-east-2",
+  S3_BUCKET: "assets",
+
+  // Mantidos apenas para testes históricos ainda não portados.
   NEXT_PUBLIC_SUPABASE_URL: "https://test-placeholder.invalid",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-placeholder-anon-key",
   SUPABASE_SERVICE_ROLE_KEY: "test-placeholder-service-role-key",
