@@ -49,7 +49,7 @@ export async function useRecoveryCode(
 
   if (!isServiceRoleConfigured()) {
     console.warn(
-      "[useRecoveryCode] SUPABASE_SERVICE_ROLE_KEY not configured — recovery flow unavailable",
+      "[useRecoveryCode] identidade técnica Neon indisponível — recovery flow unavailable",
     );
     return { ok: false, error: "service_unavailable" };
   }

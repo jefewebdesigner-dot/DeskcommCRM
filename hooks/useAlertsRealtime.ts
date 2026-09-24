@@ -22,11 +22,17 @@ export function useAlertsRealtime() {
 
   const onChange = useCallback(
     (payload: unknown) => {
+      qc.invalidateQueries({ queryKey: ["admin", "dashboard", "kpis"] });
+
+      // No backend Neon, o hook compartilhado também envia reconciliações
+      // periódicas sem um evento concreto. Elas atualizam os KPIs, mas nunca
+      // devem fabricar um toast.
+      if ((payload as { tipo?: string } | null)?.tipo === "reassinado") return;
+
       const data = (payload as { payload?: AlertBroadcast } | null)?.payload;
       const kind = data?.kind;
       const label = kind ? (KIND_LABELS[kind] ?? kind) : "alerta";
       toast.warning(`Novo ${label}`, { description: data?.message });
-      qc.invalidateQueries({ queryKey: ["admin", "dashboard", "kpis"] });
     },
     [qc],
   );

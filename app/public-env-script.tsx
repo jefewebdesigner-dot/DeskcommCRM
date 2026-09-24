@@ -57,8 +57,10 @@ export async function PublicEnvScript({
   await headers();
 
   const payload = JSON.stringify({
-    NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    // URLs públicas do backend Neon. Nenhuma credencial Postgres/S3 ou
+    // segredo de cookie atravessa esta fronteira.
+    NEON_AUTH_BASE_URL: env.NEON_AUTH_BASE_URL,
+    NEON_DATA_API_URL: env.NEON_DATA_API_URL,
     // Exposto pro Sentry do browser respeitar o opt-out (SENTRY_DSN=off) em runtime,
     // sem rebuild. DSN não é segredo. Ver lib/sentry/dsn.ts.
     SENTRY_DSN: env.SENTRY_DSN,

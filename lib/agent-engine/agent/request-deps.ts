@@ -21,10 +21,7 @@ export function requestTurnDeps(): InboundTurnDeps {
           }),
         }
       : {}),
-    crmCfg: crmEdgeConfigFromEnv({
-      SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
-    }),
+    crmCfg: crmEdgeConfigFromEnv(),
     llmCfg,
     knobs: turnKnobsFromEnv(env),
     log: createLogger(),
