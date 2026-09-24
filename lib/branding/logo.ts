@@ -116,8 +116,10 @@ export function caminhoNovoDoLogo(prefixo: string, extensao: ExtensaoDeLogo): st
  * aqui, e não em cada chamador, porque `NEXT_PUBLIC_SUPABASE_URL` com barra final
  * é grafia legítima que o operador escreve no `.env` e produziria `//storage`.
  */
-export function urlPublicaDoLogo(caminho: string, base: string): string {
-  return `${base.replace(/\/+$/, "")}/storage/v1/object/public/${BUCKET_DE_LOGOS}/${caminho.replace(/^\/+/, "")}`;
+export function urlPublicaDoLogo(caminho: string, _base = ""): string {
+  // O bucket Neon é privado. A URL estável aponta para uma rota pública do CRM
+  // que só aceita caminhos válidos de brand-logos e lê o objeto server-side.
+  return `/api/public/brand-logo?path=${encodeURIComponent(caminho.replace(/^\/+/, ""))}`;
 }
 
 /**
@@ -133,45 +135,9 @@ export function urlPublicaDoLogo(caminho: string, base: string): string {
  * o `<img>` pediria `/storage/v1/...` ao próprio app e receberia HTML de 404.
  */
 export function baseDoStorage(): string {
-  if (typeof window !== "undefined") {
-    return (window.__PUBLIC_ENV__?.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-  }
-  // ⚠️ O `process.env` INTEIRO, e NUNCA `process.env.NEXT_PUBLIC_SUPABASE_URL`.
-  //
-  // O Next substitui todo acesso ESTÁTICO a `process.env.NEXT_PUBLIC_*` pelo
-  // valor do BUILD — inclusive no bundle do servidor. E o Dockerfile builda com
-  // `ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co`, porque a
-  // imagem é genérica. Resultado, medido no contêiner de produção:
-  //
-  //   function n(){return"https://placeholder.supabase.co".trim()}
-  //
-  // A função inteira virou constante. Toda instalação que subisse um logo
-  // recebia `https://placeholder.supabase.co/storage/...` no `<img>` — imagem
-  // quebrada, com o arquivo intacto no Storage e o caminho certo no banco. O
-  // comentário do Dockerfile ("no servidor via lib/env.ts, que parseia
-  // process.env em runtime") descrevia o que DEVIA acontecer; este arquivo não
-  // passava por lá.
-  //
-  // Ler pela variável derrota a substituição: o Next só reescreve o acesso
-  // estático, e é exatamente por isso que `lib/env.ts` — que faz
-  // `schema.safeParse(process.env)` — sempre teve o valor certo em runtime.
-  // A chave é MONTADA em tempo de execução, e isso não é firula.
-  //
-  // A primeira tentativa foi ler por uma variável (`const ambiente =
-  // process.env; ambiente.NEXT_PUBLIC_SUPABASE_URL`). Não bastou — o compilador
-  // segue o alias. Medido no bundle da imagem publicada com o conserto dentro:
-  //
-  //   function d(a,b,c=(process.env,"https://placeholder.supabase.co".trim()))
-  //
-  // Ele avaliou `process.env` pelo efeito colateral e substituiu o acesso do
-  // mesmo jeito. A substituição casa o NOME da propriedade, então a única forma
-  // de escapar é o nome não existir no código: montado assim, não há literal
-  // `NEXT_PUBLIC_SUPABASE_URL` para casar.
-  //
-  // Verificado do jeito que importa — buildando com o placeholder do Dockerfile
-  // e procurando no `.next`, que é como o defeito foi encontrado.
-  const chave = ["NEXT", "PUBLIC", "SUPABASE", "URL"].join("_");
-  return ((process.env as Record<string, string | undefined>)[chave] ?? "").trim();
+  // O bucket Neon é privado e o objeto é servido por uma rota pública do CRM.
+  // Mantemos esta função para não quebrar a interface dos resolvedores de marca.
+  return "/";
 }
 
 /**

@@ -137,26 +137,51 @@ export const CATALOGO_DA_INSTALACAO: readonly ChaveDaInstalacao[] = [
 
   // ── DIAGNÓSTICO: de partida ───────────────────────────────────────────────
   {
-    chave: "NEXT_PUBLIC_SUPABASE_URL",
-    rotulo: "Endereço do banco de dados",
-    explicacao: "Onde ficam todos os seus dados.",
-    grupo: "banco",
-    natureza: "texto",
-    controle: "diagnostico",
-    motivo: "de_partida",
-    comoTrocar:
-      "Esta é a porta de entrada do banco: o sistema precisa dela para ler qualquer coisa, inclusive esta tela. Guardá-la no banco seria como trancar a chave dentro do cofre. Troca-se no arquivo de instalação do servidor.",
-  },
-  {
-    chave: "SUPABASE_SERVICE_ROLE_KEY",
-    rotulo: "Senha administrativa do banco",
-    explicacao: "A credencial que dá ao sistema acesso total aos dados.",
+    chave: "DATABASE_URL",
+    rotulo: "Conexão do banco Neon",
+    explicacao:
+      "Conexão restrita que o sistema usa para filas, locks e operações server-side no Postgres.",
     grupo: "banco",
     natureza: "segredo",
     controle: "diagnostico",
     motivo: "de_partida",
     comoTrocar:
-      "Sem ela o sistema não lê o banco — nem esta tela. Troca-se no arquivo de instalação do servidor.",
+      "O Gravity provisiona e injeta esta conexão automaticamente. Ela fica no arquivo seguro da instalação e nunca é exibida no navegador.",
+  },
+  {
+    chave: "NEON_AUTH_BASE_URL",
+    rotulo: "Endereço do Neon Auth",
+    explicacao: "Endpoint público responsável por login, sessão e usuários.",
+    grupo: "banco",
+    natureza: "texto",
+    controle: "diagnostico",
+    motivo: "de_partida",
+    comoTrocar:
+      "O Gravity obtém este endereço da branch Neon vinculada ao projeto e o injeta automaticamente.",
+  },
+  {
+    chave: "NEON_DATA_API_URL",
+    rotulo: "Endereço da API de dados Neon",
+    explicacao:
+      "API compatível com PostgREST usada pelas telas e rotas do CRM, sempre protegida por JWT e RLS.",
+    grupo: "banco",
+    natureza: "texto",
+    controle: "diagnostico",
+    motivo: "de_partida",
+    comoTrocar:
+      "O Gravity habilita a Data API na branch do projeto e injeta este endereço automaticamente.",
+  },
+  {
+    chave: "NEON_SERVICE_PASSWORD",
+    rotulo: "Credencial técnica do sistema",
+    explicacao:
+      "Senha da identidade técnica server-only usada por webhooks e tarefas administrativas sem expor privilégios no navegador.",
+    grupo: "seguranca",
+    natureza: "segredo",
+    controle: "diagnostico",
+    motivo: "de_partida",
+    comoTrocar:
+      "É criada e guardada pelo Gravity no cofre do projeto. Para rotacionar, reprovisione a identidade técnica pelo Gravity.",
   },
 
   // ── DIAGNÓSTICO: pareada com outro contêiner ──────────────────────────────

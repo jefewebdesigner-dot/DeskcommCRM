@@ -16,19 +16,14 @@ import { env } from "@/lib/env";
 import type { AuditAction } from "./actions";
 
 export function isServiceRoleConfigured(): boolean {
-  const key = env.SUPABASE_SERVICE_ROLE_KEY.trim();
-  // NUNCA infira validade pelo comprimento. O Supabase emitia só JWT (200+
-  // caracteres) — daí o `length > 50` original — e passou a emitir também a
-  // chave curta `sb_secret_...` (~41 caracteres), que esse corte rejeitava
-  // mesmo sendo uma chave real e funcional. O comprimento nunca foi a
-  // resposta certa, era um proxy frágil para "isso parece um JWT" que quebra
-  // toda vez que o formato do terceiro muda. A pergunta real é só "tem
-  // chave de verdade?": ausência (string vazia) ou placeholder explícito são
-  // os únicos "não". Erra para o lado de "tenho a chave" — tentar e falhar
-  // alto é melhor que degradar em silêncio (que foi o efeito real do bug:
-  // login/convite/atribuição em massa falhando ou perdendo dado sem
-  // explicação, com a chave real configurada).
-  return key.length > 0 && !key.startsWith("PLACEHOLDER");
+  // O nome ficou por compatibilidade com os chamadores. No backend Neon, a
+  // capacidade privilegiada vem de uma identidade técnica Auth server-only,
+  // nunca de uma service_role pública.
+  const neon =
+    env.NEON_SERVICE_USER_ID.trim().length > 0 &&
+    env.NEON_SERVICE_EMAIL.trim().length > 0 &&
+    env.NEON_SERVICE_PASSWORD.trim().length >= 32;
+  return neon;
 }
 
 interface AuditEntry {

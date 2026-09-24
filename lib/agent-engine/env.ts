@@ -13,13 +13,11 @@ import {
 } from '@/lib/followup/janela';
 
 const envSchema = z.object({
-  // Postgres do Supabase (connection string — Settings → Database). O motor usa
-  // `pg` direto: FOR UPDATE SKIP LOCKED, advisory locks, FTS.
-  SUPABASE_DB_URL: z.string().url(),
-  // Supabase API — os handlers do app (sendMessageHandler) exigem o client
-  // service-role. Mesmos valores do .env.local do app.
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Postgres do Neon. O motor usa `pg` direto para FOR UPDATE SKIP LOCKED,
+  // advisory locks, FTS e filas duráveis. Sempre a role restrita de aplicação.
+  DATABASE_URL: z.string().url(),
+  // Alias legado opcional enquanto scripts antigos ainda são removidos.
+  SUPABASE_DB_URL: z.string().url().optional(),
   // Chave LLM de plataforma (fallback quando a org não tem BYOK em
   // ai_provider_credentials). Opcional no boot: sem ela e sem BYOK, o turno
   // falha com erro instrutivo — nunca silêncio.
