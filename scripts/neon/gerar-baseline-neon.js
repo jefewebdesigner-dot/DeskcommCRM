@@ -53,6 +53,21 @@ function transformarFksDeUsuario(sql) {
     );
 }
 
+function transformarCompatibilidadeExtensions(sql) {
+  // No Neon, pgcrypto já vem instalado em public. O dump do Supabase referencia
+  // a mesma função sob o schema extensions. Reescrevemos só esse símbolo;
+  // uuid_generate_v4 continua em extensions, onde uuid-ossp é criado no prelude.
+  return sql
+    .replace(
+      /"extensions"\."gen_random_bytes"/g,
+      '"public"."gen_random_bytes"',
+    )
+    .replace(
+      /\bextensions\.gen_random_bytes\b/g,
+      'public.gen_random_bytes',
+    );
+}
+
 function prelude(owner) {
   const qOwner = ident(owner);
   return String.raw`-- =============================================================================
@@ -178,6 +193,7 @@ function main() {
 
   let sql = fs.readFileSync(entrada, 'utf8');
   sql = transformarFksDeUsuario(sql);
+  sql = transformarCompatibilidadeExtensions(sql);
 
   // O dump original foi produzido pelo papel "postgres" do Supabase. No Neon,
   // ownership e ALTER DEFAULT PRIVILEGES pertencem ao usuário da conexão DDL.
@@ -205,6 +221,7 @@ function main() {
     output: path.relative(root, saida),
     ownerRewritten: true,
     authUserForeignKeysRewritten: true,
+    pgcryptoSchemaRewritten: true,
     secretsPrinted: false,
   }));
 }
