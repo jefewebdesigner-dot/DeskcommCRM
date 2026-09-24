@@ -72,6 +72,25 @@ function transformarCompatibilidadeExtensions(sql) {
     );
 }
 
+function removerAlteracoesDeRolesGerenciadas(sql) {
+  // Neon Data API controla as roles de gateway. A role de migrations não é
+  // dona de authenticator/authenticated e não deve tentar ALTER ROLE SET.
+  // Mantemos os blocos DO válidos substituindo apenas a operação por NULL.
+  return sql
+    .replace(
+      /execute\s+'alter role authenticator set lock_timeout = ''4s''';/gi,
+      'null;',
+    )
+    .replace(
+      /execute\s+'alter role authenticated set lock_timeout = ''4s''';/gi,
+      'null;',
+    )
+    .replace(
+      /execute\s+\$c\$alter role authenticator set pgrst\.db_pre_request = 'public\.fn_pgrst_recusar_replay_do_gateway'\$c\$;/gi,
+      'null;',
+    );
+}
+
 function prelude(owner) {
   const qOwner = ident(owner);
   return String.raw`-- =============================================================================
@@ -198,6 +217,7 @@ function main() {
   let sql = fs.readFileSync(entrada, 'utf8');
   sql = transformarFksDeUsuario(sql);
   sql = transformarCompatibilidadeExtensions(sql);
+  sql = removerAlteracoesDeRolesGerenciadas(sql);
 
   // O dump original foi produzido pelo papel "postgres" do Supabase. No Neon,
   // ownership e ALTER DEFAULT PRIVILEGES pertencem ao usuário da conexão DDL.
@@ -235,6 +255,7 @@ function main() {
     authUserForeignKeysRewritten: true,
     pgcryptoSchemaRewritten: true,
     ownerRoleRewritten: true,
+    managedRoleAltersRemoved: true,
     secretsPrinted: false,
   }));
 }
