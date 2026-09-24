@@ -27,6 +27,10 @@ function ident(valor) {
   return '"' + String(valor).replace(/"/g, '""') + '"';
 }
 
+function literal(valor) {
+  return "'" + String(valor).replace(/'/g, "''") + "'";
+}
+
 function roleDeMigration() {
   const explicita = argumento('owner');
   if (explicita) return explicita;
@@ -198,6 +202,14 @@ function main() {
   // O dump original foi produzido pelo papel "postgres" do Supabase. No Neon,
   // ownership e ALTER DEFAULT PRIVILEGES pertencem ao usuário da conexão DDL.
   sql = sql.replace(/"postgres"/g, ident(owner));
+  sql = sql.replace(
+    /\bowner\s+to\s+postgres\b/gi,
+    'owner to ' + ident(owner),
+  );
+  sql = sql.replace(
+    /current_user\s+not\s+in\s*\(\s*'postgres'\s*,\s*'service_role'\s*\)/gi,
+    'current_user not in(' + literal(owner) + ",'service_role')",
+  );
 
   const finalSql = prelude(owner) + '\n\n' + sql;
   fs.mkdirSync(path.dirname(saida), { recursive: true });
@@ -222,6 +234,7 @@ function main() {
     ownerRewritten: true,
     authUserForeignKeysRewritten: true,
     pgcryptoSchemaRewritten: true,
+    ownerRoleRewritten: true,
     secretsPrinted: false,
   }));
 }
