@@ -6,9 +6,10 @@
  * cliente pagante — para o time ver cliente, histórico e situação financeira
  * no mesmo lugar, sem abrir o admin do PeríciaIA à parte.
  *
- * Roda por organização: hoje só a PeríciaIA (slug `periciaia`) tem uma conexão
- * de billing salva (`billing_export_connections`). Organização sem conexão é
- * pulada em silêncio — não é erro, é "não configurado".
+ * Roda para a organização PeríciaIA (id fixo — ver comentário em
+ * `runPericiaiaBillingSync`), a única com conexão de billing salva
+ * (`billing_export_connections`). Sem conexão configurada, sai em silêncio —
+ * não é erro, é "não configurado".
  *
  * Auth: mesmo contrato dos demais crons (Bearer INTERNAL_CRON_SECRET|
  * INTERNAL_SECRET, fail-closed). Nesta instância (Vercel) o agendamento vem de
@@ -25,7 +26,6 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { syncBillingToCrm, type SyncResult } from "@/lib/billing-export/crm-sync";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +35,7 @@ interface RunResult {
   totals: SyncResult;
 }
 
-export async function runPericiaiaBillingSync(
-  admin: ReturnType<typeof createAdminClient>,
-  requestId: string,
-): Promise<RunResult> {
+export async function runPericiaiaBillingSync(requestId: string): Promise<RunResult> {
   const totals: SyncResult = {
     configured: false,
     contactsCreated: 0,
@@ -50,19 +47,22 @@ export async function runPericiaiaBillingSync(
   let organizationsWithConnection = 0;
 
   // Hoje só existe UMA organização candidata (o próprio dono do produto usando
-  // o CRM para vender o próprio SaaS). Buscar por slug em vez de listar toda
-  // `billing_export_connections` evita varrer organizações de clientes que um
-  // dia conectarem a própria fonte de billing por engano de outra rota — a
-  // sincronização com o CRM é uma feature explicitamente ligada por org, não
-  // um efeito colateral automático de conectar o dashboard.
-  const { data: org } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", "periciaia")
-    .maybeSingle();
-  if (!org) return { organizationsWithConnection: 0, totals };
-
-  const orgId = (org as { id: string }).id;
+  // o CRM para vender o próprio SaaS) — id fixo, não resolvido por slug.
+  //
+  // ⚠️ Isto não é preguiça: `organizations` tem RLS restrita a
+  // `fn_user_org_ids()`/`fn_is_platform_admin()`, e a identidade de serviço
+  // (o que `createAdminClient()` de fato é neste projeto Neon — não um
+  // bypass real de RLS, ver `lib/supabase/admin.ts`) não é membro de nenhuma
+  // organização nem platform_admin. `admin.from("organizations").select(...)`
+  // aqui sempre volta vazio, silenciosamente — medido, não hipótese. Resolver
+  // por slug pareceria funcionar em teste manual (erro nunca aparece) e falhar
+  // sempre em produção. `billing_export_connections` tem o mesmo problema pela
+  // outra ponta: RLS ali exige `app.billing_export_org` já setado (config.ts),
+  // então também não dá para descobrir organizações por ali sem já saber o id.
+  // Contornar isso de verdade (ex.: dar à identidade de serviço uma política
+  // própria de leitura em `organizations`) é mudança maior, fora do escopo
+  // desta feature — sinalizado para quem revisar depois.
+  const orgId = "9563e071-406b-4db2-aaa4-d08846d3267b";
   const result = await syncBillingToCrm(orgId);
   if (!result.configured) return { organizationsWithConnection: 0, totals };
 
@@ -105,7 +105,7 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await runPericiaiaBillingSync(createAdminClient(), requestId);
+    const result = await runPericiaiaBillingSync(requestId);
     return ok(result, { requestId });
   } catch (error) {
     logger.error("[periciaia-billing-sync] falhou", {
