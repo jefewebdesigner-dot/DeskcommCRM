@@ -238,7 +238,11 @@ function syncOther(
           renova_em: sub.currentPeriodEnd,
         },
         closedAt: new Date().toISOString(),
-        lostReason: won ? null : "Assinatura cancelada",
+        // Vocabulário canônico de `fn_validate_lost_reason_required` — texto
+        // livre é rejeitado pelo trigger (medido: "Assinatura cancelada" veio
+        // como `lost_reason_invalid`). "cancelled_by_customer" é o código que
+        // corresponde ao caso real (assinatura cancelada pelo próprio cliente).
+        lostReason: won ? null : "cancelled_by_customer",
       });
       if (deal.created) result.dealsCreated++;
       else result.dealsUpdated++;
