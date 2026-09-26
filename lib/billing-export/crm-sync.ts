@@ -28,6 +28,8 @@ export interface SyncResult {
   dealsCreated: number;
   dealsUpdated: number;
   errors: number;
+  /** DIAGNÓSTICO TEMPORÁRIO — remover depois de identificar a causa dos erros. */
+  sampleErrors: string[];
 }
 
 interface PipelineContext {
@@ -220,8 +222,9 @@ function syncOther(
       });
       if (deal.created) result.dealsCreated++;
       else result.dealsUpdated++;
-    } catch {
+    } catch (e) {
       result.errors++;
+      if (result.sampleErrors.length < 5) result.sampleErrors.push(e instanceof Error ? e.message : String(e));
     }
   });
 }
@@ -255,7 +258,7 @@ function syncStripeSample(
         });
         if (!contact) return;
         if (contact.created) result.contactsCreated++;
-      else result.contactsUpdated++;
+        else result.contactsUpdated++;
 
         const deal = await upsertDeal(admin, organizationId, ctx, {
           contactId: contact.id,
@@ -275,9 +278,10 @@ function syncStripeSample(
           lostReason: null,
         });
         if (deal.created) result.dealsCreated++;
-      else result.dealsUpdated++;
-      } catch {
+        else result.dealsUpdated++;
+      } catch (e) {
         result.errors++;
+        if (result.sampleErrors.length < 5) result.sampleErrors.push(e instanceof Error ? e.message : String(e));
       }
     });
 }
@@ -290,6 +294,7 @@ export async function syncBillingToCrm(organizationId: string): Promise<SyncResu
     dealsCreated: 0,
     dealsUpdated: 0,
     errors: 0,
+    sampleErrors: [],
   };
 
   const connection = await readConnection(organizationId);

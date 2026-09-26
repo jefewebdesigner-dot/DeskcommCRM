@@ -43,6 +43,7 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
     dealsCreated: 0,
     dealsUpdated: 0,
     errors: 0,
+    sampleErrors: [],
   };
   let organizationsWithConnection = 0;
 
@@ -73,6 +74,7 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
   totals.dealsCreated += result.dealsCreated;
   totals.dealsUpdated += result.dealsUpdated;
   totals.errors += result.errors;
+  totals.sampleErrors.push(...result.sampleErrors);
 
   const houveEfeito =
     totals.contactsCreated + totals.contactsUpdated + totals.dealsCreated + totals.dealsUpdated > 0;
