@@ -1,0 +1,273 @@
+classe,linha,trecho
+auth-users,3149,"ADD CONSTRAINT ""ai_agent_versions_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3179,"ADD CONSTRAINT ""ai_agents_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3319,"ADD CONSTRAINT ""ai_knowledge_versions_activated_by_fkey"" FOREIGN KEY (""activated_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3349,"ADD CONSTRAINT ""ai_provider_credentials_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3379,"ADD CONSTRAINT ""api_audit_log_actor_user_id_fkey"" FOREIGN KEY (""actor_user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3399,"ADD CONSTRAINT ""api_tokens_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE RESTRICT;"
+auth-users,3419,"ADD CONSTRAINT ""api_tokens_revoked_by_fkey"" FOREIGN KEY (""revoked_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3449,"ADD CONSTRAINT ""channel_sessions_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3489,"ADD CONSTRAINT ""conversations_assigned_to_user_id_fkey"" FOREIGN KEY (""assigned_to_user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3529,"ADD CONSTRAINT ""conversations_usable_for_rag_marked_by_fkey"" FOREIGN KEY (""usable_for_rag_marked_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3679,"ADD CONSTRAINT ""incidents_acknowledged_by_fkey"" FOREIGN KEY (""acknowledged_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3699,"ADD CONSTRAINT ""incidents_resolved_by_fkey"" FOREIGN KEY (""resolved_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3789,"ADD CONSTRAINT ""messages_sent_by_user_id_fkey"" FOREIGN KEY (""sent_by_user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3829,"ADD CONSTRAINT ""organizations_created_by_fkey"" FOREIGN KEY (""created_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3839,"ADD CONSTRAINT ""organizations_suspended_by_fkey"" FOREIGN KEY (""suspended_by"") REFERENCES ""auth"".""users""(""id"");"
+auth-users,3849,"ADD CONSTRAINT ""platform_admins_granted_by_fkey"" FOREIGN KEY (""granted_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE RESTRICT;"
+auth-users,3859,"ADD CONSTRAINT ""platform_admins_revoked_by_fkey"" FOREIGN KEY (""revoked_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3869,"ADD CONSTRAINT ""platform_admins_user_id_fkey"" FOREIGN KEY (""user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE CASCADE;"
+auth-users,3909,"ADD CONSTRAINT ""user_organizations_invited_by_fkey"" FOREIGN KEY (""invited_by"") REFERENCES ""auth"".""users""(""id"") ON DELETE SET NULL;"
+auth-users,3929,"ADD CONSTRAINT ""user_organizations_user_id_fkey"" FOREIGN KEY (""user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE CASCADE;"
+auth-users,3939,"ADD CONSTRAINT ""user_recovery_codes_user_id_fkey"" FOREIGN KEY (""user_id"") REFERENCES ""auth"".""users""(""id"") ON DELETE CASCADE;"
+auth-users,5066,"from_user_id    uuid references auth.users(id) on delete set null,"
+auth-users,5067,"to_user_id      uuid references auth.users(id) on delete set null,"
+auth-users,5068,"changed_by      uuid references auth.users(id) on delete set null,"
+auth-users,5835,"user_id           uuid not null references auth.users(id) on delete cascade,"
+auth-users,5899,"user_id           uuid not null references auth.users(id) on delete cascade,"
+auth-users,7186,"created_by uuid references auth.users(id) on delete set null,"
+auth-users,7461,"owner_user_id uuid references auth.users(id) on delete cascade,"
+auth-users,7465,"created_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,7503,"add column if not exists snoozed_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,7518,"created_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,7574,"actor_user_id uuid references auth.users(id) on delete set null,"
+auth-users,8742,"decided_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,9121,"update_requested_by uuid references auth.users(id) on delete set null,"
+auth-users,9134,"requested_by  uuid references auth.users(id) on delete set null,"
+auth-users,10237,"dono_user_id uuid references auth.users(id) on delete set null,"
+auth-users,11446,"decided_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,14809,"user_id uuid not null references auth.users(id) on delete cascade,"
+auth-users,15076,"default_owner_user_id uuid references auth.users(id) on delete set null,"
+auth-users,15149,"owner_user_id uuid references auth.users(id) on delete set null,"
+auth-users,15179,"created_by_user_id uuid references auth.users(id) on delete set null,"
+auth-users,15276,"user_id uuid not null references auth.users(id) on delete cascade,"
+auth-users,15334,"user_id uuid not null references auth.users(id) on delete cascade,"
+auth-users,15943,"user_id uuid not null references auth.users(id) on delete cascade,"
+auth-users,16918,"'Cópia do nome de quem atende (auth.users.raw_user_meta_data->>''full_name''), escrita por fn_conversation_assign no mesmo UPDATE que grava assigned_to_user_id, e zerada junto quando a atribuição é removida. Existe para "
+auth-users,16924,from auth.users u
+auth-users,16981,else (select raw_user_meta_data ->> 'full_name' from auth.users where id = p_to_user_id)
+auth-users,17846,"assigned_to uuid references auth.users(id) on delete set null,"
+auth-users,17847,"created_by uuid references auth.users(id) on delete set null,"
+auth-users,18333,"actor_user_id uuid not null references auth.users(id) on delete cascade,"
+auth-users,18528,else (select raw_user_meta_data ->> 'full_name' from auth.users where id = p_to_user_id)
+auth-users,18980,(select lower(email) from auth.users where id = p_actor);
+auth-users,19016,alter table public.demandas add column if not exists encerrada_por uuid references auth.users(id) on delete set null;
+auth-users,20019,"add column if not exists outcome_user_id uuid references auth.users(id) on delete set null,"
+auth-users,20091,new.outcome_user_id:=case when new.outcome_user_id is null and not exists(select 1 from auth.users where id=old.outcome_user_id) then null else old.outcome_user_id end;
+auth-users,21716,"approved_by uuid references auth.users(id),approved_at timestamptz,approved_support_session_id uuid references public.platform_support_sessions(id),send_job_id uuid unique references public.job_queue(id),message_id uuid "
+auth-users,22516,else (select raw_user_meta_data ->> 'full_name' from auth.users where id = p_to_user_id)
+auth-users,23337,"invited_by uuid references auth.users(id) on delete set null,"
+auth-users,23345,"accepted_by uuid references auth.users(id) on delete set null,"
+auth-users,23347,"revoked_by uuid references auth.users(id) on delete set null,"
+auth-users,23359,alter table public.team_invites add column if not exists accepted_by uuid references auth.users(id) on delete set null;
+auth-users,23361,alter table public.team_invites add column if not exists revoked_by uuid references auth.users(id) on delete set null;
+auth-users,23451,"created_by uuid references auth.users(id),"
+auth-users,23524,add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
+auth-users,23527,"'Quem esteve NA LINHA. Gravado pela rota de atender/iniciar e confirmado pelo campo `owner` do upstream (que é o X-Client-Id que nós mandamos, ou seja, o auth.users.id). Distinto de created_by, que só existe na chamada i"
+auth-users,23992,"risco_aceito_por uuid references auth.users(id) on delete set null,"
+auth-users,26640,"created_by uuid references auth.users(id) on delete set null,"
+auth-users,27123,"admitted_by uuid references auth.users(id) on delete set null,"
+auth-users,27141,"installed_by uuid references auth.users(id) on delete set null,"
+auth-users,27158,"updated_by uuid references auth.users(id) on delete set null,"
+auth-users,27166,"actor_id uuid references auth.users(id) on delete set null,"
+auth-users,27194,add column if not exists removed_by uuid references auth.users(id) on delete set null;
+auth-users,27239,if p_actor is null or not exists (select 1 from auth.users where id = p_actor) then
+auth-users,28769,"author_user_id   uuid references auth.users(id) on delete set null,"
+auth-users,29424,"reconhecido_por  uuid references auth.users(id) on delete set null,"
+auth-users,30111,"criado_por          uuid references auth.users(id) on delete set null,"
+auth-users,30112,"atualizado_por      uuid references auth.users(id) on delete set null,"
+auth-users,31925,"instalado_por uuid references auth.users(id) on delete set null,"
+auth-sessions,18367,left join auth.sessions a on a.id=s.auth_session_id and a.user_id=s.actor_user_id
+auth-sessions,18403,perform 1 from auth.sessions where id=p_session and user_id=p_actor and (not_after is null or not_after>now()) for update;
+auth-sessions,18407,or exists(select 1 from auth.sessions a where a.id=p_session and a.aal='aal2'));
+auth-sessions,18854,left join auth.sessions a on a.id=s.auth_session_id and a.user_id=s.actor_user_id
+auth-sessions,21806,left join auth.sessions au on au.id=ss.auth_session_id and au.user_id=ss.actor_user_id and (au.not_after is null or au.not_after>now())
+auth-mfa,18361,when (p.mfa_required or exists(select 1 from auth.mfa_factors f where f.user_id=s.actor_user_id and f.status='verified'))
+auth-mfa,18406,and (not (p.mfa_required or exists(select 1 from auth.mfa_factors f where f.user_id=p_actor and f.status='verified'))
+auth-mfa,18861,"or ((p.mfa_required or exists(select 1 from auth.mfa_factors f where f.user_id=s.actor_user_id and f.status='verified')) and coalesce(a.aal::text,'aal1')<>'aal2')));"
+auth-mfa,21562,select 1 from auth.mfa_factors where user_id=auth.uid() and factor_type='totp' and status='verified'));
+auth-mfa,21812,and((d.approved_support_session_id is not null and ss.id is not null and pa.user_id is not null and au.id is not null and (not(pa.mfa_required or exists(select 1 from auth.mfa_factors mf where mf.user_id=ss.actor_user_id
+contexto-jwt,82,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,127,"auth.uid(),"
+contexto-jwt,318,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,793,where user_id = auth.uid() and revoked_at is null;
+contexto-jwt,822,where user_id = auth.uid() and organization_id = p_org and revoked_at is null
+contexto-jwt,4761,where uo.user_id = auth.uid()
+contexto-jwt,4773,where uo.user_id = auth.uid()
+contexto-jwt,4785,where uo.user_id = auth.uid()
+contexto-jwt,4809,where uo.user_id = auth.uid()
+contexto-jwt,4830,where uo.user_id = auth.uid() and uo.revoked_at is null
+contexto-jwt,5135,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,5198,auth.uid() is null
+contexto-jwt,5201,where me.user_id = auth.uid()
+contexto-jwt,5270,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,5350,when p_assigned_to_user_id = auth.uid() then true
+contexto-jwt,5456,if auth.uid() is not null
+contexto-jwt,5498,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,5534,when p_owner_user_id = auth.uid() then true
+contexto-jwt,5862,and (user_id = auth.uid()
+contexto-jwt,5871,and (user_id = auth.uid()
+contexto-jwt,5876,and (user_id = auth.uid()
+contexto-jwt,5885,and (user_id = auth.uid()
+contexto-jwt,5926,and (user_id = auth.uid()
+contexto-jwt,5935,and (user_id = auth.uid()
+contexto-jwt,5940,and (user_id = auth.uid()
+contexto-jwt,5949,and (user_id = auth.uid()
+contexto-jwt,6241,(user_id = auth.uid())
+contexto-jwt,7478,and (owner_user_id is null or owner_user_id = auth.uid())
+contexto-jwt,7488,"(owner_user_id = auth.uid() and fn_role_at_least(organization_id, 'agent'))"
+contexto-jwt,7495,"(owner_user_id = auth.uid() and fn_role_at_least(organization_id, 'agent'))"
+contexto-jwt,10880,"auth.uid(),"
+contexto-jwt,12117,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,12124,if auth.uid() is not null
+contexto-jwt,12164,if auth.uid() is not null
+contexto-jwt,13289,if auth.uid() is not null
+contexto-jwt,13348,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,14827,and user_id = auth.uid()
+contexto-jwt,14832,and user_id = auth.uid()
+contexto-jwt,15606,"and (user_id = auth.uid() or public.fn_role_at_least(organization_id, 'manager')))"
+contexto-jwt,15611,"and (user_id = auth.uid() or public.fn_role_at_least(organization_id, 'manager')))"
+contexto-jwt,15626,and (c.user_id = auth.uid()
+contexto-jwt,15650,"and (user_id = auth.uid() or public.fn_role_at_least(organization_id, 'manager')))"
+contexto-jwt,16610,if auth.uid() is not null
+contexto-jwt,16943,if auth.uid() is not null
+contexto-jwt,17002,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,17573,if auth.uid() is not null
+contexto-jwt,17794,"'{}'::jsonb, now(), auth.uid()"
+contexto-jwt,18362,"and coalesce(auth.jwt()->>'aal','aal1') <> 'aal2' then 'revoked'"
+contexto-jwt,18368,where s.actor_user_id=auth.uid()
+contexto-jwt,18369,"and s.auth_session_id=nullif(auth.jwt()->>'session_id','')::uuid and s.ended_at is null"
+contexto-jwt,18386,select organization_id from public.user_organizations where user_id=auth.uid() and revoked_at is null
+contexto-jwt,18393,else (select role from public.user_organizations where user_id=auth.uid() and organization_id=p_org and revoked_at is null limit 1) end
+contexto-jwt,18450,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,18457,if auth.uid() is not null
+contexto-jwt,18490,if auth.uid() is not null
+contexto-jwt,18549,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,18587,if auth.uid() is not null
+contexto-jwt,18808,"'{}'::jsonb, now(), auth.uid()"
+contexto-jwt,19385,if auth.uid() is not null
+contexto-jwt,19625,"'{}'::jsonb, now(), auth.uid()"
+contexto-jwt,19850,if auth.uid() is not null and p_event_type = 'message.received' then
+contexto-jwt,19854,if auth.uid() is not null and (
+contexto-jwt,19862,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,19869,if auth.uid() is not null
+contexto-jwt,20057,if new.conversation_id is not null and not exists(select 1 from public.conversations where id=new.conversation_id and organization_id=new.organization_id and contact_id=new.contact_id and not is_group and (auth.uid() is 
+contexto-jwt,20071,actor:=auth.uid();
+contexto-jwt,20107,"if auth.uid() is not null and (not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org)) then raise exception 'appointment_forbidden' using errcode='42501'; end if;"
+contexto-jwt,20152,if auth.uid() is null and old.service_revision is null and new.service_revision is not null and new.direction='inbound' then
+contexto-jwt,20319,"if auth.uid() is null or not public.fn_role_at_least(p_org,'manager') or not public.fn_support_write_allowed(p_org) then raise exception 'agenda_settings_forbidden' using errcode='42501'; end if;"
+contexto-jwt,20353,if auth.uid() is not null and ((tg_op<>'DELETE' and new.kind='followup_turn') or (tg_op<>'INSERT' and old.kind='followup_turn')) then
+contexto-jwt,20363,elsif auth.uid() is not null and ((tg_op<>'DELETE' and new.idempotency_key ~ ':[0-9]+$') or (tg_op<>'INSERT' and old.idempotency_key ~ ':[0-9]+$')) then
+contexto-jwt,20442,"if auth.uid() is not null and p_event_type in ('message.received','appointment.outcome_confirmed') then"
+contexto-jwt,20446,if auth.uid() is not null and (
+contexto-jwt,20454,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,20461,if auth.uid() is not null
+contexto-jwt,20729,if auth.uid() is not null then
+contexto-jwt,20736,"decision:=auth.uid()=old.owner_user_id and public.fn_role_at_least(new.organization_id,'agent') and public.fn_support_write_allowed(new.organization_id)"
+contexto-jwt,20738,and new.google_conflict->'resolution'->>'actor_id'=auth.uid()::text
+contexto-jwt,20742,"if auth.uid() is not null and (row(new.google_synced_at,new.google_sync_error) is distinct from row(old.google_synced_at,old.google_sync_error)"
+contexto-jwt,20743,"or (new.google_next_attempt_at is distinct from old.google_next_attempt_at and not coalesce(auth.uid()=old.owner_user_id and public.fn_role_at_least(new.organization_id,'agent') and public.fn_support_write_allowed(new.or"
+contexto-jwt,20746,"if auth.uid() is not null and ((new.google_conflict is distinct from old.google_conflict and not coalesce(decision,false)) or row(new.google_base_projection,new.google_pending_write,new.google_claim_token,new.google_clai"
+contexto-jwt,20754,"inbound:=row(new.title,new.description,new.location_kind,new.location_details,new.guest_email) is not distinct from row(old.title,old.description,old.location_kind,old.location_details,old.guest_email) and auth.uid() is "
+contexto-jwt,20771,"if p_remote and (auth.uid() is not null or (p_patch-'starts_at'-'ends_at'-'time_zone'-'status'-'cancellation_reason')<>'{}'::jsonb or coalesce(p_patch->>'status','cancelled')<>'cancelled') then raise exception 'google_pa"
+contexto-jwt,20772,"if auth.uid() is not null and (not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org)) then raise exception 'appointment_forbidden' using errcode='42501'; end if;"
+contexto-jwt,21033,declare actor uuid:=auth.uid(); expected jsonb; actual jsonb;
+contexto-jwt,21064,select (auth.uid() is null or p_org in (select public.fn_user_org_ids())) and not exists(
+contexto-jwt,21143,"if auth.uid() is null or not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org) then raise exception 'google_resolution_forbidden' using errcode='42501';end if;"
+contexto-jwt,21147,if not found or a.owner_user_id is distinct from auth.uid() then raise exception 'google_resolution_forbidden' using errcode='42501';end if;
+contexto-jwt,21157,"update public.calendar_appointments set google_conflict=google_conflict||jsonb_build_object('resolution',jsonb_build_object('choice',p_choice,'actor_id',auth.uid())),google_next_attempt_at=now()"
+contexto-jwt,21168,select case when auth.uid() is not null and p_org not in(select public.fn_user_org_ids()) then true else exists(
+contexto-jwt,21561,"select auth.uid() is not null and (coalesce(auth.jwt()->>'aal','aal1')='aal2' or not exists("
+contexto-jwt,21561,"select auth.uid() is not null and (coalesce(auth.jwt()->>'aal','aal1')='aal2' or not exists("
+contexto-jwt,21562,select 1 from auth.mfa_factors where user_id=auth.uid() and factor_type='totp' and status='verified'));
+contexto-jwt,21570,"if auth.uid() is null or not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org) then raise exception 'meet_forbidden' using errcode='42501';end if;"
+contexto-jwt,21575,if not found or a.owner_user_id is distinct from auth.uid() or not exists(select 1 from public.user_organizations where organization_id=p_org and user_id=auth.uid() and revoked_at is null) then raise exception 'meet_forb
+contexto-jwt,21575,if not found or a.owner_user_id is distinct from auth.uid() or not exists(select 1 from public.user_organizations where organization_id=p_org and user_id=auth.uid() and revoked_at is null) then raise exception 'meet_forb
+contexto-jwt,21606,"update public.calendar_appointments set meeting_delivery=jsonb_build_object('state','waiting_for_link','generation',gen_random_uuid(),'service_boundary',b,'authorized_by',jsonb_build_object('kind','user','id',auth.uid())"
+contexto-jwt,21770,"if auth.uid() is null or not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org) or not public.fn_session_mfa_proven() then raise exception 'reply_forbidden' using errcode='42501';end if;"
+contexto-jwt,21778,"if d.status in('approved','sending','sent') and p_action='approve' and d.approved_by=auth.uid() and d.approved_body=p_body then return d.send_job_id;end if;"
+contexto-jwt,21786,"update public.ai_reply_drafts set status='approved',edited_body=p_body,approved_body=p_body,approved_by=auth.uid(),approved_at=now(),approved_support_session_id=case when public.fn_support_context()->>'organization_id'=p"
+contexto-jwt,22372,"if auth.uid() is null or not public.fn_role_at_least(p_org,'manager') or not public.fn_support_write_allowed(p_org)"
+contexto-jwt,22478,if auth.uid() is not null
+contexto-jwt,22537,"(p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);"
+contexto-jwt,22603,"if auth.uid() is null or not public.fn_role_at_least(p_org,'admin') or not public.fn_support_write_allowed(p_org)"
+contexto-jwt,22689,"if p_remote and (auth.uid() is not null or (p_patch-'starts_at'-'ends_at'-'time_zone'-'status'-'cancellation_reason')<>'{}'::jsonb or coalesce(p_patch->>'status','cancelled')<>'cancelled') then raise exception 'google_pa"
+contexto-jwt,22690,"if auth.uid() is not null and (not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org)) then raise exception 'appointment_forbidden' using errcode='42501'; end if;"
+contexto-jwt,22691,if auth.uid() is not null and not public.fn_session_mfa_proven() then raise exception 'appointment_mfa_required' using errcode='42501';end if;
+contexto-jwt,22730,"if auth.uid() is null or not public.fn_role_at_least(p_org,'manager') or not public.fn_support_write_allowed(p_org) then raise exception 'agenda_settings_forbidden' using errcode='42501'; end if;"
+contexto-jwt,22746,declare actor uuid:=auth.uid(); expected jsonb; actual jsonb;
+contexto-jwt,22768,"if auth.uid() is null or not public.fn_role_at_least(p_org,'agent') or not public.fn_support_write_allowed(p_org) then raise exception 'google_resolution_forbidden' using errcode='42501';end if;"
+contexto-jwt,22773,if not found or a.owner_user_id is distinct from auth.uid() then raise exception 'google_resolution_forbidden' using errcode='42501';end if;
+contexto-jwt,22783,"update public.calendar_appointments set google_conflict=google_conflict||jsonb_build_object('resolution',jsonb_build_object('choice',p_choice,'actor_id',auth.uid())),google_next_attempt_at=now()"
+contexto-jwt,23154,if auth.uid() is null or not public.fn_support_write_allowed(p_organization_id)
+contexto-jwt,23202,"if auth.uid() is null or not public.fn_role_at_least(p_org,'admin') or not public.fn_support_write_allowed(p_org)"
+contexto-jwt,23265,"if auth.uid() is null or not public.fn_role_at_least(p_org,'admin') or not public.fn_support_write_allowed(p_org)"
+contexto-jwt,24438,if auth.uid() is null
+contexto-jwt,24502,"rid := coalesce(nullif(current_setting('request.headers', true), '')::jsonb ->> 'sb-request-id', '');"
+contexto-jwt,24796,where (auth.uid() is null
+contexto-jwt,24821,where (auth.uid() is null
+contexto-jwt,25338,if auth.uid() is not null
+contexto-jwt,25531,if auth.uid() is null
+contexto-jwt,25660,if auth.uid() is not null
+contexto-jwt,25912,"'{}'::jsonb, now(), auth.uid()"
+contexto-jwt,27229,and u.user_id = auth.uid() and u.accepted_at is not null and u.revoked_at is null)
+contexto-jwt,28058,if auth.uid() is not null and p_event_type in (
+contexto-jwt,28065,if auth.uid() is not null and (
+contexto-jwt,28073,where user_id = auth.uid() and revoked_at is null
+contexto-jwt,28080,if auth.uid() is not null
+contexto-jwt,30313,if auth.uid() is null or p_org is null
+contexto-jwt,30384,"(p_org, p_channel, p_telefone, nullif(btrim(p_rotulo), ''), coalesce(p_ligado, false), auth.uid(), auth.uid())"
+contexto-jwt,30384,"(p_org, p_channel, p_telefone, nullif(btrim(p_rotulo), ''), coalesce(p_ligado, false), auth.uid(), auth.uid())"
+contexto-jwt,30390,"atualizado_por     = auth.uid(),"
+contexto-jwt,31105,if auth.uid() is not null
+storage,4745,"insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)"
+storage,4755,"drop policy if exists ""tenant_read_ai_policy"" on storage.objects;"
+storage,4756,"create policy ""tenant_read_ai_policy"" on storage.objects for select"
+storage,4767,"drop policy if exists ""tenant_write_ai_policy"" on storage.objects;"
+storage,4768,"create policy ""tenant_write_ai_policy"" on storage.objects for insert"
+storage,4779,"drop policy if exists ""tenant_delete_ai_policy"" on storage.objects;"
+storage,4780,"create policy ""tenant_delete_ai_policy"" on storage.objects for delete"
+storage,4793,"insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)"
+storage,4803,"drop policy if exists ""tenant_read_lgpd_exports"" on storage.objects;"
+storage,4804,"create policy ""tenant_read_lgpd_exports"" on storage.objects for select"
+storage,4816,"insert into storage.buckets (id, name, public, file_size_limit)"
+storage,4822,"drop policy if exists ""skill_assets_read"" on storage.objects;"
+storage,4823,"create policy ""skill_assets_read"" on storage.objects for select to authenticated"
+storage,7440,"insert into storage.buckets (id, name, public, file_size_limit)"
+storage,14375,"insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)"
+storage,18836,if to_regclass('storage.objects') is not null then
+storage,18837,execute 'drop policy if exists support_write_insert on storage.objects';
+storage,18838,execute 'create policy support_write_insert on storage.objects as restrictive for insert to authenticated with check (public.fn_support_storage_write_allowed(name))';
+storage,18839,execute 'drop policy if exists support_write_update on storage.objects';
+storage,18840,execute 'create policy support_write_update on storage.objects as restrictive for update to authenticated using (public.fn_support_storage_write_allowed(name)) with check (public.fn_support_storage_write_allowed(name))';
+storage,18841,execute 'drop policy if exists support_write_delete on storage.objects';
+storage,18842,execute 'create policy support_write_delete on storage.objects as restrictive for delete to authenticated using (public.fn_support_storage_write_allowed(name))';
+storage,32504,update storage.buckets
+realtime,4839,if not exists (select 1 from pg_publication where pubname='supabase_realtime') then
+realtime,4840,create publication supabase_realtime;
+realtime,4853,where pubname='supabase_realtime' and schemaname='public' and tablename=t
+realtime,4855,"execute format('alter publication supabase_realtime add table public.%I', t);"
+realtime,8288,"'Score de probabilidade por lead, FORA de crm_leads de propósito. Ver o cabeçalho da migration 0075: trazer estes campos de volta reintroduz o pulso que mente (board assina crm_leads) e o 409 fantasma (trava otimista do "
+realtime,8436,where pubname = 'supabase_realtime'
+realtime,8440,execute 'alter publication supabase_realtime drop table public.crm_lead_scores';
+realtime,8501,"'Estado de risco por negócio (wave 7 — o ciclo). FORA de crm_leads pelos motivos da 0075 (pulso que mente, 409 fantasma), mas DENTRO da publicação supabase_realtime, ao contrário de crm_lead_scores: risco é mudança de es"
+realtime,8539,where pubname = 'supabase_realtime'
+realtime,8543,execute 'alter publication supabase_realtime add table public.crm_lead_risk_states';
+realtime,8820,where pubname = 'supabase_realtime'
+realtime,8824,execute 'alter publication supabase_realtime add table public.crm_lead_reactivations';
+realtime,15759,select 1 from pg_publication where pubname = 'supabase_realtime'
+realtime,15761,create publication supabase_realtime;
+realtime,15766,where pubname = 'supabase_realtime'
+realtime,15770,execute 'alter publication supabase_realtime add table public.calendar_appointments';
+realtime,15775,"'O compromisso COMBINADO: hora marcada, com alguém, ocupando a agenda de um atendente. Distinto do RETORNO agendado (cron_jobs kind=at, job_kind=followup_turn), que é decisão interna do sistema, não ocupa agenda de ningu"
+realtime,18879,if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(
+realtime,18880,select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='user_organizations') then
+realtime,18881,alter publication supabase_realtime add table public.user_organizations;
+realtime,23501,where pubname = 'supabase_realtime'
+realtime,23505,execute 'alter publication supabase_realtime add table public.voice_calls';
+extensoes,1727,"""slug"" ""public"".""citext"" NOT NULL,"
+extensoes,1738,"""dpo_email"" ""public"".""citext"","
+extensoes,2632,"CREATE INDEX IF NOT EXISTS ""idx_contacts_org_name_trgm"" ON ""public"".""contacts"" USING ""gin"" (""name"" ""public"".""gin_trgm_ops"");"
+extensoes,2816,"CREATE INDEX IF NOT EXISTS ""nuvemshop_products_title_trgm"" ON ""public"".""nuvemshop_products"" USING ""gin"" (""title"" ""public"".""gin_trgm_ops"");"
+extensoes,5996,create extension if not exists pgcrypto with schema extensions;
+extensoes,17188,on public.catalog_products using gin (nome public.gin_trgm_ops);

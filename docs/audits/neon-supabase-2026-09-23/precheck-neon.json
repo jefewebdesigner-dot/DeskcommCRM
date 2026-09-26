@@ -1,0 +1,68 @@
+{
+  "timestamp_utc": "2026-09-23T17:34:07.232076+00:00",
+  "architecture": "Neon Postgres + Neon Auth + Neon Object Storage",
+  "status": "BLOCKED_BEFORE_SCHEMA",
+  "variables": {
+    "DATABASE_URL": "present_process_and_env_match",
+    "MIGRATIONS_DATABASE_URL": "present_process_and_env_match",
+    "NEON_AUTH_BASE_URL": "present_process_and_env_match",
+    "NEON_AUTH_JWKS_URL": "present_process_and_env_match",
+    "AWS_ACCESS_KEY_ID": "present_process_and_env_match",
+    "AWS_SECRET_ACCESS_KEY": "present_process_and_env_match",
+    "AWS_ENDPOINT_URL_S3": "present_process_and_env_match",
+    "AWS_REGION": "present_process_and_env_match",
+    "S3_BUCKET": "present_process_and_env_match",
+    "NEON_PROJECT_ID": "present_process_and_env_match"
+  },
+  "postgres": {
+    "runtime_connection": "PASS",
+    "migrations_connection": "PASS",
+    "same_host_normalized_and_database": true,
+    "distinct_roles": true,
+    "runtime": {
+      "superuser": false,
+      "createdb": false,
+      "createrole": false,
+      "bypassrls": false,
+      "privileged_roles_reachable": 0,
+      "owns_tables": 0,
+      "database_create": false,
+      "public_schema_create": false
+    },
+    "migrations": {
+      "superuser": false,
+      "createdb": true,
+      "createrole": true,
+      "bypassrls": true,
+      "database_create": true,
+      "public_schema_create": true
+    }
+  },
+  "auth": {
+    "ok_http": 200,
+    "jwks_http": 200,
+    "public_keys_importable": 1,
+    "same_origin_auth_jwks": true,
+    "real_token_signature_issuer_audience_expiry": "NOT_TESTED"
+  },
+  "storage": {
+    "signed_head_bucket_http": 200,
+    "object_crud_and_tenant_isolation": "NOT_TESTED"
+  },
+  "environment": {
+    "homologacao_branch": "USER_CONFIRMED_NOT_INDEPENDENTLY_VERIFIED",
+    "branch_marker_in_process_or_env": false,
+    "known_gravity_uuid_in_process_or_env": false,
+    "management_credential_available": false
+  },
+  "secrets": {
+    "env_owner_only": true,
+    "env_git_ignored": true,
+    "env_git_tracked": false,
+    "values_printed": false,
+    "frontend_runtime_exposure": "NOT_TESTED_APP_NOT_STARTED"
+  },
+  "schema_applied": false,
+  "abc_tests_executed": false,
+  "production_changed": false
+}

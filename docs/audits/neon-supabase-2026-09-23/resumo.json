@@ -1,0 +1,29 @@
+{
+  "commit": "cb424c3c2568845a4b5dcd7f846e2c91b14488ad",
+  "arquivos_runtime_examinados": 1914,
+  "tabelas_create_distintas_baseline": 145,
+  "nomes_funcoes_distintos_baseline": 214,
+  "declaracoes_create_policy_candidatas": 162,
+  "from_candidatos": 1561,
+  "from_storage_identificado": 28,
+  "rpc_candidatos": 176,
+  "rpc_nomes_literais_distintos": 79,
+  "arquivos_com_from_rpc": 517,
+  "alvos_from_nao_encontrados_em_create_table": [
+    "<dinamico-ou-expressao>",
+    "ai_provider_credentials_safe",
+    "calendar_google_reconcilable_appointments"
+  ],
+  "rpc_nao_encontradas_no_baseline": [
+    "<dinamico-ou-expressao>",
+    "decrypt_cpf",
+    "encrypt_cpf",
+    "jsonb_set_last_alarm_at"
+  ],
+  "superficies_arquivos": {
+    "Auth": 76,
+    "SQL-direto": 48,
+    "Storage": 20,
+    "Realtime": 20
+  }
+}

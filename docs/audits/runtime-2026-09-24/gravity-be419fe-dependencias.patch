@@ -1,0 +1,176 @@
+--- a/servicos/pm2-dev.js
++++ b/servicos/pm2-dev.js
+@@ -21,6 +21,7 @@
+ const fs = require('fs');
+ const os = require('os');
+ const path = require('path');
++const crypto = require('crypto');
+ const logger = require('../log.js');
+ 
+ const MAX_DEV_SERVERS = Math.max(1, Number(process.env.ZHEUS_MAX_DEV_SERVERS) || 3);
+@@ -166,9 +167,8 @@
+ }
+ 
+ // Detecta o gerenciador do próprio projeto quando o cadastro não fixa `runner`.
+-// Prioridade: runner explícito > packageManager do package.json > lockfile > npm.
++// Prioridade: contrato packageManager > lockfile > cadastro legado > npm.
+ function detectarRunner(pasta, runnerPreferido) {
+-  if (['npm', 'pnpm', 'yarn'].includes(runnerPreferido)) return runnerPreferido;
+   try {
+     const pkgPath = path.join(pasta || '', 'package.json');
+     if (pasta && fs.existsSync(pkgPath)) {
+@@ -179,34 +179,68 @@
+   } catch {}
+   if (pasta && fs.existsSync(path.join(pasta, 'pnpm-lock.yaml'))) return 'pnpm';
+   if (pasta && fs.existsSync(path.join(pasta, 'yarn.lock'))) return 'yarn';
++  if (pasta && fs.existsSync(path.join(pasta, 'package-lock.json'))) return 'npm';
++  if (['npm', 'pnpm', 'yarn'].includes(runnerPreferido)) return runnerPreferido;
+   return 'npm';
++}
++
++function planoDeInstalacao(pasta, preferido) {
++  const runner = detectarRunner(pasta, preferido);
++  const lock = runner === 'pnpm' ? 'pnpm-lock.yaml' : runner === 'yarn' ? 'yarn.lock' : 'package-lock.json';
++  const temLock = fs.existsSync(path.join(pasta, lock));
++  const args = runner === 'npm' ? [temLock ? 'ci' : 'install', '--no-audit', '--no-fund']
++    : runner === 'pnpm' ? ['install', ...(temLock ? ['--frozen-lockfile'] : [])] : ['install'];
++  const hash = crypto.createHash('sha256').update(runner);
++  for (const arquivo of ['package.json', lock, '.npmrc']) {
++    const local = path.join(pasta, arquivo);
++    if (fs.existsSync(local)) hash.update(arquivo).update(fs.readFileSync(local));
++  }
++  return { runner, args, fingerprint: hash.digest('hex') };
+ }
+ 
+ // Instala as dependências quando há package.json e falta node_modules.
+ // Usa o gerenciador detectado do projeto; npm usa `ci` quando há package-lock.
+ // Roda como root e devolve a posse ao claude-runner (o cofre precisa que o
+ // usuário da IA seja dono da pasta do projeto).
+-function instalarDependenciasSeFaltar(pasta, runner) {
++function executarInstalacao(pasta, runner) {
+   return new Promise((resolve) => {
+     if (!pasta || !fs.existsSync(path.join(pasta, 'package.json'))) return resolve({ ok: true });
+-    if (fs.existsSync(path.join(pasta, 'node_modules'))) return resolve({ ok: true });
+-    const temLock = fs.existsSync(path.join(pasta, 'package-lock.json'));
+-    const args = runner === 'npm'
+-      ? [temLock ? 'ci' : 'install', '--no-audit', '--no-fund']
+-      : ['install'];
++    const plano = planoDeInstalacao(pasta, runner);
++    runner = plano.runner;
++    const args = plano.args;
++    const marker = path.join(pasta, 'node_modules', '.gravity-dependencies.sha256');
++    const pkg = JSON.parse(fs.readFileSync(path.join(pasta, 'package.json'), 'utf8'));
++    const nomes = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
++    const completas = nomes.every((nome) => fs.existsSync(path.join(pasta, 'node_modules', nome)));
++    const atualizado = fs.existsSync(marker) && fs.readFileSync(marker, 'utf8') === plano.fingerprint;
++    if (completas && (atualizado || nomes.length === 0)) return resolve({ ok: true });
+     logger.info('[pm2-dev] instalando dependências em ' + pasta + ' (' + runner + ' ' + args[0] + ')');
+     execFile(runner, args, { cwd: pasta, timeout: 10 * 60 * 1000, maxBuffer: 20 * 1024 * 1024 }, (err, _out, stderr) => {
+       if (process.platform === 'linux') {
+         execFile('chown', ['-R', 'claude-runner:claude-runner', pasta], { timeout: 60000 }, () => {});
+       }
+       if (err) {
+-        const motivo = String(stderr || err.message || '').trim().split('\n').filter(Boolean).slice(-3).join(' | ').slice(0, 300);
++        const motivo = err.killed ? 'tempo limite excedido' : 'instalador terminou sem sucesso';
+         logger.error('[pm2-dev] instalação falhou em ' + pasta + ': ' + motivo);
+         return resolve({ ok: false, erro: 'Não consegui instalar as dependências do projeto: ' + motivo });
+       }
++      try { fs.writeFileSync(marker, plano.fingerprint); } catch {
++        return resolve({ ok: false, erro: 'Dependências instaladas, mas não foi possível registrar a versão instalada.' });
++      }
+       resolve({ ok: true });
+     });
+   });
++}
++
++const instalacoes = new Map();
++function instalarDependenciasSeFaltar(pasta, runner) {
++  const chave = path.resolve(pasta || '.');
++  if (instalacoes.has(chave)) return instalacoes.get(chave);
++  const tarefa = executarInstalacao(pasta, runner)
++    .catch(() => ({ ok: false, erro: 'Não foi possível validar ou instalar as dependências do projeto.' }))
++    .finally(() => instalacoes.delete(chave));
++  instalacoes.set(chave, tarefa);
++  return tarefa;
+ }
+ 
+ /**
+@@ -286,4 +320,4 @@
+   try { await pm2(['delete', nomePm2(slug)]); return true; } catch { return false; }
+ }
+ 
+-module.exports = { garantir, parar, portaDoSlug, nomePm2, pm2Listar, httpVivo, pastaDoDonoDaPorta, detectarRunner, instalarDependenciasSeFaltar, MAX_DEV_SERVERS };
++module.exports = { garantir, parar, portaDoSlug, nomePm2, pm2Listar, httpVivo, pastaDoDonoDaPorta, detectarRunner, planoDeInstalacao, instalarDependenciasSeFaltar, MAX_DEV_SERVERS };
+--- a/servicos/preview-runtime.js
++++ b/servicos/preview-runtime.js
+@@ -287,9 +287,7 @@
+ 
+     try {
+       // Check if npm/yarn/pnpm
+-      const hasYarn = fs.existsSync(path.join(projPath, 'yarn.lock'));
+-      const hasPnpm = fs.existsSync(path.join(projPath, 'pnpm-lock.yaml'));
+-      const runner = hasPnpm ? 'pnpm' : hasYarn ? 'yarn' : 'npm';
++      const runner = pm2Dev.detectarRunner(projPath, proj.runner);
+ 
+       const isDesktop = process.env.ZHEUS_DESKTOP === 'true' || process.platform === 'darwin' || process.platform === 'win32';
+       const env = { ...process.env, PORT: String(portCandidate), BROWSER: 'none', NO_COLOR: '1' };
+--- a/testes/pm2-dev.test.js
++++ b/testes/pm2-dev.test.js
+@@ -50,7 +50,8 @@
+   try {
+     fs.writeFileSync(path.join(pasta, 'package.json'), JSON.stringify({ name: 'crm', packageManager: 'pnpm@9.15.9' }));
+     assert.equal(pm2Dev.detectarRunner(pasta), 'pnpm');
+-    assert.equal(pm2Dev.detectarRunner(pasta, 'yarn'), 'yarn');
++    assert.equal(pm2Dev.detectarRunner(pasta, 'yarn'), 'pnpm');
++    assert.equal(pm2Dev.detectarRunner(pasta, 'npm'), 'pnpm');
+   } finally { fs.rmSync(pasta, { recursive: true, force: true }); }
+ });
+ 
+@@ -71,3 +72,47 @@
+     fs.rmSync(npm, { recursive: true, force: true });
+   }
+ });
++
++ test('pnpm respeita lockfile e fingerprint muda ao alterar contrato', () => {
++ const os = require('node:os');
++ const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-contract-'));
++ try {
++ fs.writeFileSync(path.join(pasta, 'package.json'), JSON.stringify({packageManager:'pnpm@9.15.9'}));
++ fs.writeFileSync(path.join(pasta, 'pnpm-lock.yaml'), 'lockfileVersion: 9');
++ const a = pm2Dev.planoDeInstalacao(pasta, 'npm');
++ assert.equal(a.runner, 'pnpm');
++ assert.deepEqual(a.args, ['install', '--frozen-lockfile']);
++ fs.appendFileSync(path.join(pasta, 'pnpm-lock.yaml'), '\n# change');
++ assert.notEqual(a.fingerprint, pm2Dev.planoDeInstalacao(pasta).fingerprint);
++ } finally { fs.rmSync(pasta, {recursive:true,force:true}); }
++ });
++
++test('repara módulos parciais, deduplica instalação e invalida marcador ao mudar lock', async () => {
++ const os = require('node:os');
++ const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'install-contract-'));
++ const oldPath = process.env.PATH;
++ try {
++ fs.mkdirSync(path.join(pasta, 'bin'));
++ fs.mkdirSync(path.join(pasta, 'node_modules'));
++ fs.writeFileSync(path.join(pasta, 'package.json'), JSON.stringify({packageManager:'pnpm@9.15.9',dependencies:{exemplo:'1.0.0'}}));
++ fs.writeFileSync(path.join(pasta, 'pnpm-lock.yaml'), 'lockfileVersion: 9');
++ fs.writeFileSync(path.join(pasta, 'bin/pnpm'), '#!/bin/sh\necho "$*" >> installs.txt\nmkdir -p node_modules/exemplo\n', {mode:0o755});
++ process.env.PATH = path.join(pasta, 'bin') + path.delimiter + oldPath;
++ const a = pm2Dev.instalarDependenciasSeFaltar(pasta, 'npm');
++ const b = pm2Dev.instalarDependenciasSeFaltar(pasta, 'npm');
++ assert.equal(a,b);
++ assert.deepEqual(await a, {ok:true});
++ await pm2Dev.instalarDependenciasSeFaltar(pasta, 'npm');
++ assert.equal(fs.readFileSync(path.join(pasta,'installs.txt'),'utf8'), 'install --frozen-lockfile\n');
++ fs.appendFileSync(path.join(pasta,'pnpm-lock.yaml'), '\n# update');
++ assert.deepEqual(await pm2Dev.instalarDependenciasSeFaltar(pasta, 'npm'), {ok:true});
++ assert.equal(fs.readFileSync(path.join(pasta,'installs.txt'),'utf8').trim().split('\n').length,2);
++ fs.writeFileSync(path.join(pasta,'package.json'), '{broken');
++ assert.equal((await pm2Dev.instalarDependenciasSeFaltar(pasta)).ok,false);
++ } finally { process.env.PATH=oldPath; fs.rmSync(pasta,{recursive:true,force:true}); }
++});
++test('package-lock prevalece sobre runner legado pnpm', () => {
++ const pasta=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'npm-contract-'));
++ try { fs.writeFileSync(path.join(pasta,'package-lock.json'),'{}'); assert.equal(pm2Dev.detectarRunner(pasta,'pnpm'),'npm'); }
++ finally { fs.rmSync(pasta,{recursive:true,force:true}); }
++});

@@ -1,0 +1,28 @@
+--- a/neon/migrations/20260923_0004_server_service_identity.sql
++++ b/neon/migrations/20260923_0004_server_service_identity.sql
+@@ -51,10 +51,8 @@
+       and c.relrowsecurity
+       and c.relname <> 'neon_service_identities'
+   loop
+-    execute format(
+-      'grant select, insert, update, delete on public.%I to authenticated',
+-      r.relname
+-    );
++    -- Preservar grants explícitos do baseline, inclusive audit append-only.
++    -- RLS não é autorização para ampliar privilégios de tabela.
+ 
+     if not exists (
+       select 1
+@@ -72,9 +70,9 @@
+ end
+ $policies$;
+ 
+--- Funções seguem a autorização interna de cada RPC; não concedemos tabelas
+--- sem RLS por efeito colateral.
+-grant execute on all functions in schema public to authenticated;
++-- Não ampliar EXECUTE: RPCs administrativas SECURITY DEFINER podem não ter
++-- guard interno. Preservar ACLs do baseline. Qualquer RPC adicional exige
++-- inventário explícito de assinatura, role, guard e teste de isolamento.
+ 
+ insert into public.neon_schema_migrations(version, note)
+ values (

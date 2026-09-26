@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "environment": "homologacao",
+  "migrations": [
+    "20260923_0001_identity_tenancy",
+    "20260923_0002_auth_compat_grants"
+  ],
+  "policies": [
+    {
+      "table": "organizations",
+      "name": "neon_tenant_organizations_select",
+      "command": "SELECT"
+    },
+    {
+      "table": "organizations",
+      "name": "neon_tenant_organizations_update",
+      "command": "UPDATE"
+    },
+    {
+      "table": "user_organizations",
+      "name": "neon_tenant_memberships_select",
+      "command": "SELECT"
+    }
+  ],
+  "roles": {
+    "separated": true,
+    "appRestricted": true,
+    "appCanAssumeMigration": false,
+    "appOwnsTenantTables": false
+  },
+  "memberships": {
+    "a": "admin",
+    "b": "admin",
+    "c": null
+  },
+  "rls": {
+    "aOwnOnly": true,
+    "bOwnOnly": true,
+    "aOwnWrite": true,
+    "bOwnWrite": true,
+    "aCrossWriteDenied": true,
+    "bCrossWriteDenied": true,
+    "cReadDenied": true,
+    "cWriteDenied": true,
+    "noContextDenied": true,
+    "concurrentCrossReadDenied": true
+  },
+  "productionChanged": false,
+  "secretsPrinted": false
+}

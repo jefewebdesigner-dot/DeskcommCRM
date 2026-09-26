@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "title": "Consulta de assinaturas por organização",
+  "lanes": [{ "id": "interface", "label": "Interface" }, { "id": "server", "label": "Servidor" }, { "id": "data", "label": "Fontes" }],
+  "nodes": [
+    { "id": "navigation", "lane": "interface", "label": "Catálogo → /app/assinaturas" },
+    { "id": "dashboard", "lane": "interface", "label": "Painel, filtros e configuração" },
+    { "id": "route", "lane": "server", "label": "RBAC + organização da aba + API" },
+    { "id": "credential", "lane": "data", "label": "Conexão cifrada por org; DATABASE_URL + RLS transacional" },
+    { "id": "fetch", "lane": "server", "label": "Timeout, sem redirects, Zod e normalização" },
+    { "id": "upstream", "lane": "data", "label": "Admin PeríciaIA: Stripe + export v2" },
+    { "id": "audit", "lane": "data", "label": "Auditoria da conexão e desconexão" },
+    { "id": "auditui", "lane": "interface", "label": "Histórico em /app/audit" },
+    { "id": "crm", "lane": "interface", "label": "Contatos e funil existentes" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "navigation", "to": "dashboard" },
+    { "id": "e2", "from": "dashboard", "to": "route", "label": "Cookie e organização esperada; nunca org do body" },
+    { "id": "e3", "from": "route", "to": "credential", "label": "Conexão escopada e criptografada" },
+    { "id": "e4", "from": "credential", "to": "fetch", "label": "Bearer somente no servidor" },
+    { "id": "e5", "from": "fetch", "to": "upstream", "label": "GET autenticado em duas fontes" },
+    { "id": "e6", "from": "upstream", "to": "fetch", "label": "Dados atuais; fontes mantidas separadas" },
+    { "id": "e7", "from": "fetch", "to": "dashboard", "label": "Resumo normalizado ou erro explícito" },
+    { "id": "e8", "from": "route", "to": "audit", "label": "Mutação da conexão, sem segredo" },
+    { "id": "e9", "from": "audit", "to": "auditui" },
+    { "id": "e10", "from": "dashboard", "to": "auditui" },
+    { "id": "e11", "from": "dashboard", "to": "crm", "label": "Consulta orienta atuação humana; sem cobrança automática" },
+    { "id": "e12", "from": "crm", "to": "navigation" }
+  ]
+}

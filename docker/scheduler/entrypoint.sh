@@ -86,6 +86,11 @@ CRONS="
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.
 7 * * * *|60|api/v1/cron/case-stale-watcher
 */30 * * * *|60|api/v1/cron/contact-phones
+# SINCRONIZAÇÃO DE BILLING → CRM (PeríciaIA). A cada 4h: a fonte é um resumo
+# financeiro (assinaturas, pagamentos), não algo que muda minuto a minuto —
+# varredura mais frequente só gastaria a API do admin do PeríciaIA sem ganho.
+# Organização sem conexão de billing salva é pulada em silêncio.
+13 */4 * * *|60|api/v1/cron/periciaia-billing-sync
 17 * * * *|60|api/v1/cron/contact-proposals-watcher
 23 * * * *|60|api/v1/cron/followup-sem-agente
 # O ANIVERSÁRIO. De hora em hora, e não uma vez ao dia, porque quem decide o

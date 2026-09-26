@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "environment": "homologacao",
+  "branch": "homologacao",
+  "users": {
+    "a": {
+      "userId": "ca89a2a1-33d9-41a0-ab50-fd6d08b1da3f",
+      "login": true,
+      "credentialStoredInVault": true
+    },
+    "b": {
+      "userId": "7753a75c-152a-4d3b-a0a9-0c0f3ac1be1b",
+      "login": true,
+      "credentialStoredInVault": true
+    },
+    "c": {
+      "userId": "0a9ae0dc-0059-4a8f-9d77-626c557261c1",
+      "login": true,
+      "credentialStoredInVault": true
+    }
+  },
+  "jwt": {
+    "signature": true,
+    "algorithm": "EdDSA",
+    "issuer": "https://ep-crimson-mode-b5cecqiz.neonauth.c-7.us-east-2.aws.neon.tech",
+    "issuerValidated": true,
+    "audience": "https://ep-crimson-mode-b5cecqiz.neonauth.c-7.us-east-2.aws.neon.tech",
+    "audienceValidatedWhenUrl": true,
+    "subject": "ca89a2a1-33d9-41a0-ab50-fd6d08b1da3f",
+    "expiration": 1790190420,
+    "invalidRejected": true,
+    "expiredRejected": true
+  },
+  "secretsPrinted": false
+}

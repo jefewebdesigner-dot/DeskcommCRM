@@ -162,10 +162,19 @@ function authCompat() {
       if (result.error) {
         return { data: { user: null, session: null }, error: result.error };
       }
-      const current = await sessaoNeonRaw();
-      const user = usuarioCompat(current.data?.user);
-      const session = (await sessaoCompat()).data.session;
-      return { data: { user, session }, error: null };
+      // Usa o usuário que `signIn.email` já devolveu — NÃO relê via
+      // `sessaoNeonRaw()`/`cookies()`. Medido em 2026-09-24: o cookie de
+      // sessão que `signIn.email` acabou de setar na resposta ainda não é
+      // visível a uma leitura de `cookies()` dentro da MESMA execução da
+      // Server Action (`data.user` sempre `null`, sem erro nenhum) — todo
+      // login pela tela normal caía em "Email ou senha incorretos" com senha
+      // certa. `user_organizations`/organização foram apenas efeito
+      // colateral: a causa era esta releitura, não o cadastro do usuário.
+      // Nenhum chamador de `signInWithPassword` lê `.session` hoje
+      // (`app/actions/auth/signInWithPassword.ts` só olha `error`/`data.user`)
+      // — session null aqui é o mesmo valor que o ramo de erro já devolvia.
+      const user = usuarioCompat(result.data?.user);
+      return { data: { user, session: null }, error: null };
     },
 
     async signUp(input: {

@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "environment": "homologacao",
+  "branch": "homologacao",
+  "organizations": {
+    "a": "c0ebc29e-b5cc-4ef7-bdf7-5f7b61176348",
+    "b": "cdcf8206-ebbd-4e64-9e5d-36f00819658e"
+  },
+  "users": {
+    "a": {
+      "subject": "ca89a2a1-33d9-41a0-ab50-fd6d08b1da3f",
+      "membership": "Empresa A/admin"
+    },
+    "b": {
+      "subject": "7753a75c-152a-4d3b-a0a9-0c0f3ac1be1b",
+      "membership": "Empresa B/admin"
+    },
+    "c": {
+      "subject": "0a9ae0dc-0059-4a8f-9d77-626c557261c1",
+      "membership": null
+    }
+  },
+  "concurrent": true,
+  "rls": {
+    "a": {
+      "visibleOrgIds": [
+        "c0ebc29e-b5cc-4ef7-bdf7-5f7b61176348"
+      ],
+      "ownRead": true,
+      "crossReadDenied": true,
+      "ownWrite": true,
+      "crossWriteDenied": true
+    },
+    "b": {
+      "visibleOrgIds": [
+        "cdcf8206-ebbd-4e64-9e5d-36f00819658e"
+      ],
+      "ownRead": true,
+      "crossReadDenied": true,
+      "ownWrite": true,
+      "crossWriteDenied": true
+    },
+    "c": {
+      "visibleCount": 0,
+      "readDenied": true,
+      "writeDeniedA": true,
+      "writeDeniedB": true
+    }
+  },
+  "schemaApplied": true,
+  "productionChanged": false,
+  "secretsPrinted": false
+}

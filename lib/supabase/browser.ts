@@ -7,26 +7,26 @@
  * conserva a superfície de auth que a UI já usa. Realtime é tratado pelo hook
  * compartilhado via polling RLS, não por sockets Supabase.
  */
-import {
-  createClient as createNeonClient,
-  SupabaseAuthAdapter,
-} from "@neondatabase/neon-js";
+import { createClient as createNeonClient, SupabaseAuthAdapter } from "@neondatabase/neon-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
 function configPublica() {
-  const runtime =
-    typeof window !== "undefined" ? window.__PUBLIC_ENV__ : undefined;
+  const runtime = typeof window !== "undefined" ? window.__PUBLIC_ENV__ : undefined;
+  // Client Components também renderizam no servidor, antes de existir window.
+  // Somente estas URLs públicas são lidas aqui; nenhuma credencial atravessa o bundle.
   const authUrl =
-    runtime?.NEON_AUTH_BASE_URL ?? process.env.NEXT_PUBLIC_NEON_AUTH_BASE_URL;
+    runtime?.NEON_AUTH_BASE_URL ??
+    (typeof window === "undefined" ? process.env.NEON_AUTH_BASE_URL : undefined) ??
+    process.env.NEXT_PUBLIC_NEON_AUTH_BASE_URL;
   const dataApiUrl =
-    runtime?.NEON_DATA_API_URL ?? process.env.NEXT_PUBLIC_NEON_DATA_API_URL;
+    runtime?.NEON_DATA_API_URL ??
+    (typeof window === "undefined" ? process.env.NEON_DATA_API_URL : undefined) ??
+    process.env.NEXT_PUBLIC_NEON_DATA_API_URL;
 
   if (!authUrl || !dataApiUrl) {
-    throw new Error(
-      "[neon/browser] NEON_AUTH_BASE_URL ou NEON_DATA_API_URL ausentes.",
-    );
+    throw new Error("[neon/browser] NEON_AUTH_BASE_URL ou NEON_DATA_API_URL ausentes.");
   }
   return { authUrl, dataApiUrl };
 }

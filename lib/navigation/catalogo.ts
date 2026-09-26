@@ -15,7 +15,14 @@ import type { Role } from "@/lib/auth/types";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId =
+  | "financeiro"
+  | "atendimento"
+  | "crm"
+  | "ia"
+  | "canais"
+  | "analise"
+  | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -66,6 +73,11 @@ export interface NavMetadata {
  * mesma conversa para a sexta tela.
  */
 export const NAV_GROUPS: NavGroup[] = [
+  // Acima do Atendimento de propósito: pedido direto do dono do produto (sessão
+  // de 2026-09-26) — a visão financeira/comercial é o que ele quer ver primeiro
+  // ao abrir o CRM, antes até da fila de conversas. Um grupo de item único não
+  // precisa de hub.
+  { id: "financeiro", label: "Financeiro" },
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
@@ -498,6 +510,17 @@ export const NAV_CATALOG = [
   // Sair do menu não é sair do produto — o hub `/app/analise` é INVENTÁRIO e
   // lista as cinco (`hubSections`), então as duas continuam a um clique, com a
   // frase que explica para que servem. O ⌘K também as acha por nome.
+  {
+    href: "/app/assinaturas",
+    label: "Clientes e assinaturas",
+    description: "Receita recorrente, assinaturas, renovações e inadimplência do negócio.",
+    icon: "ChartLineUp",
+    // Estava em "analise"/"Resultados" — movido para o grupo próprio acima do
+    // Atendimento a pedido do dono do produto (ver comentário em NAV_GROUPS).
+    group: "financeiro",
+    minRole: "manager",
+    sidebar: true,
+  },
   {
     href: "/app/metrics",
     label: "Desempenho",

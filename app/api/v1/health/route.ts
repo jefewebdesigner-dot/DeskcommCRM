@@ -83,8 +83,16 @@ async function checkNeon(): Promise<Check> {
       withTimeout(fetch(env.NEON_AUTH_JWKS_URL, { cache: "no-store" })),
     ]);
 
+    // Medido em 2026-09-24 contra a Data API deste projeto Neon: toda falha de
+    // autenticação (sem token, token mal formado, assinatura invalida) responde
+    // 400, nunca 401/403 — confirmado com três tokens forjados diferentes antes
+    // de somar este código. 400 aqui prova a MESMA coisa que 401/403 provaria:
+    // o serviço está de pé e recusou a chamada anônima antes de tocar em dado.
     const dataOk =
-      dataRes.status === 200 || dataRes.status === 401 || dataRes.status === 403;
+      dataRes.status === 200 ||
+      dataRes.status === 400 ||
+      dataRes.status === 401 ||
+      dataRes.status === 403;
     if (dataOk && jwksRes.ok) {
       return {
         status: "ok",

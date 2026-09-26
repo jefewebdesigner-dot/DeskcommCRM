@@ -29,6 +29,8 @@
  * `tests/unit/audit-lista-do-painel-e-derivada.test.tsx` reprova quem tentar.
  */
 export const AUDIT_ACTIONS = [
+  "billing_export.connected",
+  "billing_export.disconnected",
   "auth.login_success",
   "auth.login_failed",
   /** Teto de tentativas barrou antes de chegar ao provedor (issue #64). */
@@ -720,6 +722,12 @@ export const AUDIT_ACTIONS = [
   // meio dos renames — e "quem trouxe este funil de volta, e quando" é a
   // pergunta que o painel de auditoria só responde filtrando por `action`.
   "pipeline.unarchived",
+  /**
+   * Rodada do cron `periciaia-billing-sync` que criou ou atualizou pelo menos
+   * um contato/negócio a partir da fonte de billing conectada. Rodada sem
+   * efeito não audita (doutrina de audit log de cron).
+   */
+  "billing_export.crm_synced",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

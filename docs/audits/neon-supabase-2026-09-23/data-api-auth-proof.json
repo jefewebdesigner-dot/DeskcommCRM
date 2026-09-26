@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "environment": "homologacao",
+  "branch": "homologacao",
+  "cors": "https://gravityia.tech",
+  "authenticatedRequests": {
+    "a": {
+      "status": 200,
+      "errorCode": null
+    },
+    "b": {
+      "status": 200,
+      "errorCode": null
+    },
+    "c": {
+      "status": 200,
+      "errorCode": null
+    }
+  },
+  "rls": {
+    "aOwnOnly": true,
+    "bOwnOnly": true,
+    "cNoRows": true,
+    "aOwnDirect": true,
+    "bOwnDirect": true,
+    "aCrossReadDenied": true,
+    "bCrossReadDenied": true,
+    "concurrent": true
+  },
+  "secretsPrinted": false
+}

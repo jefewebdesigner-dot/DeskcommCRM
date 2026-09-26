@@ -25,6 +25,7 @@ coverage/
 .nyc_output/
 playwright-report/
 test-results/
+tests/e2e-neon/.fixtures-runtime.json
 e2e-artifacts/
 
 # IDE / OS
@@ -156,3 +157,9 @@ backups/
 # rodada. Versionado, ele sujava a árvore de quem rodava os testes.
 __pycache__/
 *.pyc
+
+.env
+.env.local
+.neon
+.chat-history.json
+.chat-history.json.bak

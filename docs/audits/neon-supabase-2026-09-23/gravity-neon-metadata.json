@@ -1,0 +1,9 @@
+{
+  "projectId": "green-boat-61917454",
+  "branchId": "br-jolly-fog-b5vafsas",
+  "branchName": "homologacao",
+  "endpointHost": "ep-crimson-mode-b5cecqiz-pooler.c-7.us-east-2.aws.neon.tech",
+  "endpointMatched": true,
+  "endpointId": "ep-crimson-mode-b5cecqiz",
+  "database": "neondb"
+}

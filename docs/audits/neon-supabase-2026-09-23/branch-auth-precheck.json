@@ -1,0 +1,23 @@
+{
+  "timestamp_utc": "2026-09-23T17:48:35.320469+00:00",
+  "status": "BLOCKED_BEFORE_MUTATIONS",
+  "source": "PostgreSQL pg_settings via both configured connections; neon_auth.project_config via DDL connection read-only",
+  "project_id": "green-boat-61917454",
+  "branch_id": "br-jolly-fog-b5vafsas",
+  "endpoint_id": "ep-crimson-mode-b5cecqiz",
+  "project_matches_env": true,
+  "both_connections_same_branch_endpoint_project": true,
+  "endpoint_matches_connection_host": true,
+  "database_matches_connection_path": true,
+  "auth_config_endpoint_matches": true,
+  "branch_name_homologacao": "NOT_INDEPENDENTLY_VERIFIED",
+  "management_api_credential_available": false,
+  "neon_mcp_available": false,
+  "auth_email_password_enabled": true,
+  "auth_email_verification_required": false,
+  "accounts_created": false,
+  "real_login_validated": false,
+  "real_jwt_validated": false,
+  "schema_applied": false,
+  "single_next_blocker": "Authoritative mapping of branch ID to homologacao, through authorized Neon Management API access or verifiable Gravity metadata."
+}

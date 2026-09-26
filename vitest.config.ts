@@ -35,6 +35,7 @@ export default defineConfig({
       "dist",
       ".claude/**",
       "tests/e2e/**",
+      "tests/e2e-neon/**",
       "tests/invariants/**",
       "tests/journeys/**",
       // Bancada opcional: usa node:test, PostgreSQL próprio e Playwright com
@@ -67,7 +68,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "."),
       // `server-only` não é dependência do projeto: o Next o resolve para o próprio módulo vazio
       // quando o código roda no servidor. Os testes rodam como servidor, então usam o mesmo vazio.
-      "server-only": path.resolve(__dirname, "node_modules/next/dist/compiled/server-only/empty.js"),
+      "server-only": path.resolve(
+        __dirname,
+        "node_modules/next/dist/compiled/server-only/empty.js",
+      ),
     },
   },
 });
