@@ -21,6 +21,26 @@ import type { OtherExport, StripeExport } from "./contracts";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
+/**
+ * `contacts_phone_e164_format` exige `+` seguido de 8 a 15 dígitos. A fonte
+ * PIX/manual manda telefone brasileiro sem o código do país (ex.:
+ * "85999966570", DDD + número) — sem isto, TODO contato com telefone violava
+ * o CHECK e o registro inteiro falhava (medido: 60/75 erros na primeira
+ * rodada real, todos essa mesma causa).
+ *
+ * Só assume Brasil porque a fonte é 100% PeríciaIA (produto nacional). Número
+ * que já vem com código de país (12-13 dígitos começando em "55", ou
+ * qualquer outro DDI) passa direto. Fora da faixa aceitável, volta `null` —
+ * perder o telefone de um contato é menos grave que perder o contato inteiro.
+ */
+function paraE164Brasil(bruto: string | null | undefined): string | null {
+  if (!bruto) return null;
+  const digitos = bruto.replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) return `+55${digitos}`;
+  if (digitos.length >= 8 && digitos.length <= 15) return `+${digitos}`;
+  return null;
+}
+
 export interface SyncResult {
   configured: boolean;
   contactsCreated: number;
@@ -28,7 +48,7 @@ export interface SyncResult {
   dealsCreated: number;
   dealsUpdated: number;
   errors: number;
-  /** DIAGNÓSTICO TEMPORÁRIO — remover depois de identificar a causa dos erros. */
+  /** Até 5 mensagens de erro reais da rodada — vazio quando não houve nenhum. */
   sampleErrors: string[];
 }
 
@@ -193,7 +213,7 @@ function syncOther(
       const contact = await upsertContact(admin, organizationId, {
         email: customer.email,
         name: customer.name ?? null,
-        phone: customer.phone ?? null,
+        phone: paraE164Brasil(customer.phone),
         metadata: { periciaia_billing: { provider: customer.provider, external_id: customer.externalId } },
       });
       if (!contact) return;
