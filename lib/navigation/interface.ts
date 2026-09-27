@@ -13,6 +13,8 @@ export const interfaceSettingsSchema = z
       .max(ids.length)
       .transform((values) => ids.filter((id) => values.includes(id)))
       .optional(),
+    /** Tela em que a pessoa cai ao abrir o sistema. Ausente = /app/inbox (padrão histórico). */
+    home: z.enum(ids as [NavDestinationId, ...NavDestinationId[]]).optional(),
   })
   .strict();
 export type InterfaceSettings = z.infer<typeof interfaceSettingsSchema>;
@@ -63,6 +65,7 @@ export function lerInterface(raw: unknown): {
   const parsed = interfaceSettingsSchema.safeParse({
     preset: value.preset,
     ...(destinos ? { destinos } : {}),
+    ...(typeof value.home === "string" ? { home: value.home } : {}),
   });
   if (!parsed.success) return { settings: INTERFACE_COMPLETA, needsAdjustment: true };
   return {
@@ -92,7 +95,9 @@ export function interfaceTemDestino(
 }
 export function homeDaInterface(raw: unknown, platform: boolean, role: Role | null): string {
   const visible = destinosDaInterface(raw, platform, role);
+  const { settings } = lerInterface(raw);
   return (
+    (settings.home && visible.find((d) => d.href === settings.home)?.href) ??
     visible.find((d) => d.href === "/app/inbox")?.href ??
     visible.find((d) => !essencial(d, role, platform))?.href ??
     "/app/settings/profile"

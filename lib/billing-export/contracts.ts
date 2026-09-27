@@ -87,7 +87,33 @@ export type SourceResult<T> = { ok: true; data: T } | { ok: false; error: Billin
 
 const cents = (value: number) => Math.round(value * 100);
 
+/** Fuso fixo do produto (PeríciaIA é 100% Brasil) — dia e mês na régua de Brasília. */
+const BR_TZ = "America/Sao_Paulo";
+const diaBR = (iso: string): string => new Intl.DateTimeFormat("en-CA", { timeZone: BR_TZ }).format(new Date(iso));
+const mesBR = (iso: string): string => diaBR(iso).slice(0, 7);
+const hojeBR = (): string => diaBR(new Date().toISOString());
+const mesAtualBR = (): string => hojeBR().slice(0, 7);
+const DIAS_30_MS = 30 * 24 * 60 * 60 * 1000;
+const dentroDe30Dias = (iso: string): boolean => {
+  const alvo = new Date(iso).getTime();
+  const agora = Date.now();
+  return alvo >= agora && alvo <= agora + DIAS_30_MS;
+};
+
 export function normalizeStripe(data: StripeExport) {
+  // Amostra, não o total: `recentPayments` é um recorte (até 5 registros) que
+  // a fonte manda pronto — não existe endpoint de "todos os pagamentos de
+  // hoje". Filtrar por dia aqui só reduz uma amostra já pequena; por isso o
+  // rótulo na tela diz "amostra" e nunca "vendas de hoje" sem qualificação.
+  const hoje = hojeBR();
+  const vendasHojeAmostra = data.recentPayments.filter((row) => diaBR(row.date) === hoje);
+  // O mês atual É confiável: `monthlyData` é agregado pela própria fonte
+  // (todo pagamento do mês, não uma amostra), e o produto sempre manda o mês
+  // corrente como último item — mesma leitura que "30 fat. pagas em set/26"
+  // no admin original.
+  const mesAtual = data.monthlyData.at(-1) ?? null;
+  const renovacoes30d = data.upcomingRenewals.filter((row) => dentroDe30Dias(row.renewsAt));
+
   return {
     generated_at: data.generatedAt,
     mrr_cents: cents(data.summary.mrr),
@@ -107,6 +133,11 @@ export function normalizeStripe(data: StripeExport) {
       month: row.month,
       revenue_cents: cents(row.revenue),
     })),
+    receita_mes_atual_cents: mesAtual ? cents(mesAtual.revenue) : null,
+    receita_mes_atual_label: mesAtual?.month ?? null,
+    vendas_hoje_amostra_count: vendasHojeAmostra.length,
+    vendas_hoje_amostra_cents: vendasHojeAmostra.reduce((sum, row) => sum + cents(row.amount), 0),
+    renovacoes_30d_count: renovacoes30d.length,
     renewals: data.upcomingRenewals.map((row) => ({
       name: row.name ?? null,
       email: row.email ?? null,
@@ -139,6 +170,20 @@ export function normalizeOther(data: OtherExport) {
     return { name: customer?.name ?? null, email: customer?.email ?? null };
   };
   const currencies = new Set([...subscriptions.values()].map((row) => row.currency.toUpperCase()));
+
+  // Esta fonte é EXAUSTIVA (até 50k pagamentos/assinaturas reais, não amostra
+  // — diferente do Stripe), então dá para calcular "hoje" e "este mês" de
+  // verdade, sem qualificar como aproximação.
+  const hoje = hojeBR();
+  const mesAtual = mesAtualBR();
+  const pagosHoje = data.payments.filter((row) => row.status === "paid" && row.paidAt && diaBR(row.paidAt) === hoje);
+  const pagosMes = data.payments.filter(
+    (row) => row.status === "paid" && row.paidAt && mesBR(row.paidAt) === mesAtual,
+  );
+  const renovacoes30d = data.subscriptions.filter(
+    (row) => row.status !== "canceled" && row.currentPeriodEnd && dentroDe30Dias(row.currentPeriodEnd),
+  );
+
   return {
     generated_at: data.generatedAt,
     active_customers: data.summary.activeCustomers,
@@ -149,6 +194,12 @@ export function normalizeOther(data: OtherExport) {
     mrr_at_risk_cents:
       currencies.size === 1 && currencies.has("BRL") ? data.summary.mrrAtRiskMinor : null,
     customer_count: customers.size,
+    vendas_hoje_count: pagosHoje.length,
+    vendas_hoje_cents: pagosHoje.reduce((sum, row) => sum + row.amountPaidMinor, 0),
+    vendas_mes_count: pagosMes.length,
+    vendas_mes_cents: pagosMes.reduce((sum, row) => sum + row.amountPaidMinor, 0),
+    a_receber_30d_count: renovacoes30d.length,
+    a_receber_30d_cents: renovacoes30d.reduce((sum, row) => sum + row.amountMinor, 0),
     subscriptions: [...subscriptions.values()].map((row) => ({
       id: key(row.provider, row.externalId),
       provider: row.provider,

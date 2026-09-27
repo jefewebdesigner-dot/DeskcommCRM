@@ -336,6 +336,60 @@ export function BillingDashboardClient({
               </p>
             )}
 
+            {(stripe || other) && (
+              <section aria-label="Vendas e caixa">
+                <div className="mb-3">
+                  <h2 className="font-semibold">Vendas e caixa</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Hoje e este mês, juntando as fontes onde o número é confiável.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {other && (
+                    <Metric
+                      title="Vendas hoje · PIX/manual"
+                      value={currency(other.vendas_hoje_cents)}
+                      note={`${other.vendas_hoje_count} pagamento(s) confirmado(s) hoje. Contagem exata (exportação completa).`}
+                    />
+                  )}
+                  {stripe && (
+                    <Metric
+                      title="Vendas hoje · Stripe (amostra)"
+                      value={currency(stripe.vendas_hoje_amostra_cents)}
+                      note={`${stripe.vendas_hoje_amostra_count} pagamento(s) entre os 5 mais recentes que a fonte manda — não é o total do dia, só o que caiu na amostra.`}
+                    />
+                  )}
+                  {(other || stripe?.receita_mes_atual_cents !== null) && (
+                    <Metric
+                      title="Vendas do mês (combinado)"
+                      value={currency(
+                        (other?.vendas_mes_cents ?? 0) + (stripe?.receita_mes_atual_cents ?? 0),
+                      )}
+                      note={
+                        other && stripe
+                          ? `PIX/manual: ${currency(other.vendas_mes_cents)} (exato, ${other.vendas_mes_count} pagamentos). Stripe: ${currency(stripe.receita_mes_atual_cents)} (agregado ${stripe.receita_mes_atual_label ?? "do mês"}, calculado pela fonte).`
+                          : "Soma do que cada fonte disponível confirma para o mês corrente."
+                      }
+                    />
+                  )}
+                  {other && (
+                    <Metric
+                      title="A receber em 30 dias · PIX/manual"
+                      value={currency(other.a_receber_30d_cents)}
+                      note={`${other.a_receber_30d_count} renovação(ões) prevista(s) nos próximos 30 dias. Assinaturas canceladas não entram.`}
+                    />
+                  )}
+                  {stripe && (
+                    <Metric
+                      title="Renovações em 30 dias · Stripe"
+                      value={stripe.renovacoes_30d_count}
+                      note="A fonte não envia o valor por renovação — só a contagem e a data."
+                    />
+                  )}
+                </div>
+              </section>
+            )}
+
             {stripe && (
               <section aria-label="Indicadores Stripe">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
