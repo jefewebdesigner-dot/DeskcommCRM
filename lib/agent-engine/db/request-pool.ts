@@ -41,11 +41,9 @@ export function createRequestPoolForUser(userId: string): pg.Pool {
     throw new Error('user_id inválido para contexto SQL da prévia');
   }
 
-  const directUrl = databaseUrl().replace(
-    /(@[^./]+)-pooler(\\.[^/]+\\/)/,
-    '$1$2',
-  );
-  const pool = createPool(directUrl);
+  const direct = new URL(databaseUrl());
+  direct.hostname = direct.hostname.replace('-pooler.', '.');
+  const pool = createPool(direct.toString());
 
   pool.on('connect', (client) => {
     void client
