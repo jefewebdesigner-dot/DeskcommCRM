@@ -36,11 +36,20 @@ type StripeSubscription = {
   id: string;
   status: string;
   cancel_at_period_end: boolean;
-  current_period_end: number;
   canceled_at: number | null;
   customer: { id: string; name: string | null; email: string | null } | string;
-  items: { data: Array<{ price: { unit_amount: number | null; recurring: { interval: string; interval_count: number } | null; nickname: string | null } }> };
+  // `current_period_end` NÃO existe mais no nível da assinatura nesta conta
+  // (Stripe moveu o campo para o item, API version mais recente) — medido:
+  // `subscription.current_period_end` vinha `null`, produzindo
+  // `Invalid time value` ao formatar a data de renovação para TODA
+  // assinatura, o que derrubava `fetchStripeDirect` inteiro (o painel caía
+  // de volta pro resumo do admin em silêncio, de novo). O item sempre tem.
+  items: { data: Array<{ current_period_end: number; price: { unit_amount: number | null; recurring: { interval: string; interval_count: number } | null; nickname: string | null } }> };
 };
+
+function periodoFimEm(sub: StripeSubscription): number {
+  return sub.items.data[0]?.current_period_end ?? 0;
+}
 
 async function stripeGet<T>(path: string, params: [string, string][] = []): Promise<T> {
   const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
@@ -132,12 +141,12 @@ export async function fetchStripeDirect(): Promise<StripeDireto | null> {
 
   const renewals = active
     .slice()
-    .sort((a, b) => a.current_period_end - b.current_period_end)
+    .sort((a, b) => periodoFimEm(a) - periodoFimEm(b))
     .slice(0, 50)
     .map((sub) => ({
       name: customerOf(sub).name,
       email: customerOf(sub).email,
-      renews_at: new Date(sub.current_period_end * 1000).toISOString(),
+      renews_at: new Date(periodoFimEm(sub) * 1000).toISOString(),
       canceling: sub.cancel_at_period_end,
     }));
 

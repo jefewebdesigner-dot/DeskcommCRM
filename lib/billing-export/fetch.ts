@@ -84,8 +84,13 @@ export async function fetchBillingDashboard(token: string): Promise<BillingDashb
     try {
       const direto = await fetchStripeDirect();
       if (direto) stripeResult = { ok: true, data: { ...stripeResult.data, ...direto } };
-    } catch {
-      // silencioso de propósito — ver comentário acima.
+    } catch (erro) {
+      // Não derruba o painel (comentário acima) — mas fica MUDO nos logs do
+      // Vercel foi exatamente o que escondeu dois bugs reais aqui (expansão
+      // além do limite da Stripe, depois `current_period_end` movido pra
+      // dentro do item). Sem isto, "voltou pro resumo do admin" e "está
+      // funcionando" ficam indistinguíveis olhando só a tela.
+      console.error("[billing-export] fetchStripeDirect falhou, usando resumo do admin", erro);
     }
   }
 
