@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { createPool } = vi.hoisted(() => ({
-  createPool: vi.fn(() => ({}) as never),
+  createPool: vi.fn((databaseUrl: string) => ({ databaseUrl }) as never),
 }));
 
 vi.mock("./pool", () => ({ createPool }));
