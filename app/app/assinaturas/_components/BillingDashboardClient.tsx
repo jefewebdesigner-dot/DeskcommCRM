@@ -321,9 +321,9 @@ export function BillingDashboardClient({
             </div>
             <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm leading-relaxed">
               As fontes usam contagens diferentes: <strong>assinaturas no Stripe</strong> e{" "}
-              <strong>clientes no PIX/manual</strong>. Os números são apresentados separadamente,
-              pois a API do Stripe não fornece o cadastro completo para deduplicar clientes entre as
-              fontes.
+              <strong>clientes no PIX/manual</strong>. Os totais abaixo somam as duas; o
+              detalhamento por fonte, mais adiante, existe porque a API do Stripe não fornece o
+              cadastro completo para deduplicar clientes entre elas.
             </div>
             {!dashboard.stripe.ok && (
               <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm">
@@ -334,6 +334,39 @@ export function BillingDashboardClient({
               <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm">
                 <strong>PIX e manual indisponíveis.</strong> {sourceError(dashboard.other.error)}
               </p>
+            )}
+
+            {stripe && other && (
+              <section aria-label="Visão geral combinada">
+                <div className="mb-3">
+                  <h2 className="font-semibold">Visão geral · Stripe + PIX/manual</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Todos os clientes e valores juntos. O detalhamento por fonte fica logo abaixo.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Metric
+                    title="Clientes ativos (total)"
+                    value={stripe.active_subscriptions + other.active_customers}
+                    note={`${stripe.active_subscriptions} no Stripe + ${other.active_customers} no PIX/manual.`}
+                  />
+                  <Metric
+                    title="Receita recorrente mensal (total)"
+                    value={currency(stripe.mrr_cents + (other.mrr_cents ?? 0))}
+                    note={`Stripe ${currency(stripe.mrr_cents)} + PIX/manual ${currency(other.mrr_cents)}.`}
+                  />
+                  <Metric
+                    title="Receita recorrente anual (total)"
+                    value={currency(stripe.arr_cents + (other.mrr_cents ?? 0) * 12)}
+                    note="ARR do Stripe (informado pela fonte) + MRR do PIX/manual × 12."
+                  />
+                  <Metric
+                    title="Em atraso (total)"
+                    value={stripe.past_due_count + other.past_due_customers}
+                    note={`${stripe.past_due_count} no Stripe + ${other.past_due_customers} no PIX/manual.`}
+                  />
+                </div>
+              </section>
             )}
 
             {(stripe || other) && (
