@@ -39,7 +39,7 @@ type StripeSubscription = {
   current_period_end: number;
   canceled_at: number | null;
   customer: { id: string; name: string | null; email: string | null } | string;
-  items: { data: Array<{ price: { unit_amount: number | null; recurring: { interval: string; interval_count: number } | null; nickname: string | null; product: string | { name?: string } } }> };
+  items: { data: Array<{ price: { unit_amount: number | null; recurring: { interval: string; interval_count: number } | null; nickname: string | null } }> };
 };
 
 async function stripeGet<T>(path: string, params: [string, string][] = []): Promise<T> {
@@ -61,7 +61,11 @@ async function paginateSubscriptions(status: string): Promise<StripeSubscription
       ["status", status],
       ["limit", "100"],
       ["expand[]", "data.customer"],
-      ["expand[]", "data.items.data.price.product"],
+      // NÃO expandir "data.items.data.price.product": Stripe recusa com
+      // `property_expansion_max_depth` (máximo 4 níveis; isto tem 5) — medido
+      // em produção, era a causa de TODA chamada falhar e o painel cair de
+      // volta pro resumo do admin em silêncio. O nome do plano usa
+      // `price.nickname`/valor, sem precisar do produto.
     ];
     if (startingAfter) params.push(["starting_after", startingAfter]);
     const body: { data: StripeSubscription[]; has_more: boolean } = await stripeGet("subscriptions", params);
@@ -77,12 +81,19 @@ function customerOf(sub: StripeSubscription): { name: string | null; email: stri
   return { name: sub.customer.name ?? null, email: sub.customer.email ?? null };
 }
 
+/**
+ * Nome do plano sem expandir o produto (ver nota em `paginateSubscriptions`
+ * sobre o limite de profundidade da Stripe). `nickname` é o nome que o
+ * PeríciaIA deu ao preço no cadastro; sem ele, o valor mensal identifica o
+ * plano tão bem quanto um nome — é exatamente o valor que diferencia
+ * Solo/Professional/Team.
+ */
 function planLabel(sub: StripeSubscription): string {
   const price = sub.items.data[0]?.price;
   if (!price) return "Sem plano";
-  const product = price.product;
-  if (typeof product === "object" && product?.name) return product.name;
-  return price.nickname ?? "Sem plano";
+  if (price.nickname) return price.nickname;
+  const amount = price.unit_amount ?? 0;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount / 100);
 }
 
 const NOVENTA_DIAS_S = 90 * 24 * 60 * 60;
