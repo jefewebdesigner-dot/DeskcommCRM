@@ -8,6 +8,7 @@ import {
   type BillingDashboard,
   type SourceResult,
 } from "./contracts";
+import { fetchStripeDirect } from "./stripe-direct";
 
 const BASE = "https://www.periciaia.com.br/api/admin/billing-export";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -72,9 +73,25 @@ export async function fetchBillingRaw(token: string): Promise<{
 
 export async function fetchBillingDashboard(token: string): Promise<BillingDashboard> {
   const { stripe, other } = await fetchBillingRaw(token);
+
+  let stripeResult = stripe.ok ? { ok: true as const, data: normalizeStripe(stripe.data) } : stripe;
+  if (stripeResult.ok) {
+    // `STRIPE_SECRET_KEY` ausente (self-host que não colou a chave) é o
+    // caminho normal: fica com o resumo do admin, que é o comportamento de
+    // sempre. Falha na Stripe direta NÃO derruba o painel — a pessoa continua
+    // vendo os dados do admin em vez de uma tela quebrada por causa de um
+    // reforço opcional.
+    try {
+      const direto = await fetchStripeDirect();
+      if (direto) stripeResult = { ok: true, data: { ...stripeResult.data, ...direto } };
+    } catch {
+      // silencioso de propósito — ver comentário acima.
+    }
+  }
+
   return {
     fetched_at: new Date().toISOString(),
-    stripe: stripe.ok ? { ok: true, data: normalizeStripe(stripe.data) } : stripe,
+    stripe: stripeResult,
     other: other.ok ? { ok: true, data: normalizeOther(other.data) } : other,
   };
 }

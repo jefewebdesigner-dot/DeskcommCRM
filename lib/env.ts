@@ -199,6 +199,19 @@ const schema = z.object({
   // devolve 401 em toda chamada — por isso `getWacallsClient()` exige os dois.
   WACALLS_API_TOKEN: z.string().optional().default(""),
 
+  /**
+   * Chave secreta da conta Stripe do cliente, opcional. Sem ela, o painel de
+   * assinaturas usa só o resumo que a fonte de billing (`billing-export`)
+   * calcula. Existe porque essa fonte tem um bug medido (issue interna
+   * 2026-09-27): o campo "assinaturas ativas" na verdade conta as CANCELADAS
+   * — confirmado paginando a Stripe direto (7 ativas reais vs 42 relatadas).
+   * Com a chave, `lib/billing-export/stripe-direct.ts` busca os números que
+   * esse bug contamina (ativos, MRR, ARR, planos, renovações, pagamentos
+   * recentes) direto na Stripe, e o resto (histórico mensal, LTV) continua
+   * vindo da fonte, marcado como não verificado.
+   */
+  STRIPE_SECRET_KEY: z.string().optional().default(""),
+
   // Upstash Redis
   UPSTASH_REDIS_REST_URL: required("UPSTASH_REDIS_REST_URL"),
   UPSTASH_REDIS_REST_TOKEN: required("UPSTASH_REDIS_REST_TOKEN"),

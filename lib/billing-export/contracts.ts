@@ -87,14 +87,19 @@ export type SourceResult<T> = { ok: true; data: T } | { ok: false; error: Billin
 
 const cents = (value: number) => Math.round(value * 100);
 
-/** Fuso fixo do produto (PeríciaIA é 100% Brasil) — dia e mês na régua de Brasília. */
-const BR_TZ = "America/Sao_Paulo";
-const diaBR = (iso: string): string => new Intl.DateTimeFormat("en-CA", { timeZone: BR_TZ }).format(new Date(iso));
+/**
+ * Fuso fixo do produto (PeríciaIA é 100% Brasil) — dia e mês na régua de
+ * Brasília. Exportadas porque `stripe-direct.ts` precisa das mesmas — os
+ * pagamentos/renovações que ele busca direto na Stripe usam a mesma régua de
+ * "hoje" e "30 dias" que a normalização do resumo do admin.
+ */
+export const BR_TZ = "America/Sao_Paulo";
+export const diaBR = (iso: string): string => new Intl.DateTimeFormat("en-CA", { timeZone: BR_TZ }).format(new Date(iso));
 const mesBR = (iso: string): string => diaBR(iso).slice(0, 7);
-const hojeBR = (): string => diaBR(new Date().toISOString());
+export const hojeBR = (): string => diaBR(new Date().toISOString());
 const mesAtualBR = (): string => hojeBR().slice(0, 7);
 const DIAS_30_MS = 30 * 24 * 60 * 60 * 1000;
-const dentroDe30Dias = (iso: string): boolean => {
+export const dentroDe30Dias = (iso: string): boolean => {
   const alvo = new Date(iso).getTime();
   const agora = Date.now();
   return alvo >= agora && alvo <= agora + DIAS_30_MS;
@@ -116,6 +121,11 @@ export function normalizeStripe(data: StripeExport) {
 
   return {
     generated_at: data.generatedAt,
+    // `true` só quando `fetchStripeDirect()` (lib/billing-export/stripe-direct.ts)
+    // substitui estes campos por dados apurados direto na Stripe. Por padrão
+    // `false`: estes valores vêm do resumo do admin, que tem um bug medido
+    // (conta canceladas como ativas) — ver o cabeçalho daquele arquivo.
+    verificado_direto: false,
     mrr_cents: cents(data.summary.mrr),
     arr_cents: cents(data.summary.arr),
     active_subscriptions: data.summary.activeCount,

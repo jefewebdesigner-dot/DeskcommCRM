@@ -426,26 +426,55 @@ export function BillingDashboardClient({
             {stripe && (
               <section aria-label="Indicadores Stripe">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-semibold">Stripe</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold">Stripe</h2>
+                    {stripe.verificado_direto ? (
+                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                        Verificado direto na Stripe
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Resumo do admin PeríciaIA</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Fonte gerada em {date(stripe.generated_at)}
                   </p>
                 </div>
+                {!stripe.verificado_direto && (
+                  <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed">
+                    <strong>Atenção:</strong> o resumo que o admin do PeríciaIA envia para "assinaturas
+                    ativas" tem um bug medido em 27/09/2026 — ele conta assinaturas <em>canceladas</em>{" "}
+                    como ativas. Sem a chave da Stripe configurada neste ambiente, os números abaixo
+                    ainda refletem esse bug.
+                  </p>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <Metric
                     title="Assinaturas ativas"
                     value={stripe.active_subscriptions}
-                    note="Contagem informada pelo Stripe; não representa clientes únicos."
+                    note={
+                      stripe.verificado_direto
+                        ? "Contagem real, paginada direto na Stripe."
+                        : "Contagem informada pelo Stripe; não representa clientes únicos."
+                    }
                   />
                   <Metric
                     title="Receita recorrente mensal"
                     value={currency(stripe.mrr_cents)}
-                    note="MRR informado pela fonte. Não equivale ao caixa recebido no mês."
+                    note={
+                      stripe.verificado_direto
+                        ? "MRR calculado a partir das assinaturas ativas de verdade."
+                        : "MRR informado pela fonte. Não equivale ao caixa recebido no mês."
+                    }
                   />
                   <Metric
                     title="Em atraso"
                     value={stripe.past_due_count}
-                    note="Contagem past_due informada pelo Stripe. Veja a lista de atenção abaixo."
+                    note={
+                      stripe.verificado_direto
+                        ? "Contagem real de assinaturas com status past_due na Stripe."
+                        : "Contagem past_due informada pelo Stripe. Veja a lista de atenção abaixo."
+                    }
                   />
                   <Metric
                     title="Receita recorrente anual"
