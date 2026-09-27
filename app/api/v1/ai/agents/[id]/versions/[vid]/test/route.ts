@@ -36,7 +36,7 @@ import { testRunSchema } from "@/lib/ai/agents/validation";
 import { avaliarRespostaDeTeste } from "@/lib/ai/agents/avaliar-resposta-de-teste";
 import { testAgentVersion } from "@/lib/agent-engine/agent/sandbox";
 import { requestTurnDeps } from "@/lib/agent-engine/agent/request-deps";
-import { getRequestPool } from "@/lib/agent-engine/db/request-pool";
+import { createRequestPoolForUser } from "@/lib/agent-engine/db/request-pool";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { logger } from "@/lib/logger";
 
@@ -147,9 +147,11 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
 
   let resultPayload: Record<string, unknown>;
+  let previewPool: ReturnType<typeof createRequestPoolForUser> | null = null;
 
   try {
-    const result = await testAgentVersion(getRequestPool(), requestTurnDeps(), {
+    previewPool = createRequestPoolForUser(authUser.id);
+    const result = await testAgentVersion(previewPool, requestTurnDeps(), {
       organizationId: activeOrg.orgId,
       agentId: id,
       versionId: vid,
@@ -217,6 +219,8 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       422,
       { requestId },
     );
+  } finally {
+    if (previewPool) await previewPool.end().catch(() => undefined);
   }
 
   void audit({
