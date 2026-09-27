@@ -11,9 +11,42 @@ import { createPool } from './pool';
 
 let _pool: pg.Pool | null = null;
 
-export function getRequestPool(): pg.Pool {
+const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function databaseUrl(): string {
   const url = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL;
   if (!url) throw new Error('DATABASE_URL ausente — rascunho da IA indisponível');
-  if (!_pool) _pool = createPool(url);
+  return url;
+}
+
+export function getRequestPool(): pg.Pool {
+  if (!_pool) _pool = createPool(databaseUrl());
   return _pool;
+}
+
+/**
+ * Pool efêmero com o contexto de identidade do usuário já autenticado pelo app.
+ *
+ * O contrato do backend Neon usa `auth.uid()` -> `app.user_id` nas conexões
+ * SQL confiáveis. O valor não vem do body: o chamador precisa passar o UUID que
+ * acabou de ser validado pelo Neon Auth/requireRole.
+ *
+ * É um pool separado por requisição de prévia e DEVE ser encerrado pelo
+ * chamador. Assim nenhuma conexão pode voltar ao pool global carregando a
+ * identidade de outro usuário.
+ */
+export function createRequestPoolForUser(userId: string): pg.Pool {
+  if (!UUID_RX.test(userId)) {
+    throw new Error('user_id inválido para contexto SQL da prévia');
+  }
+
+  const scoped = new URL(databaseUrl());
+  const currentOptions = scoped.searchParams.get('options')?.trim();
+  const tenantOption = `-c app.user_id=${userId}`;
+  scoped.searchParams.set(
+    'options',
+    currentOptions ? `${currentOptions} ${tenantOption}` : tenantOption,
+  );
+
+  return createPool(scoped.toString());
 }
