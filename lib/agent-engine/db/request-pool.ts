@@ -27,26 +27,31 @@ export function getRequestPool(): pg.Pool {
 /**
  * Pool efêmero com o contexto de identidade do usuário já autenticado pelo app.
  *
- * O contrato do backend Neon usa `auth.uid()` -> `app.user_id` nas conexões
- * SQL confiáveis. O valor não vem do body: o chamador precisa passar o UUID que
- * acabou de ser validado pelo Neon Auth/requireRole.
+ * O schema Neon atual resolve `auth.uid()` pelo claim
+ * `request.jwt.claim.sub`. O valor não vem do body: o chamador precisa passar
+ * o UUID que acabou de ser validado pelo Neon Auth/requireRole.
  *
- * É um pool separado por requisição de prévia e DEVE ser encerrado pelo
- * chamador. Assim nenhuma conexão pode voltar ao pool global carregando a
- * identidade de outro usuário.
+ * A prévia usa conexão direta (não pooler), pois o pooler do Neon rejeita
+ * parâmetros customizados no startup package. O contexto é aplicado no evento
+ * `connect` de cada conexão e o pool inteiro é encerrado ao fim da requisição,
+ * impedindo reutilização da identidade entre usuários.
  */
 export function createRequestPoolForUser(userId: string): pg.Pool {
   if (!UUID_RX.test(userId)) {
     throw new Error('user_id inválido para contexto SQL da prévia');
   }
 
-  const scoped = new URL(databaseUrl());
-  const currentOptions = scoped.searchParams.get('options')?.trim();
-  const tenantOption = `-c app.user_id=${userId}`;
-  scoped.searchParams.set(
-    'options',
-    currentOptions ? `${currentOptions} ${tenantOption}` : tenantOption,
+  const directUrl = databaseUrl().replace(
+    /(@[^./]+)-pooler(\\.[^/]+\\/)/,
+    '$1$2',
   );
+  const pool = createPool(directUrl);
 
-  return createPool(scoped.toString());
+  pool.on('connect', (client) => {
+    void client
+      .query("select set_config('request.jwt.claim.sub', $1, false)", [userId])
+      .catch(() => client.release(true));
+  });
+
+  return pool;
 }
