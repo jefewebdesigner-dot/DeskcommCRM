@@ -96,14 +96,27 @@ export function RiskRadarList() {
             )}
           </p>
           <ul className="flex flex-col gap-1">
-            {semPasso.slice(0, 8).map((d) => (
-              <li key={d.id} className="flex items-baseline justify-between gap-3 text-xs">
-                <span className="truncate">{d.contact_name ?? t("Contato sem nome")}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">
-                  {t("aberta há")} {d.horas_aberta}h
-                </span>
-              </li>
-            ))}
+            {semPasso.slice(0, 8).map((d) => {
+              const href = d.conversation_id
+                ? `/app/inbox?id=${d.conversation_id}`
+                : d.contact_id
+                  ? `/app/contacts/${d.contact_id}`
+                  : "/app/kanban";
+              return (
+                <li key={d.id}>
+                  <Link href={href} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-xs transition-colors hover:bg-accent/60">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{d.contact_name ?? t("Contato sem nome")}</span>
+                      <span className="text-muted-foreground">{t("Sem próximo passo definido")}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground">
+                      {t("aberta há")} {d.horas_aberta}h
+                      <ArrowRight size={14} aria-hidden />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

@@ -163,3 +163,12 @@ __pycache__/
 .neon
 .chat-history.json
 .chat-history.json.bak
+
+# Artefatos órfãos de execuções anteriores do Next/Playwright na VPS
+.next-orfao-*/
+test-results-orfao-*/
+playwright-report-orfao-*/
+
+# Arquivos temporários de depuração/QA local
+.tmp-*
+tests/e2e-neon/.tmp-*

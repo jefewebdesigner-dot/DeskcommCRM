@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "path": "/api/v1/cron/agenda-operational-watcher",
+      "schedule": "15 11 * * *"
+    },
+    {
       "path": "/api/v1/cron/periciaia-billing-sync",
       "schedule": "13 9 * * *"
     }

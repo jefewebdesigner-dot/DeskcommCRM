@@ -27,6 +27,8 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import { recusaDeMotivoDaPerdaPeloBanco } from "@/lib/leads/motivo-da-perda";
+import { garantirPosVendaDaVendaGanha } from "@/lib/leads/handoff-pos-venda";
+import { logger } from "@/lib/logger";
 
 /** Como a demanda terminou. Não há terceira: encerrar é ganhar ou perder. */
 export type DesfechoDaDemanda = "won" | "lost";
@@ -264,6 +266,21 @@ export async function encerraDemanda(
       ...(input.desfecho === "lost" ? { lost_reason: input.motivo } : {}),
     },
   });
+
+  // Venda ganha abre o ciclo de Pós-vendas sem destruir o histórico comercial.
+  // Falha BAIXO: o fechamento já aconteceu e não pode ser desfeito porque uma
+  // automação operacional falhou. O erro fica observável para reparo.
+  if (input.desfecho === "won") {
+    const handoff = await garantirPosVendaDaVendaGanha(supabase, ctx, finalLead);
+    if (!handoff.ok) {
+      logger.error("[lead.won] falha ao iniciar pós-venda", {
+        leadId: input.leadId,
+        organizationId: ctx.organization_id,
+        motivo: handoff.motivo,
+        requestId: ctx.requestId,
+      });
+    }
+  }
 
   return { lead: finalLead, jaEstava: false };
 }

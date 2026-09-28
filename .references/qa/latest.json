@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "scope": "Smoke test da rota inicial em três larguras; não certifica o aplicativo inteiro.",
+  "checks": [
+    {
+      "width": 1280,
+      "httpStatus": 200,
+      "overflow": false,
+      "title": true,
+      "content": true,
+      "missingAlt": 0,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "httpStatus": 200,
+      "overflow": false,
+      "title": true,
+      "content": true,
+      "missingAlt": 0,
+      "errors": []
+    },
+    {
+      "width": 360,
+      "httpStatus": 200,
+      "overflow": false,
+      "title": true,
+      "content": true,
+      "missingAlt": 0,
+      "errors": []
+    }
+  ],
+  "unverified": [
+    "Fluxos autenticados",
+    "Persistência e regras de negócio",
+    "Contraste medido",
+    "Demais rotas",
+    "Build e testes do projeto"
+  ],
+  "fingerprint": "9c2d2fb1b5b24fbc6aa75c44d7292ca32c10a453df9dd44a03f5fad0dd4f188d",
+  "checkedAt": "2026-09-27T17:13:15.246Z"
+}

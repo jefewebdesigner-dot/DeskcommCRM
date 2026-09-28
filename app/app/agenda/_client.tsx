@@ -18,6 +18,7 @@ import { CartaoDaConexaoGoogle } from "./_components/CartaoDaConexaoGoogle";
 import { AgendaInterativa } from "@/components/agenda/AgendaInterativa";
 import { FiltroDePessoas } from "@/components/agenda/FiltroDePessoas";
 import { HistoricoDaAgenda } from "@/components/agenda/HistoricoDaAgenda";
+import { ResumoOperacionalDaAgenda } from "@/components/agenda/ResumoOperacionalDaAgenda";
 import type { Agendamento, HorarioLivre, VisaoDaAgenda } from "@/components/agenda/tipos";
 import { EmptyAgenda } from "@/components/empty";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
@@ -326,8 +327,23 @@ export function AgendaClient({
     recorteDaGrade.de === recorteDoServidor.de && recorteDaGrade.ate === recorteDoServidor.ate;
 
   const { data: agendamentosVivos } = useAgendamentos(recorteDaGrade);
-  const todos: Agendamento[] =
-    agendamentosVivos ?? (naJanelaDoServidor ? agendamentosIniciais : []);
+  const todos = React.useMemo<Agendamento[]>(
+    () => agendamentosVivos ?? (naJanelaDoServidor ? agendamentosIniciais : []),
+    [agendamentosVivos, agendamentosIniciais, naJanelaDoServidor],
+  );
+
+  // A agenda executiva responde uma pergunta DIFERENTE da grade: o que exige
+  // atenção agora, mesmo quando a pessoa navegou para outro mês. Por isso o
+  // recorte é estável em torno de hoje e não acompanha `ancora`/`visao`.
+  const [agoraOperacional] = React.useState(() => new Date());
+  const recorteOperacional = React.useMemo(
+    () => ({
+      de: addDays(startOfDay(agoraOperacional), -30).toISOString(),
+      ate: addDays(startOfDay(agoraOperacional), 8).toISOString(),
+    }),
+    [agoraOperacional],
+  );
+  const { data: agendamentosOperacionais = [] } = useAgendamentos(recorteOperacional);
 
   const agendamentos = React.useMemo(
     () => (isolada === null ? todos : todos.filter((a) => a.responsavelId === isolada)),
@@ -460,6 +476,16 @@ export function AgendaClient({
           )}
         </div>
       </header>
+
+      <ResumoOperacionalDaAgenda
+        agendamentos={
+          isolada === null
+            ? agendamentosOperacionais
+            : agendamentosOperacionais.filter((a) => a.responsavelId === isolada)
+        }
+        agora={agoraOperacional}
+        onAbrirAgendamento={(id) => router.push(`/app/agenda?compromisso=${id}`)}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">

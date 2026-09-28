@@ -497,6 +497,7 @@ export interface AgendamentoListado {
   situacao: string;
   donoId: string | null;
   contatoId: string | null;
+  conversaId: string | null;
   contatoNome: string | null;
 }
 
@@ -642,7 +643,7 @@ export async function listaAgendamentos(
   let q = supabase
     .from("calendar_appointments")
     .select(
-      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, contacts(name, display_name)",
+      "id, title, starts_at, ends_at, time_zone, status, revision, meeting_state, meeting_url, owner_user_id, contact_id, conversation_id, contacts(name, display_name)",
     )
     .eq("organization_id", organizationId)
     .order("starts_at", { ascending: true })
@@ -704,6 +705,7 @@ export async function listaAgendamentos(
       situacao: String(l.status),
       donoId: l.owner_user_id ? String(l.owner_user_id) : null,
       contatoId: l.contact_id ? String(l.contact_id) : null,
+      conversaId: l.conversation_id ? String(l.conversation_id) : null,
       // O ID sozinho não serve a nenhum dos dois consumidores: a grade precisa do
       // nome para dizer "com quem", e o AGENTE recebia um uuid cru onde devia
       // dizer "você já tem consulta marcada, Maria". Mesma coluna que a tela do

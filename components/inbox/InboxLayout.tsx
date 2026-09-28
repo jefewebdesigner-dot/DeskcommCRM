@@ -21,6 +21,7 @@ import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
 import { RetentionNotice } from "./RetentionNotice";
 import { CRMSidePanel } from "./CRMSidePanel";
+import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 import type { Message as ConversationMensagem } from "@/lib/types/messaging";
 import { InboxKeyboardShortcuts } from "./InboxKeyboardShortcuts";
 
@@ -417,6 +418,13 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           colunas.lista,
         )}
       >
+        <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
+          <span>{t("Atendimento")}</span>
+          <span className="flex items-center gap-1.5" title={t("Saúde das conexões do WhatsApp")}>
+            <ConnectionHealthDot />
+            {t("WhatsApp")}
+          </span>
+        </div>
         <InboxFilters value={filterValue} onChange={setFilterValue} />
         <div className="min-h-0 flex-1 overflow-hidden">
           <ConversationList
@@ -515,6 +523,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
               janelaFechada={motivoDaJanela}
               disabled={selectedConversation.status === "closed"}
               contactName={selectedConversation.contacts?.name ?? null}
+              organizationName={activeOrg?.name ?? null}
               respondendo={respondendo}
               onCancelarResposta={() => setRespondendo(null)}
               currentContactId={selectedConversation.contact_id}

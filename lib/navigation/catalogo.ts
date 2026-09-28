@@ -512,8 +512,8 @@ export const NAV_CATALOG = [
   // frase que explica para que servem. O ⌘K também as acha por nome.
   {
     href: "/app/assinaturas",
-    label: "Clientes e assinaturas",
-    description: "Receita recorrente, assinaturas, renovações e inadimplência do negócio.",
+    label: "Dashboard",
+    description: "Visão geral da operação: clientes, vendas, atendimento, tarefas, agenda e receita.",
     icon: "ChartLineUp",
     // Estava em "analise"/"Resultados" — movido para o grupo próprio acima do
     // Atendimento a pedido do dono do produto (ver comentário em NAV_GROUPS).

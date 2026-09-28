@@ -54,6 +54,7 @@ export interface FunilDaResposta {
   position: number;
   is_default: boolean;
   is_client_pipeline: boolean;
+  settings: Record<string, unknown> | null;
 }
 
 /**

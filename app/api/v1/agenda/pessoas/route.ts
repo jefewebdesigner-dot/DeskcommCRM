@@ -38,7 +38,11 @@ export async function GET(_req: NextRequest): Promise<Response> {
   if (!authz.ok) return authz.response;
   const orgId = authz.org.orgId; // fonte confiável (cookie validado)
 
-  const client = isServiceRoleConfigured() ? createAdminClient() : await createClient();
+  // O cliente técnico do Neon NÃO é um bypass universal de RLS. Para listar
+  // memberships usamos a sessão real, já autorizada acima, que é exatamente a
+  // identidade para a qual `user_orgs_select` foi escrita. O cliente técnico
+  // fica restrito ao lookup de nome no Neon Auth abaixo.
+  const client = await createClient();
   const { data: rows, error } = await client
     .from("user_organizations")
     .select("user_id, role")

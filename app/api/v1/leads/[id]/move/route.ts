@@ -24,6 +24,8 @@ import {
   recusaDeMotivoDaPerdaPeloBanco,
 } from "@/lib/leads/motivo-da-perda";
 import { RECUSA_DE_TROCA_DE_FUNIL } from "@/lib/leads/clonar-para-funil";
+import { garantirPosVendaDaVendaGanha } from "@/lib/leads/handoff-pos-venda";
+import { logger } from "@/lib/logger";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -236,6 +238,27 @@ export async function POST(
       position_in_stage: input.position_in_stage,
     },
   });
+
+  if (finalLead.status === "won") {
+    const handoff = await garantirPosVendaDaVendaGanha(
+      supabase,
+      {
+        organization_id: authz.org.orgId,
+        actor: { type: "user", id: user.id },
+        requestId,
+        idioma: user.idioma,
+      },
+      finalLead as Record<string, unknown>,
+    );
+    if (!handoff.ok) {
+      logger.error("[lead.move] falha ao iniciar pós-venda", {
+        leadId,
+        organizationId: authz.org.orgId,
+        motivo: handoff.motivo,
+        requestId,
+      });
+    }
+  }
 
   return ok(finalLead, { requestId });
 }

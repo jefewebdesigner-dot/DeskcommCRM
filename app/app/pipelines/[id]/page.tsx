@@ -26,5 +26,19 @@ export default async function PipelinePage({
     .eq("id", id)
     .maybeSingle();
   if (!pipeline) notFound();
-  return <PipelinePageClient pipelineId={id} initialName={pipeline.name} />;
+
+  const { data: funisDisponiveis } = await supabase
+    .from("crm_pipelines")
+    .select("id, name, settings")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("is_archived", false)
+    .order("position", { ascending: true });
+
+  return (
+    <PipelinePageClient
+      pipelineId={id}
+      initialName={pipeline.name}
+      funisDisponiveis={funisDisponiveis ?? []}
+    />
+  );
 }

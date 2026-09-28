@@ -1,0 +1,15 @@
+.git
+node_modules
+.next
+.next-*
+.references
+.zheus
+.claude
+.agents
+evidence
+test-results*
+coverage
+playwright-report
+tests
+.chat-history.json*
+.env*

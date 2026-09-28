@@ -276,6 +276,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         // invenção faria a tela mostrar dado que não existe.
         fuso: "",
         contatoId: null,
+        conversaId: null,
         contatoNome: null,
         origem: "google_sync",
       });

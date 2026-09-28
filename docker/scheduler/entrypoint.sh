@@ -81,6 +81,9 @@ CRONS="
 # confirmado, futuro e ainda não avisado.
 */5 * * * *|45|api/v1/cron/agenda-reminder
 */15 * * * *|45|api/v1/cron/agenda-expira-pendentes
+# O FECHAMENTO OPERACIONAL. Depois do compromisso, cria trabalho quando ninguém
+# registrou o resultado ou quando o cliente ficou sem uma tarefa de próximo passo.
+*/15 * * * *|60|api/v1/cron/agenda-operational-watcher
 */15 * * * *|60|api/v1/cron/risk-watcher
 # O CASO PARADO. De hora em hora, e não a cada 5 minutos: o prazo é de 24h, e
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.

@@ -48,10 +48,11 @@ interface UpdateInput {
 export function TemplateFormDialog({ open, onOpenChange, canShare, template }: Props) {
   const t = useT();
   const isEdit = !!template;
-  const [title, setTitle] = React.useState("");
-  const [body, setBody] = React.useState("");
-  const [shortcut, setShortcut] = React.useState("");
-  const [shared, setShared] = React.useState(false);
+  const [title, setTitle] = React.useState(template?.title ?? "");
+  const [body, setBody] = React.useState(template?.body ?? "");
+  const [shortcut, setShortcut] = React.useState(template?.shortcut ?? "");
+  const [shared, setShared] = React.useState(template ? template.owner_user_id === null : false);
+  const bodyRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const qc = useQueryClient();
   const create = useMutation({
@@ -68,13 +69,21 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
   });
   const pending = create.isPending || update.isPending;
 
-  React.useEffect(() => {
-    if (!open) return;
-    setTitle(template?.title ?? "");
-    setBody(template?.body ?? "");
-    setShortcut(template?.shortcut ?? "");
-    setShared(template ? template.owner_user_id === null : false);
-  }, [open, template]);
+  function inserirVariavel(variavel: "{{primeiro_nome}}" | "{{nome}}" | "{{empresa}}") {
+    const campo = bodyRef.current;
+    if (!campo) {
+      setBody((atual) => `${atual}${variavel}`);
+      return;
+    }
+    const inicio = campo.selectionStart ?? body.length;
+    const fim = campo.selectionEnd ?? body.length;
+    setBody(body.slice(0, inicio) + variavel + body.slice(fim));
+    requestAnimationFrame(() => {
+      campo.focus();
+      const posicao = inicio + variavel.length;
+      campo.selectionStart = campo.selectionEnd = posicao;
+    });
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +95,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
           body,
           shortcut: shortcut.trim() || null,
         });
-        toast.success(t("Template atualizado."));
+        toast.success(t("Resposta rápida atualizada."));
       } else {
         await create.mutateAsync({
           title,
@@ -94,7 +103,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
           shortcut: shortcut.trim() || undefined,
           shared: canShare ? shared : false,
         });
-        toast.success(t("Template criado."));
+        toast.success(t("Resposta rápida criada."));
       }
       onOpenChange(false);
     } catch {
@@ -106,9 +115,9 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? t("Editar template") : t("Novo template")}</DialogTitle>
+          <DialogTitle>{isEdit ? t("Editar resposta rápida") : t("Nova resposta rápida")}</DialogTitle>
           <DialogDescription>
-            {t("Scripts salvos para responder mais rápido no atendimento.")}
+            {t("Crie uma mensagem reutilizável para o atendimento comercial e operacional.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -127,6 +136,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
           <div className="space-y-2">
             <Label htmlFor="tpl-body">{t("Mensagem")}</Label>
             <Textarea
+              ref={bodyRef}
               id="tpl-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -134,10 +144,25 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
               minLength={1}
               maxLength={4096}
               required
-              rows={5}
+              rows={6}
             />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t("Inserir variável:")}</span>
+              {(["{{primeiro_nome}}", "{{nome}}", "{{empresa}}"] as const).map((variavel) => (
+                <Button
+                  key={variavel}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 font-mono text-[11px]"
+                  onClick={() => inserirVariavel(variavel)}
+                >
+                  {variavel}
+                </Button>
+              ))}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {t("Use")} {"{{primeiro_nome}}"} {t("e")} {"{{nome}}"} {t("para personalizar.")}
+              {t("O Inbox preenche nome do cliente e nome da empresa automaticamente antes do envio.")}
             </p>
           </div>
           <div className="space-y-2">
@@ -166,7 +191,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
               {t("Cancelar")}
             </Button>
             <Button type="submit" disabled={pending}>
-              {isEdit ? t("Salvar") : t("Criar template")}
+              {isEdit ? t("Salvar") : t("Criar resposta rápida")}
             </Button>
           </DialogFooter>
         </form>

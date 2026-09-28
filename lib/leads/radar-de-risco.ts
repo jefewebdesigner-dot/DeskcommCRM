@@ -71,11 +71,14 @@ export interface AtRiskLead {
  */
 export interface DemandaSemProximoPasso {
   id: string;
-  contact_id: string;
+  lead_id: string | null;
+  contact_id: string | null;
   contact_name: string | null;
   aberta_em: string;
   horas_aberta: number;
   origem: string;
+  /** Destino operacional: abre o atendimento quando existir conversa. */
+  conversation_id: string | null;
 }
 
 export interface RadarDeRisco {
@@ -358,14 +361,33 @@ export async function carregaRadarDeRisco(
     demandasVisiveis = demandasVisiveis.filter(d => d.lead_id ? visibleLeads.has(d.lead_id) : visibleLeadless.has(d.id));
   }
 
+  const demandaContactIds = [
+    ...new Set(demandasVisiveis.flatMap((d) => d.contact_id ? [d.contact_id as string] : [])),
+  ];
+  const conversaPorContato = new Map<string, string>();
+  if (demandaContactIds.length > 0) {
+    const { data: conversas, error: conversasErr } = await admin
+      .from("conversations")
+      .select("id, contact_id, updated_at")
+      .eq("organization_id", organizationId)
+      .in("contact_id", demandaContactIds)
+      .order("updated_at", { ascending: false });
+    if (conversasErr) throw new Error(`radar_demandas_conversas_failed: ${conversasErr.message}`);
+    for (const conversa of conversas ?? []) {
+      if (!conversaPorContato.has(conversa.contact_id)) conversaPorContato.set(conversa.contact_id, conversa.id);
+    }
+  }
   const semProximoPasso: DemandaSemProximoPasso[] = demandasVisiveis.map((d) => {
     // O join do PostgREST vem como ARRAY mesmo em relação um-para-um.
     const rel = d.contacts as unknown as ContatoNomeavel[] | ContatoNomeavel | null;
     const contato = Array.isArray(rel) ? (rel[0] ?? null) : rel;
+    const leadId = d.lead_id as string | null;
     return {
       id: d.id as string,
-      contact_id: d.contact_id as string,
+      lead_id: leadId,
+      contact_id: (d.contact_id as string | null) ?? null,
       contact_name: nomeDoContato(contato),
+      conversation_id: d.contact_id ? (conversaPorContato.get(d.contact_id as string) ?? null) : null,
       aberta_em: d.aberta_em as string,
       horas_aberta: Math.floor(
         (now.getTime() - new Date(d.aberta_em as string).getTime()) / 3_600_000,

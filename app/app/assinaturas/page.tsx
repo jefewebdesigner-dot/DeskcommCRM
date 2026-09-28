@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { BillingDashboardClient } from "./_components/BillingDashboardClient";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Clientes e assinaturas" };
+export const metadata = { title: "Dashboard" };
 
 export default async function AssinaturasPage() {
   const auth = await requireRole("manager", { resource: "billing_export" });

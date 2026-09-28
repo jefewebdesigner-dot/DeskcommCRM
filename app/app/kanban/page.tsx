@@ -6,7 +6,12 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { FunisClient, type FunilDaLista } from "./_client";
+import { tipoOperacionalDoFunil } from "@/lib/pipelines/funis-operacionais";
+import {
+  FunisClient,
+  type FunilDaLista,
+  type MetricasDoFunilDaLista,
+} from "./_client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Funis" };
@@ -30,7 +35,12 @@ export const metadata: Metadata = { title: "Funis" };
  * atalho de platform admin, que as rotas não concedem por padrão): mostrar um
  * botão que o servidor recusaria seria prometer o que não se cumpre.
  */
-export default async function KanbanPickerPage() {
+export default async function KanbanPickerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gerenciar?: string }>;
+}) {
+  const { gerenciar } = await searchParams;
   const user = await requireAuth();
   const activeOrg = await resolveActiveOrg(user);
   if (!activeOrg) redirect("/app");
@@ -47,12 +57,47 @@ export default async function KanbanPickerPage() {
     // invisível e indestrutível: quem arquivou não tinha como ver, tirar do
     // arquivo nem excluir o que arquivou. A separação passou para a partição
     // abaixo — a lista de trabalho continua só com os vivos.
-    .select("id, name, slug, description, position, is_default, is_client_pipeline, is_archived")
+    .select("id, name, slug, description, position, is_default, is_client_pipeline, is_archived, settings")
     .eq("organization_id", activeOrg.orgId)
     .order("position");
 
   const todos = (data ?? []) as Array<FunilDaLista & { is_archived: boolean }>;
   const funis = todos.filter((f) => !f.is_archived);
+
+  if (gerenciar !== "1" && funis.length > 0) {
+    const vendas =
+      funis.find((funil) => tipoOperacionalDoFunil(funil.settings) === "sales") ??
+      funis.find((funil) => funil.is_default) ??
+      funis[0];
+    if (vendas) redirect(`/app/pipelines/${vendas.id}`);
+  }
+
+  const { data: negociosAbertos } = await supabase
+    .from("crm_leads")
+    .select("pipeline_id, value_cents, currency, owner_user_id, owner_agent_id")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("status", "open");
+
+  const metricasPorFunil: Record<string, MetricasDoFunilDaLista> = Object.fromEntries(
+    todos.map((funil) => [funil.id, { abertos: 0, semResponsavel: 0, valores: [] }]),
+  );
+  const valoresPorFunil = new Map<string, Map<string, number>>();
+  for (const negocio of negociosAbertos ?? []) {
+    const metricas = metricasPorFunil[negocio.pipeline_id];
+    if (!metricas) continue;
+    metricas.abertos += 1;
+    if (!negocio.owner_user_id && !negocio.owner_agent_id) metricas.semResponsavel += 1;
+    if (negocio.value_cents == null) continue;
+    const moeda = negocio.currency ?? "BRL";
+    const porMoeda = valoresPorFunil.get(negocio.pipeline_id) ?? new Map<string, number>();
+    porMoeda.set(moeda, (porMoeda.get(moeda) ?? 0) + negocio.value_cents);
+    valoresPorFunil.set(negocio.pipeline_id, porMoeda);
+  }
+  for (const [pipelineId, porMoeda] of valoresPorFunil) {
+    metricasPorFunil[pipelineId]!.valores = [...porMoeda.entries()]
+      .map(([moeda, centavos]) => ({ moeda, centavos }))
+      .sort((a, b) => a.moeda.localeCompare(b.moeda));
+  }
   const podeGerenciar = ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
   // O arquivo só vai para quem pode mexer nele: tirar do arquivo e excluir são
   // `requireRole("manager")` nas rotas, e mostrar a gaveta a quem receberia 403
@@ -83,6 +128,7 @@ export default async function KanbanPickerPage() {
         arquivados={arquivados}
         podeGerenciar={podeGerenciar}
         podeImportar={podeImportar}
+        metricasPorFunil={metricasPorFunil}
       />
     </div>
   );

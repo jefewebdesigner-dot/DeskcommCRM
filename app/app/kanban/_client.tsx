@@ -4,6 +4,11 @@ import Link from "next/link";
 
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
+import { formatCents } from "@/lib/money";
+import {
+  rotuloDoTipoOperacional,
+  tipoOperacionalDoFunil,
+} from "@/lib/pipelines/funis-operacionais";
 
 import { ImportarLeads } from "./_components/ImportarLeads";
 import { EmptyPipeline } from "@/components/empty";
@@ -32,6 +37,13 @@ export interface FunilDaLista {
   position: number;
   is_default: boolean;
   is_client_pipeline?: boolean;
+  settings?: Record<string, unknown> | null;
+}
+
+export interface MetricasDoFunilDaLista {
+  abertos: number;
+  semResponsavel: number;
+  valores: Array<{ moeda: string; centavos: number }>;
 }
 
 /**
@@ -70,6 +82,7 @@ export function FunisClient({
   arquivados: arquivadosDoServidor,
   podeGerenciar,
   podeImportar,
+  metricasPorFunil = {},
 }: {
   funis: FunilDaLista[];
   /**
@@ -82,6 +95,8 @@ export function FunisClient({
   podeGerenciar: boolean;
   /** Espelha o `requireRole("agent")` de `POST /api/v1/leads/import`. */
   podeImportar: boolean;
+  /** Retrato leve para escolher qual funil precisa de atenção antes de abri-lo. */
+  metricasPorFunil?: Record<string, MetricasDoFunilDaLista>;
 }) {
   const t = useT();
   /**
@@ -434,6 +449,9 @@ export function FunisClient({
           const renomeandoAqui = renomeando?.id === funil.id ? renomeando : null;
           const arquivandoAqui = arquivando?.id === funil.id ? arquivando : null;
           const erroDaLinha = erro?.id === funil.id ? erro.texto : null;
+          const metricas = metricasPorFunil[funil.id];
+          const tipoOperacional = tipoOperacionalDoFunil(funil.settings);
+          const rotuloOperacional = rotuloDoTipoOperacional(tipoOperacional);
 
           return (
             <li key={funil.id} className="flex flex-col gap-3 p-4" data-testid={`funil-${funil.id}`}>
@@ -498,6 +516,11 @@ export function FunisClient({
                     >
                       <span className="flex items-center gap-2">
                         <span className="text-sm font-medium group-hover:underline">{funil.name}</span>
+                        {rotuloOperacional ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            {t(rotuloOperacional)}
+                          </Badge>
+                        ) : null}
                         {funil.is_default && (
                           <Badge variant="secondary" className="text-[10px]">
                             {t("Padrão")}
@@ -512,6 +535,21 @@ export function FunisClient({
                       {funil.description && (
                         <span className="text-xs text-muted-foreground">{funil.description}</span>
                       )}
+                      {metricas ? (
+                        <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>{metricas.abertos} {t(metricas.abertos === 1 ? "negócio aberto" : "negócios abertos")}</span>
+                          {metricas.valores.length > 0 ? (
+                            <span>
+                              {metricas.valores
+                                .map(({ moeda, centavos }) => formatCents(centavos, moeda))
+                                .join(" + ")}
+                            </span>
+                          ) : null}
+                          {metricas.semResponsavel > 0 ? (
+                            <span>{metricas.semResponsavel} {t("sem responsável")}</span>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </Link>
                   )}
                 </div>

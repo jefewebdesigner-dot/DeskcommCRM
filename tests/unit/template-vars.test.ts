@@ -14,6 +14,14 @@ describe("interpolateTemplate", () => {
   it("tolera espaços e case nas chaves", () => {
     expect(interpolateTemplate("Oi {{ Primeiro_Nome }}!", { name: "Ana Paula" })).toBe("Oi Ana!");
   });
+  it("preenche a empresa com a organização ativa", () => {
+    expect(
+      interpolateTemplate("Bem-vindo à {{empresa}}, {{primeiro_nome}}!", {
+        name: "Ana Paula",
+        organizationName: "PeríciaIA",
+      }),
+    ).toBe("Bem-vindo à PeríciaIA, Ana!");
+  });
   it("sem nome → mantém o literal (não quebra)", () => {
     expect(interpolateTemplate("Oi {{primeiro_nome}}", { name: null })).toBe("Oi {{primeiro_nome}}");
   });

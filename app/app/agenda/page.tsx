@@ -110,7 +110,7 @@ export default async function AgendaPage() {
     supabase
       .from("calendar_appointments")
       .select(
-        "id, revision, title, starts_at, ends_at, status, owner_user_id, contact_id, event_type_id, location_kind, contacts(name, display_name)",
+        "id, revision, title, starts_at, ends_at, status, owner_user_id, contact_id, conversation_id, event_type_id, location_kind, contacts(name, display_name)",
       )
       .eq("organization_id", activeOrg.orgId)
       .gte("starts_at", inicio.toISOString())
@@ -277,6 +277,8 @@ export default async function AgendaPage() {
           // são reescritas pelo cascade de LGPD, então nenhuma vaza titular
           // anonimizado.
           quemSeraAtendido: contatoDoEmbed(a.contacts),
+          contatoId: a.contact_id ?? null,
+          conversaId: a.conversation_id ?? null,
         })) as AgendamentoDaTela[]
       ).concat(
         /**

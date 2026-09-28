@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// `dispatchWahaEvent` importa o audit de produção, que por sua vez inicializa
+// Neon Auth/Next headers. Este teste prova o efeito do webhook sobre a saúde do
+// canal e não a infraestrutura de autenticação; isolar o audit mantém a prova
+// no limite correto e evita depender do resolver interno do Next no Vitest.
+vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 
 /**
  * A conexão caiu — e alguém precisa SABER.

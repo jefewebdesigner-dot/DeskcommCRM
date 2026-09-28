@@ -19,7 +19,16 @@ import type { FunilDaResposta } from "@/hooks/pipelines/usePipelines";
  */
 
 function funil(id: string, name: string, is_default = false): FunilDaResposta {
-  return { id, name, slug: name.toLowerCase(), description: null, position: 1, is_default, is_client_pipeline: false };
+  return {
+    id,
+    name,
+    slug: name.toLowerCase(),
+    description: null,
+    position: 1,
+    is_default,
+    is_client_pipeline: false,
+    settings: null,
+  };
 }
 
 const PEDIDOS = funil("11111111-1111-4111-8111-111111111111", "Pedidos", true);

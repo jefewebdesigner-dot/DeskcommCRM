@@ -74,6 +74,7 @@ const MARIA: AgendamentoListado = {
   situacao: "confirmed",
   donoId: "u-ana",
   contatoId: "c-maria",
+  conversaId: null,
   contatoNome: "Maria Ferraz",
 };
 

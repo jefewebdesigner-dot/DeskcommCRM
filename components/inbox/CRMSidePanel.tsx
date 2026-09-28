@@ -474,6 +474,7 @@ export function CRMSidePanel({ conversation }: Props) {
   const [demandas, setDemandas] = useState<DemandaRow[] | null>(null);
   const [fatos, setFatos] = useState<Array<{ id: string; headline: string; body: string }>>([]);
   const [historico, setHistorico] = useState<Array<{ id: string; desfecho: string; fechada_em: string }>>([]);
+  const [origemMeta, setOrigemMeta] = useState<{ veio: boolean; titulo: string | null }>({ veio: false, titulo: null });
   const [summaryContactId, setSummaryContactId] = useState<string | null>(null);
   /**
    * O TERCEIRO ESTADO. Antes existiam dois — carregando e "tem N itens" — e a
@@ -503,6 +504,7 @@ export function CRMSidePanel({ conversation }: Props) {
       setActivities(null);
       setDemandas(null);
       setFatos([]); setHistorico([]);
+      setOrigemMeta({ veio: false, titulo: null });
       setLeadAtivoId(null);
       return;
     }
@@ -523,6 +525,8 @@ export function CRMSidePanel({ conversation }: Props) {
             demandas: DemandaRow[];
             fatos?: Array<{ id: string; headline: string; body: string }>;
             historico?: Array<{ id: string; desfecho: string; fechada_em: string }>;
+            veio_de_anuncio_meta?: boolean;
+            titulo_anuncio?: string | null;
           };
         }>(`/api/v1/contacts/${contactId}/crm-summary`);
         if (cancelled) return;
@@ -536,6 +540,7 @@ export function CRMSidePanel({ conversation }: Props) {
         // que é o caso saudável.
         setDemandas(r.data.demandas ?? []);
         setFatos(r.data.fatos ?? []); setHistorico(r.data.historico ?? []);
+        setOrigemMeta({ veio: Boolean(r.data.veio_de_anuncio_meta), titulo: r.data.titulo_anuncio ?? null });
       } catch {
         if (cancelled) return;
         // Falha NÃO vira lista vazia. Os dados ficam `null` e o painel diz que
@@ -546,6 +551,7 @@ export function CRMSidePanel({ conversation }: Props) {
         setActivities(null);
         setDemandas(null);
         setFatos([]); setHistorico([]);
+        setOrigemMeta({ veio: false, titulo: null });
       }
     }
 
@@ -607,6 +613,12 @@ export function CRMSidePanel({ conversation }: Props) {
           <div className="font-medium">{displayName}</div>
           {contact?.phone_number && (
             <div className="text-xs text-muted-foreground">{phoneForDisplay(contact.phone_number)}</div>
+          )}
+          {origemMeta.veio && (
+            <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs">
+              <div className="font-medium">{t("Origem: anúncio Meta")}</div>
+              {origemMeta.titulo ? <div className="mt-0.5 line-clamp-2 text-muted-foreground">{origemMeta.titulo}</div> : null}
+            </div>
           )}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1">

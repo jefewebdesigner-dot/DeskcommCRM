@@ -87,7 +87,7 @@ export async function GET(
   }
 
   const { data: contactScope, error: scopeError } = await supabase.from("contacts")
-    .select("organization_id").eq("id", contactId).maybeSingle();
+    .select("organization_id, source_metadata").eq("id", contactId).maybeSingle();
   if (scopeError) return fail("internal_error", scopeError.message, 500, { requestId });
   if (!contactScope) return fail("not_found", "Contato não encontrado.", 404, { requestId });
   const [leads, orders, activities, demandas, fatos, historico] = await Promise.all([
@@ -147,8 +147,14 @@ export async function GET(
   }>;
   const nomes = await nomesDosAtendentes(linhas.map((a) => a.performed_by_user_id ?? null));
 
+  const origem = contactScope.source_metadata && typeof contactScope.source_metadata === "object" && !Array.isArray(contactScope.source_metadata)
+    ? contactScope.source_metadata as Record<string, unknown>
+    : {};
+
   return ok(
     {
+      veio_de_anuncio_meta: origem.ad_platform === "meta_ads",
+      titulo_anuncio: typeof origem.ad_title === "string" ? origem.ad_title : null,
       leads: (leads.data ?? []).map((row) => comCamposDoFunil(row as Record<string, unknown>)),
       orders: orders.data ?? [],
       activities: linhas.map((a) => ({

@@ -38,6 +38,8 @@ export interface FunilEditavel {
   is_archived: boolean;
   /** Opcional porque NENHUMA regra daqui a usa — ela só existe para a tela. */
   description?: string | null;
+  /** Metadados do funil; a gestão não os edita, mas a lista usa o tipo operacional. */
+  settings?: Record<string, unknown> | null;
 }
 
 /** O que amarra o funil ao resto do sistema, contado ANTES de arquivar ou excluir. */

@@ -3,6 +3,7 @@ import { MeetDoCompromisso, type MeetingDetail } from "./MeetDoCompromisso";
 import { SincronizacaoDoCompromisso, type SyncDetail } from "./SincronizacaoDoCompromisso";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { addDays, format } from "date-fns";
 import Link from "next/link";
 import { apiClient } from "@/lib/api/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -10,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { rotuloDoLocal } from "@/lib/agenda/locais";
+import type { PrioridadeDaTarefa, Tarefa } from "@/lib/tarefas/tipos";
 
 type Detalhe = {
   meeting?: MeetingDetail | null;
@@ -25,6 +28,7 @@ type Detalhe = {
   time_zone: string;
   status: string;
   revision: number;
+  responsavel_id: string | null;
   contact_id: string | null;
   conversation_id: string | null;
   outcome_source_kind: string | null;
@@ -70,6 +74,30 @@ export function DetalheDoCompromisso({
       (await apiClient.get<{ data: Detalhe }>(`/api/v1/agenda/agendamentos/${id}`)).data,
   });
   const a = query.data;
+  const exigeProximoPasso = Boolean(
+    a?.contact_id && a.outcome_recorded_at && ["completed", "no_show"].includes(a.status),
+  );
+  const equipe = useAssignableMembers(exigeProximoPasso && podeEditar);
+  const tarefasDoContato = useQuery({
+    queryKey: ["agenda", "tarefas-do-contato", a?.contact_id],
+    enabled: exigeProximoPasso,
+    queryFn: async () => {
+      const qs = new URLSearchParams({ contact_id: a!.contact_id!, aberto: "true" });
+      return (
+        await apiClient.get<{ data: { tasks: Tarefa[] } }>(`/api/v1/tasks?${qs.toString()}`)
+      ).data.tasks;
+    },
+  });
+  const [proximoTitulo, setProximoTitulo] = useState("");
+  const [proximoPrazo, setProximoPrazo] = useState("");
+  const [proximaPrioridade, setProximaPrioridade] = useState<PrioridadeDaTarefa>("medium");
+  const [proximoResponsavel, setProximoResponsavel] = useState("");
+  const membros = equipe.data ?? [];
+  const responsavelEfetivo =
+    proximoResponsavel ||
+    (a?.responsavel_id && membros.some((m) => m.user_id === a.responsavel_id)
+      ? a.responsavel_id
+      : (membros[0]?.user_id ?? ""));
   const formatoDeData =
     a &&
     new Intl.DateTimeFormat(tagDoIdioma, {
@@ -116,6 +144,45 @@ export function DetalheDoCompromisso({
     },
     onError: mutationFailed,
   });
+
+  function aplicarProximoPasso(
+    titulo: string,
+    dias: number,
+    prioridade: PrioridadeDaTarefa = "medium",
+  ) {
+    const prazo = addDays(new Date(), dias);
+    prazo.setHours(9, 0, 0, 0);
+    setProximoTitulo(titulo);
+    setProximoPrazo(format(prazo, "yyyy-MM-dd'T'HH:mm"));
+    setProximaPrioridade(prioridade);
+  }
+
+  const criarProximoPasso = useMutation({
+    mutationFn: async () => {
+      if (!a?.contact_id) throw new Error(t("Este compromisso não tem contato vinculado."));
+      if (!proximoTitulo.trim()) throw new Error(t("Escolha ou escreva o próximo passo."));
+      if (!proximoPrazo) throw new Error(t("Defina quando essa tarefa precisa ser feita."));
+      if (!responsavelEfetivo) throw new Error(t("Escolha quem será responsável pela tarefa."));
+      return apiClient.post<{ data: { task: Tarefa } }>("/api/v1/tasks", {
+        title: proximoTitulo.trim(),
+        description: `Próximo passo após: ${a.title}`,
+        due_date: new Date(proximoPrazo).toISOString(),
+        priority: proximaPrioridade,
+        status: "pending",
+        contact_id: a.contact_id,
+        assigned_to: responsavelEfetivo,
+      });
+    },
+    onSuccess: () => {
+      setProximoTitulo("");
+      setProximoPrazo("");
+      setProximaPrioridade("medium");
+      void qc.invalidateQueries({ queryKey: ["crm_tasks"] });
+      void qc.invalidateQueries({ queryKey: ["agenda", "tarefas-do-contato", a?.contact_id] });
+    },
+    onError: showApiError,
+  });
+
   function decide(patch: Record<string, unknown>) {
     if (a && !staleDraft) mutation.mutate({ revision: draftRevision ?? a.revision, patch });
   }
@@ -182,9 +249,16 @@ export function DetalheDoCompromisso({
               )}
             </p>
             {a.contact_id ? (
-              <Link href={`/app/contacts/${a.contact_id}`} className="underline">
-                {t("Ver contato")}
-              </Link>
+              <div className="flex flex-wrap gap-3 text-sm">
+                {a.conversation_id ? (
+                  <Link href={`/app/inbox?id=${a.conversation_id}`} className="underline">
+                    {t("Abrir conversa")}
+                  </Link>
+                ) : null}
+                <Link href={`/app/contacts/${a.contact_id}`} className="underline">
+                  {t("Ver contato")}
+                </Link>
+              </div>
             ) : (
               <p>{t("Compromisso pessoal, sem cliente vinculado.")}</p>
             )}
@@ -238,6 +312,169 @@ export function DetalheDoCompromisso({
                 </Link>
               </div>
             ) : null}
+
+            {exigeProximoPasso ? (
+              <section
+                data-testid="proximo-passo-do-compromisso"
+                className="space-y-4 rounded-xl border border-border bg-surface p-4"
+              >
+                <div>
+                  <h3 className="font-semibold">{t("Próximo passo")}</h3>
+                  <p className="mt-1 text-sm text-text-muted">
+                    {tarefasDoContato.data?.length
+                      ? t("Este cliente já tem tarefas em aberto. Revise antes de criar outra.")
+                      : t(
+                          "O compromisso terminou. Defina quem faz o quê e até quando para o cliente não ficar parado.",
+                        )}
+                  </p>
+                </div>
+
+                {tarefasDoContato.isPending ? (
+                  <p className="text-sm text-text-muted">{t("Verificando tarefas em aberto…")}</p>
+                ) : tarefasDoContato.isError ? (
+                  <Button variant="outline" size="sm" onClick={() => void tarefasDoContato.refetch()}>
+                    {t("Tentar carregar as tarefas")}
+                  </Button>
+                ) : tarefasDoContato.data?.length ? (
+                  <div className="space-y-2 rounded-lg border border-border bg-background p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium">{t("Já em aberto")}</p>
+                      <Link href="/app/tasks" className="text-xs underline">
+                        {t("Ver todas")}
+                      </Link>
+                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      {tarefasDoContato.data.slice(0, 3).map((tarefa) => {
+                        const responsavel = membros.find((m) => m.user_id === tarefa.assigned_to);
+                        return (
+                          <li key={tarefa.id} className="flex items-start justify-between gap-3">
+                            <span className="min-w-0 flex-1 truncate">{tarefa.title}</span>
+                            <span className="shrink-0 text-xs text-text-muted">
+                              {responsavel?.full_name ?? t("Equipe")}
+                              {tarefa.due_date
+                                ? ` · ${new Date(tarefa.due_date).toLocaleDateString(tagDoIdioma)}`
+                                : ""}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : (
+                  <div role="status" className="rounded-lg border border-warning/40 bg-warning/5 p-3">
+                    <p className="text-sm font-medium">{t("Ainda não há próximo passo registrado.")}</p>
+                  </div>
+                )}
+
+                {podeEditar ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => aplicarProximoPasso("Enviar proposta", 1, "high")}
+                      >
+                        {t("Enviar proposta")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => aplicarProximoPasso("Fazer follow-up", 3)}
+                      >
+                        {t("Fazer follow-up")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => aplicarProximoPasso("Validar onboarding", 1, "high")}
+                      >
+                        {t("Validar onboarding")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => aplicarProximoPasso("Fazer pós-venda", 30)}
+                      >
+                        {t("Fazer pós-venda")}
+                      </Button>
+                    </div>
+
+                    <label className="block text-sm">
+                      {t("O que precisa ser feito")}
+                      <input
+                        value={proximoTitulo}
+                        onChange={(e) => setProximoTitulo(e.target.value)}
+                        className="mt-1 w-full rounded-md border bg-surface p-2"
+                        placeholder={t("Ex.: enviar proposta revisada ao cliente")}
+                      />
+                    </label>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-sm">
+                        {t("Prazo")}
+                        <input
+                          type="datetime-local"
+                          value={proximoPrazo}
+                          onChange={(e) => setProximoPrazo(e.target.value)}
+                          className="mt-1 w-full rounded-md border bg-surface p-2"
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        {t("Responsável")}
+                        <select
+                          value={responsavelEfetivo}
+                          onChange={(e) => setProximoResponsavel(e.target.value)}
+                          className="mt-1 w-full rounded-md border bg-surface p-2"
+                          disabled={equipe.isPending || membros.length === 0}
+                        >
+                          {membros.length === 0 ? (
+                            <option value="">{t("Nenhum responsável disponível")}</option>
+                          ) : (
+                            membros.map((membro) => (
+                              <option key={membro.user_id} value={membro.user_id}>
+                                {membro.full_name ?? t("Membro da equipe")}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="block text-sm">
+                      {t("Prioridade")}
+                      <select
+                        value={proximaPrioridade}
+                        onChange={(e) => setProximaPrioridade(e.target.value as PrioridadeDaTarefa)}
+                        className="mt-1 w-full rounded-md border bg-surface p-2"
+                      >
+                        <option value="low">{t("Baixa")}</option>
+                        <option value="medium">{t("Média")}</option>
+                        <option value="high">{t("Alta")}</option>
+                        <option value="urgent">{t("Urgente")}</option>
+                      </select>
+                    </label>
+
+                    <Button
+                      type="button"
+                      disabled={
+                        criarProximoPasso.isPending ||
+                        !proximoTitulo.trim() ||
+                        !proximoPrazo ||
+                        !responsavelEfetivo
+                      }
+                      onClick={() => criarProximoPasso.mutate()}
+                    >
+                      {criarProximoPasso.isPending ? t("Criando tarefa…") : t("Criar tarefa de próximo passo")}
+                    </Button>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
             {staleDraft ? (
               <div role="alert" className="space-y-2 rounded-lg border p-3">
                 <p>

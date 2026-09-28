@@ -54,11 +54,14 @@ export type { OrigemDoAgendamento, SituacaoDoAgendamento } from "@/lib/agenda/ti
 import type { OrigemDoAgendamento, SituacaoDoAgendamento, TrilhaDaAgenda } from "@/lib/agenda/tipos";
 
 export type Agendamento = {
-  revision?:number;
+  revision?: number;
   id: string;
   titulo: string;
   /** Quem vai ser atendido. Ausente em ocupação vinda do Google. */
   quemSeraAtendido?: string;
+  /** Vínculos operacionais para sair da Agenda e agir no CRM sem procurar a pessoa de novo. */
+  contatoId?: string | null;
+  conversaId?: string | null;
   /** Quem atende — é dele a cor do bloco. */
   responsavelId: string;
   /** ISO-8601. */

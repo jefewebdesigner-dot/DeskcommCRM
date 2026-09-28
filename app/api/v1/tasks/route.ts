@@ -28,9 +28,11 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { ok, fail } from "@/lib/api/wrappers";
-import { audit } from "@/lib/audit";
+import { audit, isServiceRoleConfigured } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
@@ -127,10 +129,92 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
+  // Os vínculos da tarefa são input do usuário. A FK prova que o id existe,
+  // mas NÃO prova que pertence à organização ativa — e `crm_tasks` guarda o
+  // `organization_id` da tarefa independentemente do contato/lead. Sem estas
+  // checagens, um UUID conhecido de outra organização poderia ficar pendurado
+  // numa tarefa desta org sem a FK reclamar.
+  const leituraTenant = isServiceRoleConfigured() ? createAdminClient() : supabase;
+  let contactId = parsed.data.contact_id ?? null;
+  let leadId = parsed.data.lead_id ?? null;
+
+  if (leadId) {
+    const { data: lead, error: leadError } = await leituraTenant
+      .from("crm_leads")
+      .select("id, contact_id")
+      .eq("organization_id", authz.org.orgId)
+      .eq("id", leadId)
+      .maybeSingle();
+    if (leadError) return fail("internal_error", t("Erro ao validar o negócio."), 500, { requestId });
+    if (!lead) {
+      return fail("validation_failed", t("O negócio vinculado não pertence a esta organização."), 422, {
+        requestId,
+      });
+    }
+    if (contactId && lead.contact_id && lead.contact_id !== contactId) {
+      return fail("validation_failed", t("O contato e o negócio vinculados não correspondem."), 422, {
+        requestId,
+      });
+    }
+    if (!contactId && lead.contact_id) contactId = lead.contact_id;
+  }
+
+  if (contactId) {
+    const { data: contato, error: contatoError } = await leituraTenant
+      .from("contacts")
+      .select("id")
+      .eq("organization_id", authz.org.orgId)
+      .eq("id", contactId)
+      .maybeSingle();
+    if (contatoError) return fail("internal_error", t("Erro ao validar o contato."), 500, { requestId });
+    if (!contato) {
+      return fail("validation_failed", t("O contato vinculado não pertence a esta organização."), 422, {
+        requestId,
+      });
+    }
+  }
+
+  // Se a tarefa nasceu de um contato (Agenda/Inbox) mas não recebeu um negócio,
+  // o servidor tenta ligar ao negócio ativo usando a MESMA régua do restante do
+  // CRM. Em ambiguidade, não adivinha: a tarefa continua no contato e não polui
+  // a timeline do card errado.
+  if (!leadId && contactId) {
+    const { data: candidatos, error: candidatosError } = await leituraTenant
+      .from("crm_leads")
+      .select("id, organization_id, pipeline_id, status, last_activity_at, created_at")
+      .eq("organization_id", authz.org.orgId)
+      .eq("contact_id", contactId)
+      .eq("status", "open");
+    if (candidatosError) {
+      return fail("internal_error", t("Erro ao localizar o negócio do contato."), 500, { requestId });
+    }
+    const alvo = resolveActiveLeadForContact((candidatos ?? []) as LeadCandidate[]);
+    if (alvo.routed) leadId = alvo.leadId;
+  }
+
+  if (parsed.data.assigned_to) {
+    const { data: membro, error: membroError } = await leituraTenant
+      .from("user_organizations")
+      .select("user_id, role")
+      .eq("organization_id", authz.org.orgId)
+      .eq("user_id", parsed.data.assigned_to)
+      .is("revoked_at", null)
+      .neq("role", "viewer")
+      .maybeSingle();
+    if (membroError) return fail("internal_error", t("Erro ao validar o responsável."), 500, { requestId });
+    if (!membro) {
+      return fail("validation_failed", t("O responsável precisa ser um membro ativo da equipe."), 422, {
+        requestId,
+      });
+    }
+  }
+
   const { data, error } = await supabase
     .from("crm_tasks")
     .insert({
       ...parsed.data,
+      lead_id: leadId,
+      contact_id: contactId,
       organization_id: authz.org.orgId,
       created_by: authz.user.id,
     })

@@ -36,7 +36,11 @@ import { createClient } from "@/lib/supabase/server";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
+vi.mock("@/lib/audit", () => ({
+  audit: vi.fn(async () => undefined),
+  isServiceRoleConfigured: vi.fn(() => false),
+}));
 vi.mock("@/lib/leads/activity-emitter", () => ({
   emitLeadActivity: vi.fn(async () => ({ ok: true })),
 }));
@@ -46,6 +50,7 @@ const OUTRA_ORG = "33333333-3333-4333-8333-333333333333";
 const ANA = "11111111-1111-4111-8111-111111111111";
 const LEAD = "44444444-4444-4444-8444-444444444444";
 const TAREFA = "55555555-5555-4555-8555-555555555555";
+const CONTATO = "66666666-6666-4666-8666-666666666666";
 
 function sessao(papel: Role) {
   const user: AuthUser = {
@@ -215,6 +220,18 @@ describe("POST /api/v1/tasks", () => {
     const res = await POST(pedido({ title: "   " }));
 
     expect(res.status).toBe(422);
+  });
+
+  it("não aceita contato de outra organização só porque a FK existe", async () => {
+    const espiao = fazerSupabase([{ data: null }]);
+    const { POST } = await import("@/app/api/v1/tasks/route");
+
+    const res = await POST(pedido({ title: "Ligar de volta", contact_id: CONTATO }));
+
+    expect(res.status).toBe(422);
+    expect(espiao.tabelas).toEqual(["contacts"]);
+    expect(espiao.filtros).toContainEqual(["organization_id", ORG]);
+    expect(espiao.tabelas).not.toContain("crm_tasks");
   });
 
   it("viewer não cria tarefa", async () => {

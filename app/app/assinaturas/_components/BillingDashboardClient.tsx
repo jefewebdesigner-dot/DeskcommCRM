@@ -5,9 +5,25 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import type { BillingDashboard, BillingSourceError } from "@/lib/billing-export/contracts";
+import {
+  CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from "recharts";
+import type { BillingDashboard, BillingSourceError, StripeDashboard } from "@/lib/billing-export/contracts";
 
 type State = { configured: boolean; dashboard: BillingDashboard | null };
+type ResumoOperacional = {
+  contatos: number;
+  negocios_abertos: number;
+  aguardando_atendimento: number;
+  tarefas_abertas: number;
+  tarefas_atrasadas: number;
+  compromissos_30d: number;
+  meta_atribuicao_30d: { oportunidades: number; vendas: number; receita_cents: number; moeda: string };
+  atualizado_em: string;
+};
+
+type ResumoMeta = { gasto: number; conversas: number; custoPorConversa: number | null; campanhasAtivas: number; moeda: string; periodo: string };
 const currency = (cents: number | null, code = "BRL") =>
   cents === null
     ? "Não disponível"
@@ -48,6 +64,46 @@ function Metric({ title, value, note }: { title: string; value: string | number;
     </article>
   );
 }
+function DashboardCharts({ stripe }: { stripe: StripeDashboard }) {
+  const receita = stripe.monthly_revenue.slice(-12);
+  const planos = stripe.plans.filter((item) => item.count > 0);
+  const pieFills = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+  return (
+    <section aria-label="Gráficos do negócio" className="grid gap-4 lg:grid-cols-5">
+      <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
+        <h2 className="font-semibold">Evolução do faturamento</h2>
+        <p className="mb-4 text-xs text-muted-foreground">Receita mensal confirmada pela fonte Stripe.</p>
+        {receita.length ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={receita} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={72} tickFormatter={(v: number) => currency(v)} />
+              <Tooltip formatter={(value) => [currency(Number(value)), "Receita"]} />
+              <Line type="monotone" dataKey="revenue_cents" name="Receita" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : <Empty>Sem histórico mensal suficiente.</Empty>}
+      </div>
+      <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+        <h2 className="font-semibold">Clientes por plano</h2>
+        <p className="mb-4 text-xs text-muted-foreground">Distribuição das assinaturas ativas por plano.</p>
+        {planos.length ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={planos} dataKey="count" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={2}>
+                {planos.map((item, index) => <Cell key={item.name} fill={pieFills[index % pieFills.length]} />)}
+              </Pie>
+              <Tooltip formatter={(value) => [Number(value), "Clientes"]} />
+              <Legend verticalAlign="bottom" height={30} />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : <Empty>Sem distribuição por plano disponível.</Empty>}
+      </div>
+    </section>
+  );
+}
+
 function Section({
   title,
   description,
@@ -98,6 +154,10 @@ export function BillingDashboardClient({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [tab, setTab] = useState<"subscriptions" | "payments" | "renewals">("subscriptions");
+  const [operacao, setOperacao] = useState<ResumoOperacional | null>(null);
+  const [erroOperacao, setErroOperacao] = useState<string | null>(null);
+  const [meta, setMeta] = useState<ResumoMeta | null>(null);
+  const [erroMeta, setErroMeta] = useState<string | null>(null);
 
   async function request(method = "GET", signal?: AbortSignal, credential?: string) {
     const timeout = AbortSignal.timeout(45000);
@@ -136,6 +196,46 @@ export function BillingDashboardClient({
     return () => controller.abort();
     // A identidade da organização é a fronteira de vida deste componente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/v1/dashboard/resumo", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const json = (await response.json().catch(() => null)) as { data?: ResumoOperacional } | null;
+        if (!response.ok || !json?.data) throw new Error("Resumo operacional indisponível.");
+        setOperacao(json.data);
+      })
+      .catch((e: unknown) => {
+        if (!controller.signal.aborted)
+          setErroOperacao(e instanceof Error ? e.message : "Resumo operacional indisponível.");
+      });
+    return () => controller.abort();
+  }, [organizationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function carregarMeta() {
+      const contasRes = await fetch("/api/v1/ads/meta/accounts", { cache: "no-store", signal: controller.signal });
+      const contasJson = await contasRes.json().catch(() => null) as { data?: { contas: Array<{ id: string; moeda: string; status: number }>; conta_padrao: string | null } } | null;
+      if (!contasRes.ok || !contasJson?.data) throw new Error("Meta Ads ainda não está disponível.");
+      const conta = contasJson.data.contas.find((c) => c.id === contasJson.data?.conta_padrao) ?? contasJson.data.contas.find((c) => c.status === 1) ?? contasJson.data.contas[0];
+      if (!conta) throw new Error("Nenhuma conta de anúncios disponível.");
+      const fim = new Date(Date.now() - 86400000);
+      const inicio = new Date(fim.getTime() - 29 * 86400000);
+      const de = inicio.toISOString().slice(0, 10);
+      const ate = fim.toISOString().slice(0, 10);
+      const url = "/api/v1/ads/meta/campaigns?account_id=" + encodeURIComponent(conta.id) + "&from=" + de + "&to=" + ate;
+      const campRes = await fetch(url, { cache: "no-store", signal: controller.signal });
+      const campJson = await campRes.json().catch(() => null) as { data?: { campanhas: Array<{ gasto: number | null; veiculacao: string | null; resultado: { valor: number | null; indicador: string | null } }> } } | null;
+      if (!campRes.ok || !campJson?.data) throw new Error("Não foi possível consultar as campanhas da Meta.");
+      const linhas = campJson.data.campanhas;
+      const gasto = linhas.reduce((n, c) => n + (c.gasto ?? 0), 0);
+      const conversas = linhas.reduce((n, c) => c.resultado.indicador?.includes("messaging_conversation_started") ? n + (c.resultado.valor ?? 0) : n, 0);
+      setMeta({ gasto, conversas, custoPorConversa: conversas > 0 ? gasto / conversas : null, campanhasAtivas: linhas.filter((c) => c.veiculacao === "ACTIVE").length, moeda: conta.moeda, periodo: de + " a " + ate });
+    }
+    void carregarMeta().catch((e: unknown) => { if (!controller.signal.aborted) setErroMeta(e instanceof Error ? e.message : "Meta Ads indisponível."); });
+    return () => controller.abort();
   }, [organizationId]);
 
   async function refresh() {
@@ -212,10 +312,10 @@ export function BillingDashboardClient({
               {organizationName} · Gestão comercial
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Clientes e assinaturas
+              Dashboard
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Acompanhe a receita recorrente e identifique quem precisa de atenção.
+              Veja vendas, atendimento, tarefas, agenda e receita da operação em um só lugar.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -253,10 +353,56 @@ export function BillingDashboardClient({
           </p>
         )}
         {loading && !state && (
-          <p role="status" className="py-12 text-center text-sm text-muted-foreground">
-            Consultando clientes e assinaturas…
-          </p>
+          <div role="status" aria-label="Carregando dados financeiros" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl border border-border bg-muted/50" />)}
+          </div>
         )}
+
+        {stripe && other && (
+          <section aria-label="Visão geral combinada">
+            <div className="mb-3">
+              <h2 className="font-semibold">Visão geral · Stripe + PIX/manual</h2>
+              <p className="text-xs text-muted-foreground">Todos os clientes e valores juntos. O detalhamento por fonte fica logo abaixo.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric title="Clientes ativos (total)" value={stripe.active_subscriptions + other.active_customers} note={`${stripe.active_subscriptions} no Stripe + ${other.active_customers} no PIX/manual.`} />
+              <Metric title="Receita recorrente mensal (total)" value={currency(stripe.mrr_cents + (other.mrr_cents ?? 0))} note={`Stripe ${currency(stripe.mrr_cents)} + PIX/manual ${currency(other.mrr_cents)}.`} />
+              <Metric title="Receita recorrente anual (total)" value={currency(stripe.arr_cents + (other.mrr_cents ?? 0) * 12)} note="ARR do Stripe (informado pela fonte) + MRR do PIX/manual × 12." />
+              <Metric title="Em atraso (total)" value={stripe.past_due_count + other.past_due_customers} note={`${stripe.past_due_count} no Stripe + ${other.past_due_customers} no PIX/manual.`} />
+            </div>
+          </section>
+        )}
+
+        <section aria-label="Visão geral operacional">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="font-semibold">Visão geral</h2>
+              <p className="text-xs text-muted-foreground">Dados do CRM da PeríciaIA, respeitando o acesso da organização.</p>
+            </div>
+            {operacao && <p className="text-xs text-muted-foreground">Atualizado em {date(operacao.atualizado_em)}</p>}
+          </div>
+          {erroOperacao ? (
+            <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm">{erroOperacao}</p>
+          ) : operacao ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <Metric title="Contatos" value={operacao.contatos} note="Pessoas cadastradas no CRM." />
+              <Metric title="Negócios abertos" value={operacao.negocios_abertos} note="Oportunidades ainda em andamento nos funis." />
+              <Metric title="Aguardando atendimento" value={operacao.aguardando_atendimento} note="Conversas abertas sob comando humano." />
+              <Metric title="Tarefas abertas" value={operacao.tarefas_abertas} note={operacao.tarefas_atrasadas + " atrasada(s) precisam de atenção."} />
+              <Metric title="Compromissos · 30 dias" value={operacao.compromissos_30d} note="Agendamentos pendentes ou confirmados." />
+              <Metric title="Atenção necessária" value={operacao.tarefas_atrasadas + operacao.aguardando_atendimento} note="Tarefas atrasadas + conversas aguardando atendimento." />
+            </div>
+          ) : (
+            <p role="status" className="rounded-lg border border-border p-4 text-sm text-muted-foreground">Carregando resumo operacional…</p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button asChild variant="outline"><Link href="/app/inbox">Abrir Inbox</Link></Button>
+            <Button asChild variant="outline"><Link href="/app/kanban">Abrir Funis</Link></Button>
+            <Button asChild variant="outline"><Link href="/app/contacts">Contatos</Link></Button>
+            <Button asChild variant="outline"><Link href="/app/tasks">Tarefas</Link></Button>
+            <Button asChild variant="outline"><Link href="/app/agenda">Agenda</Link></Button>
+          </div>
+        </section>
 
         {(configure || state?.configured === false) && (
           <Section
@@ -336,38 +482,6 @@ export function BillingDashboardClient({
               </p>
             )}
 
-            {stripe && other && (
-              <section aria-label="Visão geral combinada">
-                <div className="mb-3">
-                  <h2 className="font-semibold">Visão geral · Stripe + PIX/manual</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Todos os clientes e valores juntos. O detalhamento por fonte fica logo abaixo.
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Metric
-                    title="Clientes ativos (total)"
-                    value={stripe.active_subscriptions + other.active_customers}
-                    note={`${stripe.active_subscriptions} no Stripe + ${other.active_customers} no PIX/manual.`}
-                  />
-                  <Metric
-                    title="Receita recorrente mensal (total)"
-                    value={currency(stripe.mrr_cents + (other.mrr_cents ?? 0))}
-                    note={`Stripe ${currency(stripe.mrr_cents)} + PIX/manual ${currency(other.mrr_cents)}.`}
-                  />
-                  <Metric
-                    title="Receita recorrente anual (total)"
-                    value={currency(stripe.arr_cents + (other.mrr_cents ?? 0) * 12)}
-                    note="ARR do Stripe (informado pela fonte) + MRR do PIX/manual × 12."
-                  />
-                  <Metric
-                    title="Em atraso (total)"
-                    value={stripe.past_due_count + other.past_due_customers}
-                    note={`${stripe.past_due_count} no Stripe + ${other.past_due_customers} no PIX/manual.`}
-                  />
-                </div>
-              </section>
-            )}
 
             {(stripe || other) && (
               <section aria-label="Vendas e caixa">
@@ -422,6 +536,33 @@ export function BillingDashboardClient({
                 </div>
               </section>
             )}
+
+            <section aria-label="Aquisição e conversão">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold">Aquisição e conversão · Meta Ads</h2>
+                  <p className="text-xs text-muted-foreground">Últimos 30 dias completos. Dados lidos diretamente da conta de anúncios.</p>
+                </div>
+                <Button asChild variant="outline" size="sm"><Link href="/app/ads/meta">Ver campanhas</Link></Button>
+              </div>
+              {meta ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Metric title="Investimento em anúncios" value={meta.gasto.toLocaleString("pt-BR", { style: "currency", currency: meta.moeda })} note={meta.periodo} />
+                  <Metric title="Conversas iniciadas" value={meta.conversas} note="Resultado atribuído pela Meta às campanhas de mensagens." />
+                  <Metric title="Custo por conversa" value={meta.custoPorConversa === null ? "—" : meta.custoPorConversa.toLocaleString("pt-BR", { style: "currency", currency: meta.moeda })} note="Investimento ÷ conversas iniciadas." />
+                  <Metric title="Campanhas ativas" value={meta.campanhasAtivas} note="Campanhas com veiculação ativa na conta consultada." />
+                  <Metric title="Oportunidades atribuídas" value={operacao?.meta_atribuicao_30d.oportunidades ?? "—"} note="Negócios dos últimos 30 dias com clique Meta comprovado no CRM." />
+                  <Metric title="Vendas atribuídas" value={operacao?.meta_atribuicao_30d.vendas ?? "—"} note="Negócios ganhos com atribuição Meta comprovada." />
+                  <Metric title="Receita atribuída" value={operacao ? currency(operacao.meta_atribuicao_30d.receita_cents, operacao.meta_atribuicao_30d.moeda) : "—"} note="Somente vendas atribuídas à Meta e com valor registrado no CRM." />
+                  <Metric title="ROAS atribuído" value={operacao && meta.gasto > 0 && operacao.meta_atribuicao_30d.receita_cents > 0 ? `${(operacao.meta_atribuicao_30d.receita_cents / 100 / meta.gasto).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x` : "—"} note="Receita atribuída ÷ investimento. Só aparece com venda e valor comprovados." />
+                </div>
+              ) : erroMeta ? (
+                <p className="rounded-lg border border-border p-4 text-sm text-muted-foreground">{erroMeta} <Link className="underline" href="/app/settings/meta-ads">Configurar Meta Ads</Link></p>
+              ) : <div className="h-28 animate-pulse rounded-xl border border-border bg-muted/50" />}
+              <p className="mt-3 text-xs text-muted-foreground">A atribuição usa o identificador real do clique gravado no contato/negócio. Venda sem vínculo comprovado não entra no ROAS.</p>
+            </section>
+
+            {stripe && <DashboardCharts stripe={stripe} />}
 
             {stripe && (
               <section aria-label="Indicadores Stripe">

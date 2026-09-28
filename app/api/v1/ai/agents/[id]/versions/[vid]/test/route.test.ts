@@ -13,7 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ROLE_RANK, type AuthUser, type Role } from "@/lib/auth/types";
 import { testAgentVersion } from "@/lib/agent-engine/agent/sandbox";
 import { requestTurnDeps } from "@/lib/agent-engine/agent/request-deps";
-import { getRequestPool } from "@/lib/agent-engine/db/request-pool";
+import { createRequestPoolForUser } from "@/lib/agent-engine/db/request-pool";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
@@ -24,7 +24,7 @@ vi.mock("@/lib/agent-engine/agent/sandbox", () => ({
   }),
 }));
 vi.mock("@/lib/agent-engine/agent/request-deps", () => ({ requestTurnDeps: vi.fn() }));
-vi.mock("@/lib/agent-engine/db/request-pool", () => ({ getRequestPool: vi.fn() }));
+vi.mock("@/lib/agent-engine/db/request-pool", () => ({ createRequestPoolForUser: vi.fn() }));
 
 const ORG = "22222222-2222-4222-8222-222222222222";
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -83,7 +83,7 @@ function stubAdmin(atualizacoes: Record<string, unknown>[]) {
 
 describe("POST .../versions/:vid/test — core compartilhado", () => {
   const atualizacoes: Record<string, unknown>[] = [];
-  const requestPool = { query: vi.fn() };
+  const requestPool = { query: vi.fn(), end: vi.fn(async () => undefined) };
   const turnDeps = {};
 
   beforeEach(() => {
@@ -103,7 +103,8 @@ describe("POST .../versions/:vid/test — core compartilhado", () => {
         : ({ ok: false, response: null } as never),
     );
     vi.mocked(createAdminClient).mockReturnValue(stubAdmin(atualizacoes) as never);
-    vi.mocked(getRequestPool).mockReturnValue(requestPool as never);
+    requestPool.end.mockClear();
+    vi.mocked(createRequestPoolForUser).mockReturnValue(requestPool as never);
     vi.mocked(requestTurnDeps).mockReturnValue(turnDeps as never);
   });
 
@@ -118,6 +119,7 @@ describe("POST .../versions/:vid/test — core compartilhado", () => {
     const res = await POST(req, { params: Promise.resolve({ id: AGENT, vid: VERSION }) });
     const body = (await res.json()) as { error?: { code?: string; message?: string } };
 
+    expect(createRequestPoolForUser).toHaveBeenCalledWith(USER);
     expect(testAgentVersion).toHaveBeenCalledWith(
       requestPool,
       turnDeps,
@@ -145,12 +147,12 @@ describe("POST .../versions/:vid/test — core compartilhado", () => {
       status: "failed",
       error_code: "preview_failed",
     }));
+    expect(requestPool.end).toHaveBeenCalledTimes(1);
   });
 });
 
 // Este teste isola o handler; autoridade de suporte é exercitada na suíte própria.
-vi.mock("@/lib/impersonate/support", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/lib/impersonate/support")>(),
+vi.mock("@/lib/impersonate/support", () => ({
   requireSupportWrite: vi.fn(async () => null),
   authenticatedSessionId: vi.fn(async () => "f2200000-0000-4000-8000-000000000099"),
 }));

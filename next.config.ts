@@ -76,6 +76,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // typedRoutes moved out of experimental in Next 15.5+
   typedRoutes: true,
+  async redirects() {
+    // Endereço de acesso copiado com a pontuação final de uma mensagem.
+    return [{ source: "/login.", destination: "/login", permanent: true }];
+  },
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react", "lucide-react", "date-fns"],
   },

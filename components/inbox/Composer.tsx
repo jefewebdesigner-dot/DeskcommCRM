@@ -19,10 +19,12 @@ import { EmojiButton } from "@/components/inbox/composer/EmojiButton";
 import { resolveSlash, TemplateMenu } from "@/components/inbox/composer/TemplateMenu";
 import { useCreateNote } from "@/hooks/inbox/useCreateNote";
 import { useMessageTemplates, type MessageTemplate } from "@/hooks/inbox/useMessageTemplates";
+import { useQuickReplySuggestion } from "@/hooks/inbox/useQuickReplySuggestion";
 import { X } from "lucide-react";
 import { useSendMessage } from "@/hooks/inbox/useSendMessage";
 import { useUploadMedia } from "@/hooks/inbox/useUploadMedia";
 import { imagemDoClipboard } from "@/lib/inbox/clipboard-image";
+import { respostaSugeridaPorAtalhoOuTitulo } from "@/lib/inbox/respostas-sugeridas";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +58,8 @@ interface Props {
   onCancelarResposta?: () => void;
   /** Nome do contato da conversa, para interpolar {{nome}}/{{primeiro_nome}} do template escolhido. */
   contactName?: string | null;
+  /** Nome da organização ativa, para interpolar {{empresa}} sem hardcode de marca. */
+  organizationName?: string | null;
   /** Contato da conversa — excluído do seletor de cartão compartilhado. */
   currentContactId?: string | null;
 }
@@ -67,6 +71,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     blockedReason,
     janelaFechada,
     contactName,
+    organizationName,
     currentContactId,
     respondendo,
     onCancelarResposta,
@@ -84,8 +89,40 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const upload = useUploadMedia();
   const createNote = useCreateNote();
   const templates = useMessageTemplates();
+  const sugestao = useQuickReplySuggestion(currentContactId);
+  const [sugestaoDispensada, setSugestaoDispensada] = useState<string | null>(null);
   const slash = resolveSlash(text);
   const menuOpen = mode === "reply" && slash.open && !menuDismissed;
+
+  const sugestaoAtual = sugestao.data;
+  const chaveDaSugestao = sugestaoAtual && currentContactId
+    ? `${currentContactId}:${sugestaoAtual.shortcut}`
+    : null;
+  const respostaInstalada = sugestaoAtual
+    ? (templates.data ?? []).find(
+        (template) => template.shortcut?.toLowerCase() === sugestaoAtual.shortcut.toLowerCase(),
+      )
+    : null;
+  const respostaDeReferencia = sugestaoAtual
+    ? respostaSugeridaPorAtalhoOuTitulo({ title: "", shortcut: sugestaoAtual.shortcut })
+    : null;
+  const respostaContextual: MessageTemplate | null = respostaInstalada
+    ? respostaInstalada
+    : respostaDeReferencia
+      ? {
+          id: `contextual:${respostaDeReferencia.shortcut}`,
+          title: respostaDeReferencia.title,
+          body: respostaDeReferencia.body,
+          shortcut: respostaDeReferencia.shortcut,
+          owner_user_id: null,
+        }
+      : null;
+  const mostrarSugestaoContextual =
+    mode === "reply" &&
+    text.trim() === "" &&
+    Boolean(respostaContextual) &&
+    Boolean(chaveDaSugestao) &&
+    sugestaoDispensada !== chaveDaSugestao;
 
   useImperativeHandle(ref, () => ({
     focus: () => taRef.current?.focus(),
@@ -145,7 +182,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   }
 
   function applyTemplate(t: MessageTemplate) {
-    const filled = interpolateTemplate(t.body, { name: contactName ?? null });
+    const filled = interpolateTemplate(t.body, {
+      name: contactName ?? null,
+      organizationName: organizationName ?? null,
+    });
     setText(filled);
     setMenuDismissed(true);
     const ta = taRef.current;
@@ -207,6 +247,35 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         {mode === "reply" && (
           <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
         )}
+        {mostrarSugestaoContextual && respostaContextual && sugestaoAtual && chaveDaSugestao ? (
+          <div className="mb-2 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium">
+                {t("Sugestão para este cliente")}: {respostaContextual.title}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                {t(sugestaoAtual.motivo)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 shrink-0"
+              onClick={() => applyTemplate(respostaContextual)}
+            >
+              {t("Usar")}
+            </Button>
+            <button
+              type="button"
+              aria-label={t("Dispensar sugestão")}
+              className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={() => setSugestaoDispensada(chaveDaSugestao)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : null}
         <TemplateMenu
           open={menuOpen}
           query={slash.query}

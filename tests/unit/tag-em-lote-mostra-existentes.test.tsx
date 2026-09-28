@@ -49,6 +49,9 @@ vi.mock("@/hooks/kanban/useBoard", () => ({
     seguranca: { divergencias: 0, ultimaVerificacao: null },
   }),
 }));
+vi.mock("@/hooks/leads/useAtRiskLeads", () => ({
+  useAtRiskLeads: () => ({ data: { items: [] } }),
+}));
 vi.mock("@/components/kanban/FilterBar", () => ({ FilterBar: () => null }));
 vi.mock("@/components/kanban/NewLeadDialog", () => ({ NewLeadDialog: () => null }));
 /**

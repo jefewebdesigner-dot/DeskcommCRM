@@ -703,13 +703,13 @@ continue igual quando o motor de IA muda (Claude Code ↔ GPT Codex).
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
-- Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
-- Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
+- Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-27
+- Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-27
 
 ## Imagens — use de verdade, não deixe espaço vazio
 
