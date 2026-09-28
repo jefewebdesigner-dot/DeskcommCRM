@@ -169,7 +169,7 @@ export function PipelinePageClient({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild className="shrink-0">
-            <Link href="/app/kanban?gerenciar=1">{t("Gerenciar funis")}</Link>
+            <Link href="/app/kanban/gerenciar">{t("Gerenciar funis")}</Link>
           </Button>
           <Button onClick={() => setNewOpen(true)} disabled={!data} className="shrink-0">
             <Plus size={16} className="mr-2" /> {t("Novo Lead")}
