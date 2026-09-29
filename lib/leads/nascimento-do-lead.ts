@@ -210,7 +210,7 @@ export async function garantirLeadDaConversa(
     // `first_service_at` viaja no select que JÁ existe: decidir o funil não custa
     // uma consulta a mais no caminho quente da ingestão. É por isso que o fato
     // mora numa coluna de `contacts`, e não é derivado da agenda a cada inbound.
-    .select("is_blocked,display_name,name,phone_number,source,source_metadata,first_service_at")
+    .select("is_blocked,display_name,name,phone_number,source,source_metadata,first_service_at,client_recognized_at")
     .eq("organization_id", organizationId)
     .eq("id", contactId)
     .maybeSingle();
@@ -243,8 +243,13 @@ export async function garantirLeadDaConversa(
   // acontece quando o contato TEM a data — o caso comum (contato sem data) não
   // paga consulta a mais — e falha de leitura cai no funil de entrada, que é a
   // regra que o cabeçalho deste arquivo já declara.
+  // `client_recognized_at` é o fato canônico de "já é cliente" e não depende do
+  // interruptor da agenda: quem foi reconhecido por outra fonte (ex.: importação
+  // do billing) volta ao funil de clientes. `first_service_at` mantém o seu
+  // significado original (primeiro atendimento) e continua exigindo o interruptor.
   const ehCliente =
-    contato?.first_service_at != null && (await lerClientePelaAgenda(db, organizationId));
+    contato?.client_recognized_at != null ||
+    (contato?.first_service_at != null && (await lerClientePelaAgenda(db, organizationId)));
   const destino = await funilDeEntrada(db, organizationId, ehCliente);
   if ("erro" in destino) return { criado: false, motivo: destino.erro };
 
