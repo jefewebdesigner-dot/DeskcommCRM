@@ -24,7 +24,7 @@ type EvidenceKind =
   | "billing_past_due"
   | "billing_canceled";
 
-interface Evidence {
+export interface Evidence {
   kind: EvidenceKind;
   sourceId: string;
   name: string | null;
@@ -37,6 +37,14 @@ interface Evidence {
   provider?: string | null;
   subscriptionId?: string | null;
   customerId?: string | null;
+}
+
+export interface LegacyImportSubscription {
+  provider: string;
+  subscriptionId: string;
+  customerId: string | null;
+  status: "active" | "past_due" | "canceled";
+  cancelAtPeriodEnd: boolean;
 }
 
 export interface LegacyImportEntity {
@@ -54,6 +62,13 @@ export interface LegacyImportEntity {
   paymentProviders: string[];
   paymentCustomerIds: string[];
   paymentSubscriptionIds: string[];
+  /**
+   * Cada assinatura com o STATUS dela. `paymentSubscriptionIds` mistura ativas e
+   * canceladas da mesma pessoa e não permite provar "43 assinaturas ativas para
+   * 42 pessoas"; esta lista permite, e é o que vai para os metadados financeiros
+   * do contato. Assinatura não é pessoa: uma pessoa pode ter várias.
+   */
+  subscriptions: LegacyImportSubscription[];
   sourceRecordCount: number;
   identityKeys: string[];
 }
@@ -319,32 +334,34 @@ function stableEntityId(evidences: Evidence[], keys: string[]): string {
   return `identity:${createHash("sha256").update(keys.sort().join("|")).digest("hex").slice(0, 32)}`;
 }
 
-export async function buildLegacyImportPlan(organizationId: string): Promise<LegacyImportPlan> {
-  const [legacyResult, connection, stripeLifecycle] = await Promise.all([
-    fetchLegacyCrmExport(organizationId),
-    readConnection(organizationId),
-    fetchStripeLifecycleSnapshot(),
-  ]);
-  if (!legacyResult.configured || !legacyResult.data) {
-    throw new Error("CRM legado não configurado.");
+/** Assinaturas das evidências de billing (sem duplicar provider+id). */
+function subscriptionsOf(rows: Evidence[]): LegacyImportSubscription[] {
+  const porChave = new Map<string, LegacyImportSubscription>();
+  for (const row of rows) {
+    if (!row.kind.startsWith("billing_") || !row.subscriptionId) continue;
+    const status: LegacyImportSubscription["status"] =
+      row.kind === "billing_active" ? "active" : row.kind === "billing_past_due" ? "past_due" : "canceled";
+    const provider = row.provider ?? "desconhecido";
+    porChave.set(`${provider}:${row.subscriptionId}`, {
+      provider,
+      subscriptionId: row.subscriptionId,
+      customerId: row.customerId ?? null,
+      status,
+      cancelAtPeriodEnd: row.cancelAtPeriodEnd === true,
+    });
   }
-  if (!connection) throw new Error("Billing não configurado.");
-  if (!stripeLifecycle) throw new Error("Stripe direta não configurada.");
+  return [...porChave.values()].sort((a, b) =>
+    `${a.provider}:${a.subscriptionId}`.localeCompare(`${b.provider}:${b.subscriptionId}`),
+  );
+}
 
-  const billing = await fetchBillingRaw(connection.token);
-  if (!billing.other.ok) {
-    throw new Error(`Billing v2 indisponível: ${billing.other.error}.`);
-  }
-
-  const evidences: Evidence[] = [
-    ...(legacyResult.data.users ?? []).map(evidenceFromLegacyUser),
-    ...(legacyResult.data.leads ?? []).map(evidenceFromLegacyLead),
-    ...evidencesFromOther(billing.other.data as OtherExport),
-    ...stripeLifecycle.active.map(evidenceFromStripe),
-    ...stripeLifecycle.pastDue.map(evidenceFromStripe),
-    ...stripeLifecycle.canceled.map(evidenceFromStripe),
-  ];
-
+/**
+ * Junta evidências que se referem à mesma pessoa (e-mail, telefone, ids do
+ * Firebase, do Stripe e do AbacatePay) e classifica cada pessoa. Compartilhada
+ * pela importação histórica e pelo sincronizador contínuo de billing, para que
+ * os dois concordem sobre quem é quem.
+ */
+export function agruparEntidades(evidences: Evidence[]): LegacyImportEntity[] {
   const dsu = new Dsu();
   const keyOwner = new Map<string, number>();
 
@@ -396,12 +413,43 @@ export async function buildLegacyImportPlan(organizationId: string): Promise<Leg
       paymentProviders: unique(rows.map((row) => row.provider)),
       paymentCustomerIds: unique(rows.map((row) => row.customerId)),
       paymentSubscriptionIds: unique(rows.map((row) => row.subscriptionId)),
+      subscriptions: subscriptionsOf(rows),
       sourceRecordCount: rows.length,
       identityKeys: keys,
     };
   });
 
   entities.sort((a, b) => a.id.localeCompare(b.id));
+  return entities;
+}
+
+export async function buildLegacyImportPlan(organizationId: string): Promise<LegacyImportPlan> {
+  const [legacyResult, connection, stripeLifecycle] = await Promise.all([
+    fetchLegacyCrmExport(organizationId),
+    readConnection(organizationId),
+    fetchStripeLifecycleSnapshot(),
+  ]);
+  if (!legacyResult.configured || !legacyResult.data) {
+    throw new Error("CRM legado não configurado.");
+  }
+  if (!connection) throw new Error("Billing não configurado.");
+  if (!stripeLifecycle) throw new Error("Stripe direta não configurada.");
+
+  const billing = await fetchBillingRaw(connection.token);
+  if (!billing.other.ok) {
+    throw new Error(`Billing v2 indisponível: ${billing.other.error}.`);
+  }
+
+  const evidences: Evidence[] = [
+    ...(legacyResult.data.users ?? []).map(evidenceFromLegacyUser),
+    ...(legacyResult.data.leads ?? []).map(evidenceFromLegacyLead),
+    ...evidencesFromOther(billing.other.data as OtherExport),
+    ...stripeLifecycle.active.map(evidenceFromStripe),
+    ...stripeLifecycle.pastDue.map(evidenceFromStripe),
+    ...stripeLifecycle.canceled.map(evidenceFromStripe),
+  ];
+
+  const entities = agruparEntidades(evidences);
 
   const legacySourceRows =
     (legacyResult.data.users?.length ?? 0) + (legacyResult.data.leads?.length ?? 0);
@@ -438,4 +486,29 @@ export async function buildLegacyImportPlan(organizationId: string): Promise<Leg
       duplicateRowsCollapsed: Math.max(0, evidences.length - entities.length),
     },
   };
+}
+
+/**
+ * As pessoas com assinatura, só a partir das fontes VIVAS de billing (v2
+ * PIX/manual + Stripe completa), sem o CRM legado. É o que o sincronizador
+ * contínuo usa. Fail-closed: se qualquer fonte estiver indisponível, lança —
+ * uma fonte ausente nunca pode virar "todo mundo cancelou".
+ */
+export async function buildBillingEntities(organizationId: string): Promise<LegacyImportEntity[]> {
+  const [connection, stripeLifecycle] = await Promise.all([
+    readConnection(organizationId),
+    fetchStripeLifecycleSnapshot(),
+  ]);
+  if (!connection) throw new Error("Billing não configurado.");
+  if (!stripeLifecycle) throw new Error("Stripe direta não configurada.");
+
+  const billing = await fetchBillingRaw(connection.token);
+  if (!billing.other.ok) throw new Error(`Billing v2 indisponível: ${billing.other.error}.`);
+
+  return agruparEntidades([
+    ...evidencesFromOther(billing.other.data as OtherExport),
+    ...stripeLifecycle.active.map(evidenceFromStripe),
+    ...stripeLifecycle.pastDue.map(evidenceFromStripe),
+    ...stripeLifecycle.canceled.map(evidenceFromStripe),
+  ]);
 }
