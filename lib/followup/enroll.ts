@@ -15,6 +15,7 @@ import {
   resolveAgentForAutomaticTrigger,
 } from "@/lib/followup/agent-followup-gate";
 import { flowGraphSchema } from "@/lib/followup/graph-schema";
+import { bloqueioDeDisparoDoContato, DisparoBloqueadoError } from "@/lib/leads/importacao-legado";
 
 export const ENROLLMENT_LIST_COLUMNS =
   "id, pointer_id, version_id, contact_id, status, current_node_id, next_eval_at, outcome, started_at, completed_at, updated_at";
@@ -64,12 +65,18 @@ export async function enrollFollowupFlow(
 
   const { data: contact, error: contactErr } = await supabase
     .from("contacts")
-    .select("id")
+    .select("id, source, source_metadata, tags")
     .eq("organization_id", organizationId)
     .eq("id", contactId)
     .maybeSingle();
   if (contactErr) return { ok: false, code: "internal_error", message: contactErr.message, status: 500 };
   if (!contact) return { ok: false, code: "not_found", message: "Contato não encontrado.", status: 404 };
+  // Importação histórica / sem meio de contato: não entra em fluxo de follow-up.
+  // (O portão dos envios proativos também barra, mas inscrever já criaria fila.)
+  const bloqueio = bloqueioDeDisparoDoContato(contact as Parameters<typeof bloqueioDeDisparoDoContato>[0]);
+  if (bloqueio) {
+    return { ok: false, code: "disparo_bloqueado", message: new DisparoBloqueadoError(bloqueio).message, status: 409 };
+  }
 
   const { data: version, error: versionErr } = await supabase
     .from("followup_flow_versions")

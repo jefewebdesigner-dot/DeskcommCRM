@@ -57,7 +57,7 @@ export function protecaoDaAgenda(
     reavaliar_em: null,
   };
 }
-function indisponivel(agora: Date): ProtecaoAgenda {
+export function indisponivel(agora: Date): ProtecaoAgenda {
   logger.warn("[agenda] proteção indisponível; cobrança adiada");
   return {
     adiar: true,

@@ -2,8 +2,9 @@ import type { JobClaim } from "@/lib/agent-engine/queue/claim";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Queryable } from "@/lib/agent-engine/queue/queue";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AgendaDeferredError, protecaoAgendaPg, protecaoAgendaSupabase } from "./protecao-followup";
+import { AgendaDeferredError, indisponivel, protecaoAgendaPg, protecaoAgendaSupabase } from "./protecao-followup";
 import { StaleServiceBoundaryError } from "@/lib/atendimento/fronteira";
+import { bloqueioDeDisparoDoContato, DisparoBloqueadoError } from "@/lib/leads/importacao-legado";
 
 /** Somente contexto interno: não é aceito pelo schema de mensagens/tools. */
 export interface ProactiveContext {
@@ -38,6 +39,21 @@ export async function assertAgendaEffectPg(db: Queryable, c: ProactiveContext): 
     );
     if (!rows[0]?.current) throw new StaleServiceBoundaryError();
   }
+  // Contato da importação histórica (ou sem meio de contato): nenhum envio
+  // proativo. Fail-closed: se a leitura falhar, adia (mesmo `leitura_indisponivel`
+  // da proteção da agenda, nova tentativa em 1 min) e nada sai.
+  let contato: { source: string | null; source_metadata: Record<string, unknown> | null; tags: string[] | null } | undefined;
+  try {
+    const { rows } = await db.query<NonNullable<typeof contato>>(
+      "select source, source_metadata, tags from contacts where organization_id=$1 and id=$2",
+      [c.organizationId, c.contactId],
+    );
+    contato = rows[0];
+  } catch {
+    throw new AgendaDeferredError(indisponivel(new Date()));
+  }
+  const bloqueio = bloqueioDeDisparoDoContato(contato);
+  if (bloqueio) throw new DisparoBloqueadoError(bloqueio);
   const p = await protecaoAgendaPg(db, c.organizationId, c.contactId);
   if (p.adiar) throw new AgendaDeferredError(p);
 }
@@ -75,6 +91,24 @@ export async function assertAgendaEffectSupabase(
     if (error) throw error;
     if (!data) throw new StaleServiceBoundaryError();
   }
+  // Contato da importação histórica (ou sem meio de contato): nenhum envio
+  // proativo. Fail-closed: se a leitura falhar, adia (mesmo `leitura_indisponivel`
+  // da proteção da agenda, nova tentativa em 1 min) e nada sai.
+  let contato: unknown = null;
+  try {
+    const { data, error: contatoErr } = await db
+      .from("contacts")
+      .select("source, source_metadata, tags")
+      .eq("organization_id", c.organizationId)
+      .eq("id", c.contactId)
+      .maybeSingle();
+    if (contatoErr) throw contatoErr;
+    contato = data;
+  } catch {
+    throw new AgendaDeferredError(indisponivel(new Date()));
+  }
+  const bloqueio = bloqueioDeDisparoDoContato(contato as Parameters<typeof bloqueioDeDisparoDoContato>[0]);
+  if (bloqueio) throw new DisparoBloqueadoError(bloqueio);
   const p = (await protecaoAgendaSupabase(db, c.organizationId, [c.contactId])).get(c.contactId)!;
   if (p.adiar) throw new AgendaDeferredError(p);
 }
