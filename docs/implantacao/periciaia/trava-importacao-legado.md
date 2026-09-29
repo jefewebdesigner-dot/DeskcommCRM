@@ -6,7 +6,8 @@ A campanha de recuperação (leads antigos e cancelados) é uma etapa separada, 
 ## Como funciona
 
 - A importação grava `contacts.source = 'periciaia_legado'`, a tag `importacao_legado` e
-  `source_metadata.importacao_legado = true` (qualquer uma das três basta para bloquear).
+  `source_metadata.importacao_legado = true` (qualquer uma das três basta para bloquear). A tag é a marca
+  durável; o restante do estado (id legado, assinaturas) vai em `custom_fields`, que o sincronizador não regrava.
 - Quem não tem e-mail nem telefone recebe também a tag `revisao_sem_contato`. Esse bloqueio vence tudo,
   inclusive a liberação de campanha, até alguém recuperar um meio de contato válido. Não se fabrica contato.
 - **Portão único dos envios proativos:** `lib/agenda/efeito.ts` (`assertAgendaEffectSupabase` e
@@ -18,7 +19,9 @@ A campanha de recuperação (leads antigos e cancelados) é uma etapa separada, 
 
 ## Liberar a campanha (ação explícita, depois)
 
-`source_metadata.campanha_liberada = true` no contato abre `importacao_legado`. Não abre `revisao_sem_contato`.
+A tag `campanha_liberada` no contato abre `importacao_legado`. Não abre `revisao_sem_contato`.
+É tag (e não `source_metadata`) de propósito: o sincronizador antigo regravava `source_metadata`
+inteiro e teria apagado a liberação e a marca.
 
 ## Prova pós-importação (medir, não presumir)
 

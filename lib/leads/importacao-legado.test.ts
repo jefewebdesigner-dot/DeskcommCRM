@@ -4,6 +4,7 @@ import {
   bloqueioDeDisparoDoContato,
   DisparoBloqueadoError,
   ORIGEM_IMPORTACAO_LEGADO,
+  TAG_CAMPANHA_LIBERADA,
   TAG_IMPORTACAO_LEGADO,
   TAG_REVISAO_SEM_CONTATO,
 } from "@/lib/leads/importacao-legado";
@@ -29,6 +30,13 @@ describe("bloqueioDeDisparoDoContato", () => {
     expect(
       bloqueioDeDisparoDoContato({ source: ORIGEM_IMPORTACAO_LEGADO, source_metadata: { campanha_liberada: "true" } }),
     ).toBe("importacao_legado");
+  });
+
+  it("a tag campanha_liberada também abre a importação, mas não a revisão sem contato", () => {
+    expect(bloqueioDeDisparoDoContato({ source: ORIGEM_IMPORTACAO_LEGADO, tags: [TAG_CAMPANHA_LIBERADA] })).toBeNull();
+    expect(
+      bloqueioDeDisparoDoContato({ tags: [TAG_CAMPANHA_LIBERADA, TAG_REVISAO_SEM_CONTATO], source: ORIGEM_IMPORTACAO_LEGADO }),
+    ).toBe("revisao_sem_contato");
   });
 
   it("revisao_sem_contato vence tudo, inclusive campanha liberada", () => {

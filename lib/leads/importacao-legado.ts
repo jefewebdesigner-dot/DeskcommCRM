@@ -23,6 +23,12 @@ export const ORIGEM_IMPORTACAO_LEGADO = "periciaia_legado";
 export const TAG_IMPORTACAO_LEGADO = "importacao_legado";
 /** Tag no contato: sem e-mail e sem telefone — inelegível até alguém recuperar um. */
 export const TAG_REVISAO_SEM_CONTATO = "revisao_sem_contato";
+/**
+ * Tag no contato: a campanha de recuperação foi liberada para ele (ação explícita).
+ * É TAG e não `source_metadata` de propósito: o sincronizador de billing antigo
+ * regravava `source_metadata` inteiro e teria apagado a liberação (e a marca).
+ */
+export const TAG_CAMPANHA_LIBERADA = "campanha_liberada";
 
 export type BloqueioDeDisparo = "importacao_legado" | "revisao_sem_contato";
 
@@ -37,8 +43,9 @@ export interface ContatoParaDisparo {
  *
  * - `revisao_sem_contato` vence tudo: sem meio de contato válido não há o que
  *   liberar, e a liberação de campanha não o alcança.
- * - `importacao_legado` cai quando o contato recebe `campanha_liberada: true` em
- *   `source_metadata` — a ação explícita que abre a campanha de recuperação.
+ * - `importacao_legado` cai quando o contato recebe a tag `campanha_liberada` (ou
+ *   `campanha_liberada: true` em `source_metadata`) — a ação explícita que abre a
+ *   campanha de recuperação.
  */
 export function bloqueioDeDisparoDoContato(
   contato: ContatoParaDisparo | null | undefined,
@@ -57,7 +64,7 @@ export function bloqueioDeDisparoDoContato(
     meta.importacao_legado === true;
   if (!veioDaImportacao) return null;
 
-  return meta.campanha_liberada === true ? null : "importacao_legado";
+  return meta.campanha_liberada === true || tags.includes(TAG_CAMPANHA_LIBERADA) ? null : "importacao_legado";
 }
 
 /** Lançado pelo portão de envios proativos. Definitivo: não é adiamento nem retry. */
