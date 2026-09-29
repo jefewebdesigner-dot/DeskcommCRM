@@ -1,45 +1,38 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { readConnection } from "./config";
-import { fetchBillingRaw } from "./fetch";
-import type { OtherExport, StripeExport } from "./contracts";
+import { logger } from "@/lib/logger";
+import { buildBillingEntities } from "./legacy-import";
+import {
+  ORIGENS_DE_CARD_DO_SISTEMA,
+  planejar,
+  type CardDoBanco,
+  type ContatoDoBanco,
+  type DestinosDoBanco,
+  type Operacao,
+} from "./legacy-apply";
 
 /**
- * Sincroniza a fonte de billing conectada (Stripe + PIX/manual) com o CRM:
- * cria/atualiza um contato e um negócio (`crm_leads`) por cliente pagante, na
- * etapa de fechamento (won) ou de perda (lost) do funil padrão da organização.
+ * Sincronização contínua do billing vivo (Stripe + PIX/manual) com o CRM.
  *
- * Cobertura desigual entre as duas fontes, e isso fica GRAVADO no registro:
- * a v2 (PIX/manual) devolve o cadastro completo de clientes, então
- * `cobertura: "completa"`. A v1 (Stripe) não tem endpoint de lista de
- * clientes — só agregados e três amostras (renovações, pagamentos recentes,
- * atrasados). Sincronizar essas amostras como se fossem o total inventaria
- * uma lista que a fonte não fornece; por isso entram com
- * `cobertura: "amostra_parcial"` e `source` próprio, nunca misturado com a v2.
+ * O estado financeiro é FATO e mora no contato (`custom_fields.financeiro`, com
+ * TODAS as assinaturas — assinatura não é pessoa); o cartão do funil só se move
+ * quando a pessoa está no funil errado. A regra (mesma da migração histórica, em
+ * `legacy-apply.ts`, que é quem decide):
+ *
+ *   ativo      → Pós-vendas / Cliente ativo
+ *   vencido    → Inadimplência e Retenção / Vencido
+ *   cancelado  → Inadimplência e Retenção / Cancelados para recuperar (etapa ABERTA)
+ *
+ * Billing NUNCA cria cliente pagante como `won` em Vendas. Antes, cada assinatura
+ * virava um card ganho/perdido no funil padrão e toda rodada diária recolocava os
+ * cards lá — desfazendo qualquer reclassificação.
+ *
+ * Fail-closed: `buildBillingEntities` lança se qualquer fonte estiver
+ * indisponível. Uma fonte ausente nunca pode virar "todo mundo cancelou".
  */
 
 type Admin = ReturnType<typeof createAdminClient>;
-
-/**
- * `contacts_phone_e164_format` exige `+` seguido de 8 a 15 dígitos. A fonte
- * PIX/manual manda telefone brasileiro sem o código do país (ex.:
- * "85999966570", DDD + número) — sem isto, TODO contato com telefone violava
- * o CHECK e o registro inteiro falhava (medido: 60/75 erros na primeira
- * rodada real, todos essa mesma causa).
- *
- * Só assume Brasil porque a fonte é 100% PeríciaIA (produto nacional). Número
- * que já vem com código de país (12-13 dígitos começando em "55", ou
- * qualquer outro DDI) passa direto. Fora da faixa aceitável, volta `null` —
- * perder o telefone de um contato é menos grave que perder o contato inteiro.
- */
-function paraE164Brasil(bruto: string | null | undefined): string | null {
-  if (!bruto) return null;
-  const digitos = bruto.replace(/\D/g, "");
-  if (digitos.length === 10 || digitos.length === 11) return `+55${digitos}`;
-  if (digitos.length >= 8 && digitos.length <= 15) return `+${digitos}`;
-  return null;
-}
 
 export interface SyncResult {
   configured: boolean;
@@ -47,267 +40,117 @@ export interface SyncResult {
   contactsUpdated: number;
   dealsCreated: number;
   dealsUpdated: number;
+  dealsMoved: number;
+  conflicts: number;
   errors: number;
   /** Até 5 mensagens de erro reais da rodada — vazio quando não houve nenhum. */
   sampleErrors: string[];
 }
 
-interface PipelineContext {
-  pipelineId: string;
-  wonStageId: string;
-  lostStageId: string;
+const PAGINA = 1000;
+
+async function paginar<T>(consulta: (de: number, ate: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
+  const todos: T[] = [];
+  for (let de = 0; ; de += PAGINA) {
+    const { data, error } = await consulta(de, de + PAGINA - 1);
+    if (error) throw new Error(error.message);
+    const linhas = (data ?? []) as T[];
+    todos.push(...linhas);
+    if (linhas.length < PAGINA) return todos;
+  }
 }
 
-async function resolvePipelineContext(
-  admin: Admin,
-  organizationId: string,
-): Promise<PipelineContext | null> {
-  const { data: pipeline } = await admin
+async function carregarDestinos(admin: Admin, organizationId: string): Promise<{ destinos: DestinosDoBanco; slugPorEtapa: Map<string, string> }> {
+  const { data: funis, error } = await admin
     .from("crm_pipelines")
-    .select("id")
+    .select("id, settings")
     .eq("organization_id", organizationId)
-    .eq("is_default", true)
-    .eq("is_archived", false)
-    .maybeSingle();
-  if (!pipeline) return null;
-  const pipelineId = (pipeline as { id: string }).id;
-
-  const { data: stages } = await admin
-    .from("crm_stages")
-    .select("id, is_won, is_lost")
-    .eq("organization_id", organizationId)
-    .eq("pipeline_id", pipelineId)
     .eq("is_archived", false);
-  const won = (stages ?? []).find((s) => (s as { is_won: boolean }).is_won);
-  const lost = (stages ?? []).find((s) => (s as { is_lost: boolean }).is_lost);
-  if (!won || !lost) return null;
-  return {
-    pipelineId,
-    wonStageId: (won as { id: string }).id,
-    lostStageId: (lost as { id: string }).id,
-  };
+  if (error) throw new Error(error.message);
+  const etapas = await paginar<{ id: string; pipeline_id: string; slug: string }>((de, ate) =>
+    admin.from("crm_stages").select("id, pipeline_id, slug").eq("organization_id", organizationId).eq("is_archived", false).range(de, ate),
+  );
+  const slugPorEtapa = new Map(etapas.map((e) => [e.id, e.slug]));
+  const destinos: DestinosDoBanco = {};
+  for (const f of (funis ?? []) as Array<{ id: string; settings: Record<string, unknown> | null }>) {
+    const kind = f.settings?.operational_kind;
+    if (typeof kind !== "string") continue;
+    destinos[kind] = {
+      pipelineId: f.id,
+      etapas: Object.fromEntries(etapas.filter((e) => e.pipeline_id === f.id).map((e) => [e.slug, e.id])),
+    };
+  }
+  return { destinos, slugPorEtapa };
 }
 
-async function upsertContact(
-  admin: Admin,
-  organizationId: string,
-  input: { email: string; name: string | null; phone: string | null; metadata: Record<string, unknown> },
-): Promise<{ id: string; created: boolean } | null> {
-  const email = input.email.trim();
-  if (!email) return null;
-  const emailNorm = email.toLowerCase();
-
-  const findExisting = () =>
-    admin
-      .from("contacts")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("email_normalized", emailNorm)
-      .is("is_merged_into", null)
-      .maybeSingle();
-
-  const { data: existing } = await findExisting();
-  if (existing) {
-    const id = (existing as { id: string }).id;
-    await admin
-      .from("contacts")
-      .update({
-        name: input.name ?? undefined,
-        phone_number: input.phone ?? undefined,
-        source_metadata: input.metadata,
-        last_activity_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-    return { id, created: false };
-  }
-
-  const { data: created, error } = await admin
-    .from("contacts")
-    .insert({
-      organization_id: organizationId,
-      name: input.name ?? email,
-      email,
-      phone_number: input.phone,
-      source: "periciaia_billing",
-      source_metadata: input.metadata,
-    })
-    .select("id")
-    .maybeSingle();
-  if (error) {
-    if (error.code === "23505") {
-      const { data: retry } = await findExisting();
-      if (retry) return { id: (retry as { id: string }).id, created: false };
-    }
-    throw new Error(error.message);
-  }
-  return { id: (created as { id: string }).id, created: true };
-}
-
-async function upsertDeal(
-  admin: Admin,
-  organizationId: string,
-  ctx: PipelineContext,
-  input: {
-    contactId: string;
-    title: string;
-    source: string;
-    externalId: string;
-    won: boolean;
-    valueCents: number | null;
-    currency: string | null;
-    customFields: Record<string, unknown>;
-    closedAt: string;
-    lostReason: string | null;
-  },
-): Promise<{ created: boolean }> {
-  const { data: existing } = await admin
-    .from("crm_leads")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("source", input.source)
-    .eq("external_id", input.externalId)
-    .maybeSingle();
-
-  const payload = {
-    organization_id: organizationId,
-    pipeline_id: ctx.pipelineId,
-    stage_id: input.won ? ctx.wonStageId : ctx.lostStageId,
-    contact_id: input.contactId,
-    title: input.title,
-    status: input.won ? "won" : "lost",
-    lost_reason: input.won ? null : input.lostReason,
-    value_cents: input.valueCents,
-    currency: input.currency,
-    source: input.source,
-    external_id: input.externalId,
-    custom_fields: input.customFields,
-    closed_at: input.closedAt,
+async function executar(admin: Admin, organizationId: string, ops: Operacao[], result: SyncResult): Promise<void> {
+  const contatoDeEntidade = new Map<string, string>();
+  const registrarErro = (e: unknown) => {
+    result.errors++;
+    if (result.sampleErrors.length < 5) result.sampleErrors.push(e instanceof Error ? e.message : String(e));
   };
 
-  if (existing) {
-    const id = (existing as { id: string }).id;
-    await admin.from("crm_leads").update(payload).eq("id", id);
-    return { created: false };
-  }
-
-  const { error } = await admin.from("crm_leads").insert({
-    ...payload,
-    position_in_stage: Date.now(),
-  });
-  if (error && error.code !== "23505") throw new Error(error.message);
-  return { created: !error };
-}
-
-function syncOther(
-  admin: Admin,
-  organizationId: string,
-  ctx: PipelineContext,
-  data: OtherExport,
-  result: SyncResult,
-): Promise<unknown>[] {
-  const byExternalId = new Map(data.customers.map((c) => [`${c.provider}:${c.externalId}`, c]));
-  return data.subscriptions.map(async (sub) => {
-    const customer = byExternalId.get(`${sub.provider}:${sub.customerExternalId}`);
-    if (!customer?.email) return;
+  for (const op of ops) {
     try {
-      const contact = await upsertContact(admin, organizationId, {
-        email: customer.email,
-        name: customer.name ?? null,
-        phone: paraE164Brasil(customer.phone),
-        metadata: { periciaia_billing: { provider: customer.provider, external_id: customer.externalId } },
-      });
-      if (!contact) return;
-      if (contact.created) result.contactsCreated++;
-      else result.contactsUpdated++;
-
-      const won = sub.status !== "canceled";
-      const deal = await upsertDeal(admin, organizationId, ctx, {
-        contactId: contact.id,
-        title: `PeríciaIA — ${customer.name ?? customer.email}`,
-        source: "periciaia_billing",
-        externalId: `${sub.provider}:${sub.externalId}`,
-        won,
-        valueCents: sub.mrrMinor,
-        currency: sub.currency.toUpperCase(),
-        customFields: {
-          cobertura: "completa",
-          provedor: sub.provider,
-          status_assinatura: sub.status,
-          status_pagamento: sub.status === "past_due" ? "atrasado" : won ? "ativo" : "cancelado",
-          intervalo: `${sub.intervalCount}x ${sub.billingInterval}`,
-          renova_em: sub.currentPeriodEnd,
-        },
-        closedAt: new Date().toISOString(),
-        // Vocabulário canônico de `fn_validate_lost_reason_required` — texto
-        // livre é rejeitado pelo trigger (medido: "Assinatura cancelada" veio
-        // como `lost_reason_invalid`). "cancelled_by_customer" é o código que
-        // corresponde ao caso real (assinatura cancelada pelo próprio cliente).
-        lostReason: won ? null : "cancelled_by_customer",
-      });
-      if (deal.created) result.dealsCreated++;
-      else result.dealsUpdated++;
-    } catch (e) {
-      result.errors++;
-      if (result.sampleErrors.length < 5) result.sampleErrors.push(e instanceof Error ? e.message : String(e));
-    }
-  });
-}
-
-function syncStripeSample(
-  admin: Admin,
-  organizationId: string,
-  ctx: PipelineContext,
-  data: StripeExport,
-  result: SyncResult,
-): Promise<unknown>[] {
-  type Item = { email: string | null | undefined; name: string | null | undefined; note: string };
-  const items: Item[] = [
-    ...data.recentPayments.map((p) => ({ email: p.email, name: p.name, note: "pagamento_recente" })),
-    ...data.upcomingRenewals.map((r) => ({
-      email: r.email,
-      name: r.name,
-      note: r.cancelAtPeriodEnd ? "cancelamento_agendado" : "renovacao_proxima",
-    })),
-    ...data.pastDueCustomers.map((c) => ({ email: c.email, name: c.name, note: "atrasado" })),
-  ];
-  return items
-    .filter((i): i is Item & { email: string } => !!i.email)
-    .map(async (item) => {
-      try {
-        const contact = await upsertContact(admin, organizationId, {
-          email: item.email,
-          name: item.name ?? null,
-          phone: null,
-          metadata: { periciaia_billing: { provider: "stripe", amostra: item.note } },
+      if (op.op === "inserir_contato") {
+        const { data, error } = await admin
+          .from("contacts")
+          .insert({ organization_id: organizationId, ...op.valores })
+          .select("id")
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        contatoDeEntidade.set(op.entityId, (data as { id: string }).id);
+        result.contactsCreated++;
+      } else if (op.op === "atualizar_contato") {
+        const { error } = await admin.from("contacts").update(op.patch).eq("organization_id", organizationId).eq("id", op.contatoId);
+        if (error) throw new Error(error.message);
+        result.contactsUpdated++;
+      } else if (op.op === "inserir_card") {
+        const contactId = op.contatoId ?? contatoDeEntidade.get(op.entityId);
+        if (!contactId) throw new Error("contato do card não resolvido");
+        const { error } = await admin.from("crm_leads").insert({
+          organization_id: organizationId,
+          pipeline_id: op.pipelineId,
+          stage_id: op.stageId,
+          contact_id: contactId,
+          status: "open",
+          position_in_stage: Date.now(),
+          ...op.valores,
         });
-        if (!contact) return;
-        if (contact.created) result.contactsCreated++;
-        else result.contactsUpdated++;
-
-        const deal = await upsertDeal(admin, organizationId, ctx, {
-          contactId: contact.id,
-          title: `PeríciaIA — ${item.name ?? item.email}`,
-          source: "periciaia_billing_stripe_amostra",
-          externalId: item.email,
-          won: true,
-          valueCents: null,
-          currency: null,
-          customFields: {
-            cobertura: "amostra_parcial",
-            provedor: "stripe",
-            status_pagamento: item.note === "atrasado" ? "atrasado" : "ativo",
-            observacao: item.note,
-          },
-          closedAt: new Date().toISOString(),
-          lostReason: null,
-        });
-        if (deal.created) result.dealsCreated++;
-        else result.dealsUpdated++;
-      } catch (e) {
-        result.errors++;
-        if (result.sampleErrors.length < 5) result.sampleErrors.push(e instanceof Error ? e.message : String(e));
+        if (error && error.code !== "23505") throw new Error(error.message);
+        if (!error) result.dealsCreated++;
+      } else if (op.op === "mover_card") {
+        const { error } = await admin
+          .from("crm_leads")
+          .update({
+            pipeline_id: op.pipelineId,
+            stage_id: op.stageId,
+            lost_reason: null,
+            position_in_stage: Date.now(),
+            source_metadata: op.source_metadata,
+            tags: op.tags,
+          })
+          .eq("organization_id", organizationId)
+          .eq("id", op.cardId);
+        if (error) throw new Error(error.message);
+        result.dealsMoved++;
+      } else if (op.op === "atualizar_card") {
+        const { error } = await admin
+          .from("crm_leads")
+          .update({ source_metadata: op.source_metadata, tags: op.tags })
+          .eq("organization_id", organizationId)
+          .eq("id", op.cardId);
+        if (error) throw new Error(error.message);
+        result.dealsUpdated++;
+      } else {
+        // `absorver_card` apaga um card: só a importação histórica faz isso, com
+        // backup e conferência. O sincronizador diário nunca apaga nada.
+        logger.warn("[billing→crm] card duplicado mantido (absorção é da importação)", { organization_id: organizationId, card_id: op.cardId });
       }
-    });
+    } catch (e) {
+      registrarErro(e);
+    }
+  }
 }
 
 export async function syncBillingToCrm(organizationId: string): Promise<SyncResult> {
@@ -317,24 +160,53 @@ export async function syncBillingToCrm(organizationId: string): Promise<SyncResu
     contactsUpdated: 0,
     dealsCreated: 0,
     dealsUpdated: 0,
+    dealsMoved: 0,
+    conflicts: 0,
     errors: 0,
     sampleErrors: [],
   };
 
-  const connection = await readConnection(organizationId);
-  if (!connection) return result;
+  const entidades = await buildBillingEntities(organizationId).catch((e: unknown) => {
+    // Billing não conectado é "não configurado", não erro; as demais falhas sobem (fail-closed).
+    if (e instanceof Error && e.message === "Billing não configurado.") return null;
+    throw e;
+  });
+  if (!entidades) return result;
   result.configured = true;
 
   const admin = createAdminClient();
-  const ctx = await resolvePipelineContext(admin, organizationId);
-  if (!ctx) return result;
+  const { destinos, slugPorEtapa } = await carregarDestinos(admin, organizationId);
+  for (const f of ["post_sales", "retention"]) {
+    if (!destinos[f]) throw new Error(`Funil operacional ausente: ${f}`);
+  }
 
-  const { stripe, other } = await fetchBillingRaw(connection.token);
+  const contatos = await paginar<ContatoDoBanco>((de, ate) =>
+    admin
+      .from("contacts")
+      .select("id, email_normalized, phone_number, tags, source, source_metadata, custom_fields, client_recognized_at, client_tag_by_system")
+      .eq("organization_id", organizationId)
+      .is("is_merged_into", null)
+      .range(de, ate),
+  );
+  const brutos = await paginar<Omit<CardDoBanco, "stage_slug">>((de, ate) =>
+    admin
+      .from("crm_leads")
+      .select("id, contact_id, pipeline_id, stage_id, status, created_at, source, external_id, source_metadata, tags, value_cents")
+      .eq("organization_id", organizationId)
+      .in("source", [...ORIGENS_DE_CARD_DO_SISTEMA])
+      .range(de, ate),
+  );
+  const cards: CardDoBanco[] = brutos.map((c) => ({ ...c, stage_slug: slugPorEtapa.get(c.stage_id) ?? "" }));
 
-  const tasks: Promise<unknown>[] = [];
-  if (other.ok) tasks.push(...syncOther(admin, organizationId, ctx, other.data as OtherExport, result));
-  if (stripe.ok) tasks.push(...syncStripeSample(admin, organizationId, ctx, stripe.data as StripeExport, result));
-  await Promise.all(tasks);
+  const plano = planejar("sync", entidades, contatos, cards, destinos, new Date().toISOString());
+  result.conflicts = plano.conflitos.length;
+  if (plano.conflitos.length) {
+    logger.warn("[billing→crm] pessoas com identidade em contatos diferentes (não tocadas)", {
+      organization_id: organizationId,
+      quantidade: plano.conflitos.length,
+    });
+  }
 
+  await executar(admin, organizationId, plano.ops, result);
   return result;
 }

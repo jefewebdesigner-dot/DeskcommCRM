@@ -2,9 +2,9 @@
  * GET /api/v1/cron/periciaia-billing-sync
  *
  * Puxa a fonte de billing conectada (Stripe + PIX/manual, ver
- * lib/billing-export/) e cria/atualiza contato + negócio no CRM para cada
- * cliente pagante — para o time ver cliente, histórico e situação financeira
- * no mesmo lugar, sem abrir o admin do PeríciaIA à parte.
+ * lib/billing-export/) e mantém contato + posição no funil de cada pessoa com
+ * assinatura: ativo → Pós-vendas, vencido/cancelado → Retenção (nunca Vendas).
+ * O estado financeiro (todas as assinaturas) fica no contato.
  *
  * Roda para a organização PeríciaIA (id fixo — ver comentário em
  * `runPericiaiaBillingSync`), a única com conexão de billing salva
@@ -42,6 +42,8 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
     contactsUpdated: 0,
     dealsCreated: 0,
     dealsUpdated: 0,
+    dealsMoved: 0,
+    conflicts: 0,
     errors: 0,
     sampleErrors: [],
   };
@@ -73,11 +75,13 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
   totals.contactsUpdated += result.contactsUpdated;
   totals.dealsCreated += result.dealsCreated;
   totals.dealsUpdated += result.dealsUpdated;
+  totals.dealsMoved += result.dealsMoved;
+  totals.conflicts += result.conflicts;
   totals.errors += result.errors;
   totals.sampleErrors.push(...result.sampleErrors);
 
   const houveEfeito =
-    totals.contactsCreated + totals.contactsUpdated + totals.dealsCreated + totals.dealsUpdated > 0;
+    totals.contactsCreated + totals.contactsUpdated + totals.dealsCreated + totals.dealsUpdated + totals.dealsMoved > 0;
   if (houveEfeito) {
     await audit({
       action: "billing_export.crm_synced",
