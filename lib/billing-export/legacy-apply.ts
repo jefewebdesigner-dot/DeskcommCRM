@@ -29,6 +29,9 @@ import {
   TAG_REVISAO_SEM_CONTATO,
 } from "@/lib/leads/importacao-legado";
 
+/** Contato do sistema sem NENHUMA evidência no billing vivo nem no CRM legado: fica marcado para revisão humana. */
+export const TAG_REVISAO_BILLING = "revisao_billing";
+
 export type FunilAlvo = "sales" | "post_sales" | "retention";
 export type ModoDePlano = "importacao" | "sync";
 
@@ -39,18 +42,18 @@ export const ORIGENS_DE_CARD_DO_SISTEMA = [
   ORIGEM_IMPORTACAO_LEGADO,
 ] as const;
 
-const DESTINO_POR_BUCKET: Record<LegacyImportBucket, { funil: FunilAlvo; etapa: string }> = {
+export const DESTINO_POR_BUCKET: Record<LegacyImportBucket, { funil: FunilAlvo; etapa: string }> = {
   active: { funil: "post_sales", etapa: "cliente_ativo" },
   past_due: { funil: "retention", etapa: "vencido" },
-  canceled: { funil: "retention", etapa: "cancelados_recuperar" },
+  canceled: { funil: "retention", etapa: "cancelados_para_recuperar" },
   lead: { funil: "sales", etapa: "primeiro_contato" },
 };
 
 /** Etapas de onde o estado atual manda a pessoa de volta à etapa de entrada do destino. */
-const REENTRADA: Record<LegacyImportBucket, readonly string[]> = {
+export const REENTRADA: Record<LegacyImportBucket, readonly string[]> = {
   active: ["encerrado"],
-  past_due: ["regularizado", "cancelado", "cancelados_recuperar"],
-  canceled: ["regularizado", "proximo_vencimento", "vencido"],
+  past_due: ["regularizado", "cancelado", "cancelados_para_recuperar"],
+  canceled: ["regularizado", "proximo_do_vencimento", "vencido"],
   lead: ["perdido", "assinante_ativo"],
 };
 
@@ -60,6 +63,22 @@ const TAG_POR_BUCKET: Record<LegacyImportBucket, string | null> = {
   canceled: "ex-cliente",
   lead: "lead-antigo",
 };
+
+/**
+ * Chave estável de uma etapa, derivada do NOME (sem acento, minúsculo, `_`).
+ * Não usa `crm_stages.slug`: no funil de Vendas do PeríciaIA as etapas foram
+ * renomeadas mas mantêm o slug histórico do modelo de e-commerce (ex.: "Primeiro
+ * contato" tem slug `aguardando_pagamento`). O nome é o que o modelo operacional
+ * (`funis-operacionais.ts`) define.
+ */
+export function chaveDeEtapa(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 export interface DestinosDoBanco {
   /** funil (kind) → id do funil e ids das etapas por slug. */
@@ -167,8 +186,13 @@ export interface ResultadoDoPlano {
     cardsAtualizados: number;
     cardsAbsorvidos: number;
     semContato: number;
+    foraDoPlanoRevisados: number;
   };
 }
+
+/** Mesmas expressões dos CHECK `contacts_email_format` e `contacts_phone_e164_format`. */
+const EMAIL_VALIDO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/i;
+const TELEFONE_VALIDO = /^\+\d{8,15}$/;
 
 const unica = (v: readonly string[]): string[] => [...new Set(v)];
 const iguais = (a: unknown, b: unknown): boolean => JSON.stringify(ordenar(a)) === JSON.stringify(ordenar(b));
@@ -195,8 +219,9 @@ function financeiroDe(e: LegacyImportEntity): Record<string, unknown> {
   };
 }
 
-function legadoDe(e: LegacyImportEntity): Record<string, unknown> {
+function legadoDe(e: LegacyImportEntity, invalido?: { email?: string; telefone?: string }): Record<string, unknown> {
   return {
+    ...(invalido && (invalido.email || invalido.telefone) ? { contato_invalido: invalido } : {}),
     entity_id: e.id,
     user_ids: e.legacyUserIds,
     lead_ids: e.legacyLeadIds,
@@ -237,21 +262,29 @@ export function planejar(
   cards: readonly CardDoBanco[],
   destinos: DestinosDoBanco,
   agora: string,
+  opcoes: { foraDoPlano?: "reportar" | "revisar" } = {},
 ): ResultadoDoPlano {
   const ops: Operacao[] = [];
   const conflitos: Conflito[] = [];
   const idx = indexarContatos([...contatos]);
   const contatoPorId = new Map(contatos.map((c) => [c.id, c]));
   const reivindicados = new Set<string>();
-  const resumo = { contatosNovos: 0, contatosAtualizados: 0, cardsNovos: 0, cardsMovidos: 0, cardsAtualizados: 0, cardsAbsorvidos: 0, semContato: 0 };
+  const resumo = { contatosNovos: 0, contatosAtualizados: 0, cardsNovos: 0, cardsMovidos: 0, cardsAtualizados: 0, cardsAbsorvidos: 0, semContato: 0, foraDoPlanoRevisados: 0 };
 
   // Contato NOVO desta rodada já ocupa e-mail/telefone: duas pessoas do plano não podem cair no mesmo.
   const emailsNovos = new Set<string>();
   const telefonesNovos = new Set<string>();
 
   for (const e of entidades) {
-    const email = e.email?.trim().toLowerCase() ?? null;
-    const telefone = e.phone ?? null;
+    // Dado fora do formato que o banco aceita NÃO é descartado nem "consertado": a pessoa
+    // entra sem esse meio de contato e o valor original fica em `legacy.contato_invalido`.
+    const emailBruto = e.email?.trim().toLowerCase() ?? null;
+    const email = emailBruto && EMAIL_VALIDO.test(emailBruto) ? emailBruto : null;
+    const telefone = e.phone && TELEFONE_VALIDO.test(e.phone) ? e.phone : null;
+    const invalido = {
+      ...(emailBruto && !email ? { email: emailBruto } : {}),
+      ...(e.phone && !telefone ? { telefone: e.phone } : {}),
+    };
 
     const candidatos = unica(
       [
@@ -266,6 +299,8 @@ export function planejar(
     );
     if (candidatos.length > 1) {
       conflitos.push({ entityId: e.id, motivo: "contatos_diferentes_para_a_mesma_pessoa", contatoIds: candidatos });
+      // ambíguo NÃO é "fora do plano": ninguém mexe nesses contatos até a identidade ser resolvida
+      for (const id of candidatos) reivindicados.add(id);
       continue;
     }
 
@@ -306,7 +341,7 @@ export function planejar(
           tags: ativo ? unica([...tags, "cliente"]) : tags,
           source: modo === "importacao" ? ORIGEM_IMPORTACAO_LEGADO : "periciaia_billing",
           source_metadata: modo === "importacao" ? { importacao_legado: true } : { periciaia_billing: { origem: "sync" } },
-          custom_fields: { ...(modo === "importacao" ? { legacy: legadoDe(e) } : {}), financeiro: financeiroDe(e) },
+          custom_fields: { ...(modo === "importacao" ? { legacy: legadoDe(e, invalido) } : {}), financeiro: financeiroDe(e) },
           client_recognized_at: ativo ? agora : null,
           client_tag_by_system: ativo ? "added" : null,
         },
@@ -321,7 +356,7 @@ export function planejar(
       if (!iguais([...atual.tags].sort(), [...tagsAlvo].sort())) patch.tags = tagsAlvo;
 
       const cf: Record<string, unknown> = { ...atual.custom_fields, financeiro: financeiroDe(e) };
-      if (modo === "importacao") cf.legacy = legadoDe(e);
+      if (modo === "importacao") cf.legacy = legadoDe(e, invalido);
       if (!iguais(atual.custom_fields, cf)) patch.custom_fields = cf;
 
       if (modo === "importacao" && atual.source_metadata?.importacao_legado !== true) {
@@ -426,11 +461,68 @@ export function planejar(
     }
   }
 
-  const contatosForaDoPlano = contatos
-    .filter((c) => (ORIGENS_DE_CARD_DO_SISTEMA as readonly string[]).includes(c.source) && !reivindicados.has(c.id))
-    .map((c) => c.id)
-    // um contato que virou "novo" nesta rodada não existe ainda; só entram contatos já existentes
-    .filter((id) => contatoPorId.has(id));
+  const naoReivindicados = contatos.filter(
+    (c) => (ORIGENS_DE_CARD_DO_SISTEMA as readonly string[]).includes(c.source) && !reivindicados.has(c.id) && !c.tags.includes(TAG_REVISAO_BILLING),
+  );
+
+  // Sem evidência viva (Stripe/AbacatePay/manual) nem legado: não é cliente ativo e não dá para
+  // afirmar que cancelou. Mantém o contato (com marca de revisão e SEM campanha), tira o card de
+  // Vendas para a etapa aberta de recuperação e registra o motivo. Nada é apagado.
+  if (opcoes.foraDoPlano === "revisar" && naoReivindicados.length) {
+    const destino = destinos.retention;
+    const etapaId = destino?.etapas[DESTINO_POR_BUCKET.canceled.etapa];
+    if (!destino || !etapaId) throw new Error("Destino ausente no banco: retention/cancelados_para_recuperar");
+    for (const c of naoReivindicados) {
+      const entityId = `fora:${c.id}`;
+      ops.push({
+        op: "atualizar_contato",
+        entityId,
+        contatoId: c.id,
+        patch: {
+          tags: unica([...c.tags, TAG_IMPORTACAO_LEGADO, TAG_REVISAO_BILLING, "ex-cliente"]),
+          source_metadata: { ...c.source_metadata, importacao_legado: true },
+          custom_fields: {
+            ...c.custom_fields,
+            financeiro: { fonte: "stripe+billing-v2", estado: "sem_evidencia", assinaturas: [], assinaturas_ativas: 0, cancelamento_agendado: false },
+          },
+        },
+      });
+      const meus = cards
+        .filter((k) => k.contact_id === c.id && (ORIGENS_DE_CARD_DO_SISTEMA as readonly string[]).includes(k.source))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+      const [principal, ...extras] = meus;
+      if (principal && principal.pipeline_id !== destino.pipelineId) {
+        ops.push({
+          op: "mover_card",
+          entityId,
+          cardId: principal.id,
+          pipelineId: destino.pipelineId,
+          stageId: etapaId,
+          source_metadata: {
+            ...principal.source_metadata,
+            sem_evidencia_no_billing_vivo: true,
+            reclassificado_de: { etapa: principal.stage_slug, status: principal.status },
+          },
+          tags: unica([...principal.tags, TAG_IMPORTACAO_LEGADO]),
+        });
+        resumo.cardsMovidos++;
+      }
+      for (const extra of extras) {
+        ops.push({
+          op: "absorver_card",
+          entityId,
+          cardId: extra.id,
+          nocardId: principal!.id,
+          absorvido: { source: extra.source, external_id: extra.external_id, etapa: extra.stage_slug, status: extra.status, value_cents: extra.value_cents },
+        });
+        resumo.cardsAbsorvidos++;
+      }
+      resumo.contatosAtualizados++;
+      resumo.foraDoPlanoRevisados++;
+    }
+  }
+
+  const contatosForaDoPlano = opcoes.foraDoPlano === "revisar" ? [] : naoReivindicados.map((c) => c.id);
 
   return { ops, conflitos, contatosForaDoPlano, resumo };
 }

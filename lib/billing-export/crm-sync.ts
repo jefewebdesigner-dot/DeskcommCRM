@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { buildBillingEntities } from "./legacy-import";
 import {
+  chaveDeEtapa,
   ORIGENS_DE_CARD_DO_SISTEMA,
   planejar,
   type CardDoBanco,
@@ -67,9 +68,11 @@ async function carregarDestinos(admin: Admin, organizationId: string): Promise<{
     .eq("organization_id", organizationId)
     .eq("is_archived", false);
   if (error) throw new Error(error.message);
-  const etapas = await paginar<{ id: string; pipeline_id: string; slug: string }>((de, ate) =>
-    admin.from("crm_stages").select("id, pipeline_id, slug").eq("organization_id", organizationId).eq("is_archived", false).range(de, ate),
+  // Chave pelo NOME, nunca pelo slug: no funil de Vendas as etapas foram renomeadas e mantêm o slug histórico.
+  const etapasBrutas = await paginar<{ id: string; pipeline_id: string; name: string }>((de, ate) =>
+    admin.from("crm_stages").select("id, pipeline_id, name").eq("organization_id", organizationId).eq("is_archived", false).range(de, ate),
   );
+  const etapas = etapasBrutas.map((e) => ({ id: e.id, pipeline_id: e.pipeline_id, slug: chaveDeEtapa(e.name) }));
   const slugPorEtapa = new Map(etapas.map((e) => [e.id, e.slug]));
   const destinos: DestinosDoBanco = {};
   for (const f of (funis ?? []) as Array<{ id: string; settings: Record<string, unknown> | null }>) {

@@ -20,6 +20,7 @@ import { join } from "node:path";
 import pg from "pg";
 
 import {
+  chaveDeEtapa,
   ORIGENS_DE_CARD_DO_SISTEMA,
   planejar,
   type CardDoBanco,
@@ -75,10 +76,12 @@ async function carregarEstado(db: Db, org: string) {
     "select id, settings->>'operational_kind' kind from public.crm_pipelines where organization_id=$1 and is_archived=false",
     [org],
   );
-  const etapas = await db.query<{ id: string; pipeline_id: string; slug: string }>(
-    "select id, pipeline_id, slug from public.crm_stages where organization_id=$1 and is_archived=false",
+  const etapasBrutas = await db.query<{ id: string; pipeline_id: string; name: string }>(
+    "select id, pipeline_id, name from public.crm_stages where organization_id=$1 and is_archived=false",
     [org],
   );
+  // Chave pelo NOME, nunca pelo slug: ver `chaveDeEtapa`.
+  const etapas = { rows: etapasBrutas.rows.map((e) => ({ id: e.id, pipeline_id: e.pipeline_id, slug: chaveDeEtapa(e.name) })) };
   const slugPorEtapa = new Map(etapas.rows.map((e) => [e.id, e.slug]));
   const destinos: DestinosDoBanco = {};
   for (const f of funis.rows) {
@@ -125,9 +128,10 @@ async function executar(db: Db, org: string, ops: Operacao[]) {
       const v = op.valores;
       const r = await db.query<{ id: string }>(
         `insert into public.contacts
-           (organization_id,name,email,email_normalized,phone_number,tags,source,source_metadata,custom_fields,client_recognized_at,client_tag_by_system)
-         values ($1,$2,$3,$4,$5,$6::text[],$7,$8::jsonb,$9::jsonb,$10,$11) returning id`,
-        [org, v.name, v.email, v.email_normalized, v.phone_number, v.tags, v.source, JSON.stringify(v.source_metadata), JSON.stringify(v.custom_fields), v.client_recognized_at, v.client_tag_by_system],
+           (organization_id,name,email,phone_number,tags,source,source_metadata,custom_fields,client_recognized_at,client_tag_by_system)
+         values ($1,$2,$3,$4,$5::text[],$6,$7::jsonb,$8::jsonb,$9,$10) returning id`,
+        // `email_normalized` é coluna GERADA pelo banco a partir de `email`: não se escreve.
+        [org, v.name, v.email, v.phone_number, v.tags, v.source, JSON.stringify(v.source_metadata), JSON.stringify(v.custom_fields), v.client_recognized_at, v.client_tag_by_system],
       );
       contatoDeEntidade.set(op.entityId, r.rows[0]!.id);
     } else if (op.op === "atualizar_contato") {
@@ -141,7 +145,6 @@ async function executar(db: Db, org: string, ops: Operacao[]) {
       if (p.client_recognized_at) colocar("client_recognized_at", p.client_recognized_at);
       if (p.client_tag_by_system) colocar("client_tag_by_system", p.client_tag_by_system);
       if (p.email) colocar("email", p.email);
-      if (p.email_normalized) colocar("email_normalized", p.email_normalized);
       if (p.phone_number) colocar("phone_number", p.phone_number);
       await db.query(`update public.contacts set ${sets.join(", ")} where organization_id=$1 and id=$2`, params);
     } else if (op.op === "inserir_card") {
@@ -208,7 +211,7 @@ async function main() {
     const antesEnvio = await contadoresDeEnvio(db, org);
     const estado = await carregarEstado(db, org);
     const agora = new Date().toISOString();
-    const p1 = planejar("importacao", plano.entities, estado.contatos, estado.cards, estado.destinos, agora);
+    const p1 = planejar("importacao", plano.entities, estado.contatos, estado.cards, estado.destinos, agora, { foraDoPlano: "revisar" });
 
     console.info(JSON.stringify({ fase: "plano", entidades: plano.entities.length, resumo: p1.resumo, conflitos: p1.conflitos.length, contatosForaDoPlano: p1.contatosForaDoPlano.length, operacoes: p1.ops.length }));
     if (p1.conflitos.length || p1.contatosForaDoPlano.length) {
@@ -233,7 +236,7 @@ async function main() {
 
     // ── prova de idempotência: replaneja sobre o estado JÁ escrito ─────────────
     const depois = await carregarEstado(db, org);
-    const p2 = planejar("importacao", plano.entities, depois.contatos, depois.cards, depois.destinos, agora);
+    const p2 = planejar("importacao", plano.entities, depois.contatos, depois.cards, depois.destinos, agora, { foraDoPlano: "revisar" });
 
     // ── invariantes medidos no banco ──────────────────────────────────────────
     const porBucket = (b: string) => plano.entities.filter((e) => e.bucket === b).length;
@@ -247,7 +250,9 @@ async function main() {
         `select count(*)::int n from public.crm_leads l
            join public.crm_stages s on s.id=l.stage_id
            join public.crm_pipelines p on p.id=l.pipeline_id
-          where l.organization_id=$1 and p.settings->>'operational_kind'=$2 and s.slug=$3 and l.source = any($4::text[])`,
+          where l.organization_id=$1 and p.settings->>'operational_kind'=$2
+            and regexp_replace(lower(translate(s.name,'áàâãäéèêëíìîïóòôõöúùûüç','aaaaaeeeeiiiiooooouuuuc')),'[^a-z0-9]+','_','g')=$3
+            and l.source = any($4::text[])`,
         [org, kind, slug, [...ORIGENS_DE_CARD_DO_SISTEMA]],
       );
       return Number(r[0]!.n);
@@ -300,12 +305,16 @@ async function main() {
     ver("cada pessoa = 1 contato (com id legado)", plano.entities.length, contatosDaImportacao);
     ver("todo contato importado carrega a trava importacao_legado", plano.entities.length, contatosMarcados);
     ver("contatos revisao_sem_contato (sem e-mail e sem telefone)", plano.summary.groupsWithoutEmailOrPhone ?? plano.entities.filter((e) => !e.email && !e.phone).length, semContatoMarcados);
+    const revisadosMarcados = Number((await q<{ n: string }>(
+      "select count(*)::int n from public.contacts where organization_id=$1 and 'revisao_billing' = any(tags) and 'importacao_legado' = any(tags)", [org],
+    ))[0]!.n);
+    ver("contatos sem evidência no billing vivo: marcados (revisao_billing + trava)", p1.resumo.foraDoPlanoRevisados, revisadosMarcados);
     ver("contatos duplicados (e-mail, telefone ou id legado)", 0, duplicados);
     ver("Pós-vendas / Cliente ativo", ativos, await etapaCount("post_sales", "cliente_ativo"));
     ver("Vendas / Primeiro contato", porBucket("lead"), await etapaCount("sales", "primeiro_contato"));
-    ver("Retenção / Cancelados para recuperar", porBucket("canceled"), await etapaCount("retention", "cancelados_recuperar"));
+    ver("Retenção / Cancelados para recuperar (cancelados do billing + sem evidência)", porBucket("canceled") + p1.resumo.foraDoPlanoRevisados, await etapaCount("retention", "cancelados_para_recuperar"));
     ver("Retenção / Vencido", porBucket("past_due"), await etapaCount("retention", "vencido"));
-    ver("1 card do sistema por pessoa (total)", plano.entities.length, cardsDoSistema);
+    ver("1 card do sistema por pessoa (total, incl. sem evidência)", plano.entities.length + p1.resumo.foraDoPlanoRevisados, cardsDoSistema);
     ver("máximo de cards do sistema por contato", 1, maxCardsPorContato);
     ver("cards billing won/lost poluindo Vendas", 0, poluemVendas);
     ver("clientes ativos únicos", ativos, pessoasAtivasNoBanco);

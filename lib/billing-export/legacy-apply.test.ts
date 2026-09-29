@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { FUNIS_OPERACIONAIS } from "@/lib/pipelines/funis-operacionais";
 import {
+  chaveDeEtapa,
+  DESTINO_POR_BUCKET,
   planejar,
+  REENTRADA,
   type CardDoBanco,
   type ContatoDoBanco,
   type DestinosDoBanco,
@@ -17,7 +21,7 @@ const DESTINOS: DestinosDoBanco = {
   post_sales: { pipelineId: "P-P", etapas: { cliente_ativo: "S-ca", acompanhamento: "S-ac", encerrado: "S-enc" } },
   retention: {
     pipelineId: "P-R",
-    etapas: { vencido: "S-venc", cancelados_recuperar: "S-canc", regularizado: "S-reg", negociacao_promessa: "S-neg" },
+    etapas: { vencido: "S-venc", cancelados_para_recuperar: "S-canc", regularizado: "S-reg", negociacao_promessa: "S-neg" },
   },
 };
 const SLUG_DA_ETAPA: Record<string, string> = {};
@@ -83,6 +87,29 @@ function aplicar(ops: Operacao[], contatos: ContatoDoBanco[], cards: CardDoBanco
   return { contatos: cs, cards: cr };
 }
 
+describe("chaves de etapa do planejador × modelo operacional de funis", () => {
+  const chavesDoModelo = (kind: string) =>
+    new Set(FUNIS_OPERACIONAIS.find((f) => f.kind === kind)!.etapas.map((e) => chaveDeEtapa(e.nome)));
+
+  it("todo destino por estado existe no funil certo", () => {
+    for (const [bucket, d] of Object.entries(DESTINO_POR_BUCKET)) {
+      expect(chavesDoModelo(d.funil), `destino de ${bucket}: ${d.funil}/${d.etapa}`).toContain(d.etapa);
+    }
+  });
+
+  it("toda etapa de reentrada existe no funil do destino", () => {
+    for (const [bucket, chaves] of Object.entries(REENTRADA)) {
+      const funil = DESTINO_POR_BUCKET[bucket as keyof typeof DESTINO_POR_BUCKET].funil;
+      for (const chave of chaves) expect(chavesDoModelo(funil), `reentrada de ${bucket}: ${funil}/${chave}`).toContain(chave);
+    }
+  });
+
+  it("a chave nasce do nome, sem acento, e não do slug histórico", () => {
+    expect(chaveDeEtapa("Cancelados para recuperar")).toBe("cancelados_para_recuperar");
+    expect(chaveDeEtapa("Demonstração agendada")).toBe("demonstracao_agendada");
+  });
+});
+
 describe("planejar — destinos por estado (importação)", () => {
   it("lead → Vendas/Primeiro contato; ativo → Pós-vendas/Cliente ativo; cancelado → Retenção/Cancelados para recuperar", () => {
     const r = planejar("importacao", [
@@ -111,6 +138,30 @@ describe("planejar — destinos por estado (importação)", () => {
     expect(c.valores).toMatchObject({ email: null, phone_number: null });
     expect(c.valores.tags).toEqual(expect.arrayContaining(["importacao_legado", "revisao_sem_contato"]));
     expect(r.resumo.semContato).toBe(1);
+  });
+});
+
+describe("planejar — dado fora do formato do banco", () => {
+  it("e-mail inválido não é gravado nem descarta a pessoa: usa o telefone e guarda o original", () => {
+    const r = planejar("importacao", [entidade({ id: "t", bucket: "lead", email: "te@teste", phone: "+5585999990000", legacyUserIds: ["u1"] })], [], [], DESTINOS, AGORA);
+    const c = r.ops.find((o) => o.op === "inserir_contato") as Extract<Operacao, { op: "inserir_contato" }>;
+    expect(c.valores).toMatchObject({ email: null, phone_number: "+5585999990000" });
+    expect(c.valores.tags).not.toContain("revisao_sem_contato");
+    expect((c.valores.custom_fields.legacy as { contato_invalido: unknown }).contato_invalido).toEqual({ email: "te@teste" });
+  });
+
+  it("e-mail inválido e sem telefone: vira revisao_sem_contato, sem fabricar contato", () => {
+    const r = planejar("importacao", [entidade({ id: "t2", bucket: "lead", email: "isso nao e email" })], [], [], DESTINOS, AGORA);
+    const c = r.ops.find((o) => o.op === "inserir_contato") as Extract<Operacao, { op: "inserir_contato" }>;
+    expect(c.valores).toMatchObject({ email: null, phone_number: null });
+    expect(c.valores.tags).toContain("revisao_sem_contato");
+  });
+
+  it("telefone fora do formato E.164 também é preservado à parte", () => {
+    const r = planejar("importacao", [entidade({ id: "t3", bucket: "lead", email: "ok@x.com", phone: "123" })], [], [], DESTINOS, AGORA);
+    const c = r.ops.find((o) => o.op === "inserir_contato") as Extract<Operacao, { op: "inserir_contato" }>;
+    expect(c.valores.phone_number).toBeNull();
+    expect((c.valores.custom_fields.legacy as { contato_invalido: unknown }).contato_invalido).toEqual({ telefone: "123" });
   });
 });
 
@@ -196,6 +247,13 @@ describe("planejar — identidade e conflitos", () => {
     expect(r.conflitos).toHaveLength(1);
   });
 
+  it("identidade ambígua não vira 'fora do plano': os contatos em conflito ficam intocados", () => {
+    const contatos = [contato({ id: "c1", email_normalized: "p@x.com" }), contato({ id: "c2", phone_number: "+5585999990000" })];
+    const r = planejar("importacao", [entidade({ id: "p", bucket: "lead", email: "p@x.com", phone: "+5585999990000" })], contatos, [], DESTINOS, AGORA, { foraDoPlano: "revisar" });
+    expect(r.conflitos).toHaveLength(1);
+    expect(r.ops).toEqual([]);
+  });
+
   it("contato do sistema que nenhuma pessoa reivindicou é reportado, não mexido", () => {
     const r = planejar("importacao", [entidade({ id: "x", email: "a@x.com" })], [contato({ id: "orfao", email_normalized: "z@x.com" })], [], DESTINOS, AGORA);
     expect(r.contatosForaDoPlano).toEqual(["orfao"]);
@@ -244,4 +302,44 @@ describe("planejar — idempotência (a prova que importa)", () => {
       expect(Math.max(...porContato.values())).toBe(1);
     });
   }
+});
+
+describe("planejar — contato do sistema sem evidência no billing vivo (foraDoPlano: revisar)", () => {
+  const contatos = [
+    contato({ id: "f1", email_normalized: "fantasma@x.com" }),
+    contato({ id: "f2", email_normalized: "ativo-antigo@x.com" }),
+  ];
+  const cards = [
+    card({ id: "kf1", stage_id: "S-perd", status: "lost", contact_id: "f1", value_cents: 9990 }),
+    card({ id: "kf2", stage_id: "S-ass", status: "won", contact_id: "f2", value_cents: 1388 }),
+  ];
+  const plano = () => planejar("importacao", [entidade({ id: "x", bucket: "lead", email: "x@x.com" })], contatos, cards, DESTINOS, AGORA, { foraDoPlano: "revisar" });
+
+  it("mantém o contato (marcado, sem campanha) e tira o card de Vendas para Cancelados para recuperar, sem apagar nada", () => {
+    const r = plano();
+    expect(r.contatosForaDoPlano).toEqual([]);
+    expect(r.resumo.foraDoPlanoRevisados).toBe(2);
+    const movidos = r.ops.filter((o) => o.op === "mover_card") as Extract<Operacao, { op: "mover_card" }>[];
+    expect(movidos.map((m) => [m.cardId, m.stageId])).toEqual([["kf1", "S-canc"], ["kf2", "S-canc"]]);
+    expect(movidos[0]!.source_metadata).toMatchObject({ sem_evidencia_no_billing_vivo: true, reclassificado_de: { etapa: "perdido", status: "lost" } });
+    const upd = r.ops.find((o) => o.op === "atualizar_contato" && o.contatoId === "f1") as Extract<Operacao, { op: "atualizar_contato" }>;
+    expect(upd.patch.tags).toEqual(expect.arrayContaining(["importacao_legado", "revisao_billing", "ex-cliente"]));
+    expect((upd.patch.custom_fields as { financeiro: { estado: string } }).financeiro.estado).toBe("sem_evidencia");
+    expect(r.ops.some((o) => o.op === "absorver_card")).toBe(false);
+  });
+
+  it("no modo padrão (reportar) só lista, não mexe", () => {
+    const r = planejar("importacao", [entidade({ id: "x", bucket: "lead", email: "x@x.com" })], contatos, cards, DESTINOS, AGORA);
+    expect(r.contatosForaDoPlano).toEqual(["f1", "f2"]);
+    expect(r.ops.some((o) => o.op === "mover_card")).toBe(false);
+  });
+
+  it("idempotente: depois de aplicado, não há mais nada a fazer", () => {
+    const ents = [entidade({ id: "x", bucket: "lead", email: "x@x.com" })];
+    const p1 = planejar("importacao", ents, contatos, cards, DESTINOS, AGORA, { foraDoPlano: "revisar" });
+    const depois = aplicar(p1.ops, contatos, cards, "importacao");
+    const p2 = planejar("importacao", ents, depois.contatos, depois.cards, DESTINOS, AGORA, { foraDoPlano: "revisar" });
+    expect(p2.ops).toEqual([]);
+    expect(p2.contatosForaDoPlano).toEqual([]);
+  });
 });
