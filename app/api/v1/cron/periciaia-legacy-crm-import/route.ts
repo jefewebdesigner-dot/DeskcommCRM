@@ -4,10 +4,7 @@ import type { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api/wrappers";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
-import {
-  fetchLegacyCrmExport,
-  summarizeLegacyCrm,
-} from "@/lib/billing-export/legacy-crm";
+import { buildLegacyImportPlan } from "@/lib/billing-export/legacy-import";
 
 export const dynamic = "force-dynamic";
 
@@ -24,16 +21,12 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await fetchLegacyCrmExport(PERICIAIA_ORG_ID);
-    if (!result.configured || !result.data) {
-      return ok({ configured: false, dryRun: true }, { requestId });
-    }
-
+    const plan = await buildLegacyImportPlan(PERICIAIA_ORG_ID);
     return ok(
       {
         configured: true,
         dryRun: true,
-        summary: summarizeLegacyCrm(result.data),
+        summary: plan.summary,
       },
       { requestId },
     );

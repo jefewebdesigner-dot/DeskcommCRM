@@ -194,6 +194,16 @@ async function main() {
 
       idsPorTipo.set(modelo.kind, atual.id);
 
+      // Pós-vendas é o destino canônico de quem já é cliente. A flag é irmã
+      // exclusiva de `is_default`: Vendas recebe aquisição; Pós-vendas recebe
+      // relacionamento de cliente sem misturar as duas métricas.
+      await client.query(
+        `update public.crm_pipelines
+            set is_client_pipeline=$3, updated_at=now()
+          where organization_id=$1 and id=$2`,
+        [organization.id, atual.id, modelo.kind === "post_sales"],
+      );
+
       const etapas = await client.query<{
         id: string;
         name: string;
@@ -218,7 +228,7 @@ async function main() {
       // o slug histórico tenha nome de e-commerce.
       const aliasesDeVendas: Record<string, string> = {
         "novo lead": "carrinho_abandonado",
-        contatado: "aguardando_pagamento",
+        "primeiro contato": "aguardando_pagamento",
         "demonstracao agendada": "pago",
         "negociando plano": "em_separacao",
         "assinante ativo": "enviado",

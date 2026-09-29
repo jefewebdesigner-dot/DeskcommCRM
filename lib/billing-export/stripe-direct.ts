@@ -107,6 +107,63 @@ function planLabel(sub: StripeSubscription): string {
 
 const NOVENTA_DIAS_S = 90 * 24 * 60 * 60;
 
+export type StripeLifecycleRow = {
+  subscriptionId: string;
+  customerId: string | null;
+  name: string | null;
+  email: string | null;
+  status: "active" | "past_due" | "canceled";
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+};
+
+function lifecycleRow(
+  sub: StripeSubscription,
+  status: StripeLifecycleRow["status"],
+): StripeLifecycleRow {
+  const customer =
+    typeof sub.customer === "string"
+      ? { id: sub.customer, name: null, email: null }
+      : {
+          id: sub.customer.id,
+          name: sub.customer.name ?? null,
+          email: sub.customer.email ?? null,
+        };
+  const fim = periodoFimEm(sub);
+  return {
+    subscriptionId: sub.id,
+    customerId: customer.id,
+    name: customer.name,
+    email: customer.email,
+    status,
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    currentPeriodEnd: fim > 0 ? new Date(fim * 1000).toISOString() : null,
+  };
+}
+
+/**
+ * Identidades e estado atual das assinaturas Stripe. Diferente do dashboard,
+ * este snapshot existe para reconciliar pessoas no CRM — por isso carrega ids
+ * estáveis de cliente/assinatura e nunca depende da amostra do billing-export.
+ */
+export async function fetchStripeLifecycleSnapshot(): Promise<{
+  active: StripeLifecycleRow[];
+  pastDue: StripeLifecycleRow[];
+  canceled: StripeLifecycleRow[];
+} | null> {
+  if (!env.STRIPE_SECRET_KEY) return null;
+  const [active, pastDue, canceled] = await Promise.all([
+    paginateSubscriptions("active"),
+    paginateSubscriptions("past_due"),
+    paginateSubscriptions("canceled"),
+  ]);
+  return {
+    active: active.map((sub) => lifecycleRow(sub, "active")),
+    pastDue: pastDue.map((sub) => lifecycleRow(sub, "past_due")),
+    canceled: canceled.map((sub) => lifecycleRow(sub, "canceled")),
+  };
+}
+
 export async function fetchStripeDirect(): Promise<StripeDireto | null> {
   if (!env.STRIPE_SECRET_KEY) return null;
 

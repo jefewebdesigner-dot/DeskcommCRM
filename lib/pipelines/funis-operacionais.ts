@@ -32,7 +32,7 @@ export const FUNIS_OPERACIONAIS: readonly FunilOperacional[] = [
     motivosDePerda: ["Preço", "Já usa outro sistema", "Não é o momento", "Sem resposta"],
     etapas: [
       { nome: "Novo lead", slug: "novo_lead", hint: "new" },
-      { nome: "Contatado", slug: "contatado", hint: "contacted" },
+      { nome: "Primeiro contato", slug: "primeiro_contato", hint: "contacted" },
       { nome: "Qualificado", slug: "qualificado", hint: "qualifying" },
       { nome: "Demonstração agendada", slug: "demonstracao_agendada", hint: "qualified" },
       { nome: "Proposta enviada", slug: "proposta_enviada", hint: null },

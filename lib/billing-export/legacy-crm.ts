@@ -12,7 +12,7 @@ interface LegacyStage {
   fixed?: boolean;
 }
 
-interface LegacyLead {
+export interface LegacyLead {
   uid?: string | null;
   email?: string | null;
   displayName?: string | null;
@@ -20,11 +20,19 @@ interface LegacyLead {
   crmStage?: string | null;
   source?: string | null;
   convertido?: boolean;
+  convertidoUid?: string | null;
   isArchived?: boolean;
   lossReason?: string | null;
+  notes?: string | null;
+  dealValue?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  ultimoContato?: string | null;
+  origem?: string | null;
+  tags?: string[] | null;
 }
 
-interface LegacyUser {
+export interface LegacyUser {
   uid?: string | null;
   email?: string | null;
   displayName?: string | null;
@@ -38,6 +46,33 @@ interface LegacyUser {
   abacatepayCustomerId?: string | null;
   abacatepaySubscriptionId?: string | null;
   isArchived?: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  registrationSource?: string | null;
+  planType?: string | null;
+  planExpiresAt?: string | null;
+  planCancelledAt?: string | null;
+  notes?: string | null;
+  lastContactedAt?: string | null;
+  contactStatus?: string | null;
+  assignedAdminEmail?: string | null;
+  planValue?: number | null;
+  tags?: string[] | null;
+  temperature?: string | null;
+  rating?: number | null;
+  nextFollowUpAt?: string | null;
+  followUpCount?: number | null;
+  cadenceStep?: number | null;
+  lastFollowUpType?: string | null;
+  lossReason?: string | null;
+  winDate?: string | null;
+  ownerId?: string | null;
+  isPartnerFree?: boolean;
+  planPeriodEnd?: string | null;
+  billingPeriod?: string | null;
+  renewalCount?: number;
+  lastPaymentDate?: string | null;
+  lastPaymentAmount?: number | null;
 }
 
 export interface LegacyCrmExport {
