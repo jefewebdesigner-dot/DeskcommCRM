@@ -87,6 +87,7 @@ export const FUNIS_OPERACIONAIS: readonly FunilOperacional[] = [
       { nome: "Contato realizado", slug: "contato_realizado", hint: "qualifying" },
       { nome: "Negociação / promessa", slug: "negociacao_promessa", hint: "qualified" },
       { nome: "Cancelamento solicitado", slug: "cancelamento_solicitado", hint: null },
+      { nome: "Cancelados para recuperar", slug: "cancelados_recuperar", hint: null },
       { nome: "Retenção", slug: "retencao", hint: "negotiating" },
       { nome: "Regularizado", slug: "regularizado", hint: "won", won: true },
       { nome: "Cancelado", slug: "cancelado", hint: "lost", lost: true },
