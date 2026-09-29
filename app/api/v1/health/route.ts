@@ -224,6 +224,34 @@ async function checkWaha(): Promise<Check> {
 }
 
 /**
+ * Evolution: só entra no health quando o transporte está configurado (instalação sem ele
+ * não vê nada novo). `fetchInstances` valida conectividade E chave num tiro só.
+ */
+async function checkEvolution(): Promise<Check | null> {
+  const base = (process.env.EVOLUTION_API_BASE_URL ?? "").trim();
+  const chave = (process.env.EVOLUTION_API_KEY ?? "").trim();
+  if (!base || !chave) return null;
+  const t0 = Date.now();
+  try {
+    const res = await withTimeout(
+      fetch(`${base.replace(/\/$/, "")}/instance/fetchInstances`, { headers: { apikey: chave }, cache: "no-store" }),
+    );
+    if (!res.ok) {
+      return { status: "down", latency_ms: Date.now() - t0, error: `http_${res.status}`, reason: motivoDoStatusHttp(res.status), target: alvoDe(base) };
+    }
+    return { status: "ok", latency_ms: Date.now() - t0, target: alvoDe(base) };
+  } catch (e) {
+    return {
+      status: "down",
+      latency_ms: Date.now() - t0,
+      error: e instanceof Error ? e.message : String(e),
+      reason: classificarFalhaDeAlcance(e),
+      target: alvoDe(base),
+    };
+  }
+}
+
+/**
  * O segredo interno dos crons também abre o modo verboso. Mesmo contrato de
  * `/api/v1/system/agent`: Bearer, comparação em tempo constante, e segredo vazio
  * nunca vira credencial válida.
@@ -281,15 +309,21 @@ function semAlvo(check: Check): Check {
 }
 
 export async function GET(req: NextRequest) {
-  const [neon, redis, waha] = await Promise.all([
+  const [neon, redis, waha, evolution] = await Promise.all([
     checkNeon(),
     checkRedis(),
     checkWaha(),
+    checkEvolution(),
   ]);
 
   const verboso = req.nextUrl.searchParams.get("verbose") === "1" && segredoInternoConfere(req);
   const filtrar = verboso ? (c: Check) => c : semAlvo;
-  const checks = { neon: filtrar(neon), redis: filtrar(redis), waha: filtrar(waha) };
+  const checks = {
+    neon: filtrar(neon),
+    redis: filtrar(redis),
+    waha: filtrar(waha),
+    ...(evolution ? { evolution: filtrar(evolution) } : {}),
+  };
 
   const anyDown = Object.values(checks).some((c) => c.status === "down");
   const anyDegraded = Object.values(checks).some((c) => c.status === "degraded");

@@ -368,13 +368,17 @@ export async function startWorker(
 
   // Watchdog de sessão (4A-2): reconcilia channel_sessions×WAHA + redrive de
   // queued. Liga só com as credenciais do WAHA no env (sem elas: warn + off).
+  const temWaha = env.WAHA_API_BASE_URL !== undefined && env.WAHA_API_KEY !== undefined;
+  const temEvolution = env.EVOLUTION_API_BASE_URL !== undefined && env.EVOLUTION_API_KEY !== undefined;
   const sessionWatchdogLoop =
-    env.WAHA_API_BASE_URL !== undefined && env.WAHA_API_KEY !== undefined
+    temWaha || temEvolution
       ? runSessionWatchdogLoop(
           pool,
           {
-            wahaBaseUrl: env.WAHA_API_BASE_URL,
-            wahaApiKey: env.WAHA_API_KEY,
+            wahaBaseUrl: env.WAHA_API_BASE_URL ?? "",
+            wahaApiKey: env.WAHA_API_KEY ?? "",
+            evolutionBaseUrl: env.EVOLUTION_API_BASE_URL,
+            evolutionApiKey: env.EVOLUTION_API_KEY,
             intervalMs: env.WATCHDOG_INTERVAL_MS,
             redriveMinAgeMs: env.WATCHDOG_REDRIVE_MIN_AGE_MS,
             redriveBatchSize: env.WATCHDOG_REDRIVE_BATCH_SIZE,
@@ -383,7 +387,7 @@ export async function startWorker(
           log,
           loopsAbort.signal,
         )
-      : (log.warn("watchdog de sessão OFF — WAHA_API_BASE_URL/WAHA_API_KEY ausentes no env", {}),
+      : (log.warn("watchdog de sessão OFF — sem credenciais de WAHA nem de Evolution no env", {}),
         Promise.resolve());
 
   // Ponte de eventos WaCalls (spec 18, §4.2) — chamada de voz, opt-in por

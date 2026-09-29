@@ -12,6 +12,7 @@
  * `messages.upsert` com o MESMO id, então a deduplicação da ingestão o reconhece.
  */
 import { EvolutionError, getEvolutionClient } from "@/lib/channels/evolution/client";
+import { statusInternoDaInstancia } from "@/lib/channels/evolution/estado";
 import { chaveDaUrlDeMidia } from "@/lib/channels/evolution/webhook";
 import { MAX_MEDIA_BYTES, MediaTooLargeError, type FetchedMedia } from "@/lib/messaging/media/types";
 
@@ -25,26 +26,7 @@ import type {
   RecipientInput,
 } from "../types";
 
-/** O que o `connectionStatus` da Evolution significa para o contrato interno de saúde. */
-export function statusInternoDaInstancia(input: {
-  state: string;
-  ownerJid: string | null;
-}): string | null {
-  switch (input.state.toLowerCase()) {
-    case "open":
-      return "WORKING";
-    // Sem aparelho pareado, `connecting` é o QR esperando ser lido; com aparelho já
-    // pareado é reconexão em curso — e reconexão transitória não pode acender alerta.
-    case "connecting":
-      return input.ownerJid ? "STARTING" : "SCAN_QR_CODE";
-    case "close":
-      return "STOPPED";
-    case "refused":
-      return "FAILED";
-    default:
-      return null;
-  }
-}
+export { statusInternoDaInstancia };
 
 function digitos(v: string): string {
   return v.replace(/\D/g, "");

@@ -27,14 +27,23 @@
  */
 import type pg from 'pg';
 
+import { statusInternoDaInstancia } from '@/lib/channels/evolution/estado';
 import { parseWahaMessageId, wahaEchoExternalIds } from '@/lib/waha/message-id';
 import { lerNumerosDeTeste, numeroPodeTestar, preGoLiveAtivo } from '@/lib/ai/elegibilidade/pre-go-live';
 
 import type { Logger } from '../../obs/logger';
 
 export interface WatchdogConfig {
+  /** Vazio = este worker não vigia sessões do WAHA. */
   wahaBaseUrl: string;
   wahaApiKey: string;
+  /**
+   * Evolution API (opcional): com as duas presentes o watchdog também espelha o estado das
+   * instâncias e reenvia mensagens `queued` das sessões dela. Sem elas, as sessões dela
+   * continuam sendo contadas no aviso de "presas em canal que este resgate não alcança".
+   */
+  evolutionBaseUrl?: string;
+  evolutionApiKey?: string;
   /** intervalo do tick (knob WATCHDOG_INTERVAL_MS) */
   intervalMs: number;
   /** idade mínima de uma queued para redrive — evita corrida com o insert do handler */
@@ -91,12 +100,73 @@ async function fetchWahaSessions(cfg: WatchdogConfig): Promise<WahaSession[] | n
   }
 }
 
+interface EvolutionInstance {
+  name: string;
+  connectionStatus: string;
+  ownerJid?: string | null;
+}
+
+async function fetchEvolutionInstances(cfg: WatchdogConfig): Promise<EvolutionInstance[] | null> {
+  try {
+    const res = await fetch(`${cfg.evolutionBaseUrl!.replace(/\/+$/, '')}/instance/fetchInstances`, {
+      headers: { apikey: cfg.evolutionApiKey! },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as EvolutionInstance[];
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null; // Evolution fora: tick pula — nunca derruba o worker
+  }
+}
+
+/**
+ * Espelha o estado REAL das instâncias da Evolution em `channel_sessions`. Só espelha:
+ * NÃO religa sozinho (`close` costuma ser logout, e religar geraria QR novo a cada tick), e
+ * quem alerta o operador é o vigia de saúde (`/cron/channel-health`), não este laço.
+ */
+export async function reconcileEvolutionSessions(
+  pool: pg.Pool,
+  cfg: WatchdogConfig,
+  log: Logger,
+): Promise<number> {
+  if (!cfg.evolutionBaseUrl || !cfg.evolutionApiKey) return 0;
+  const instances = await fetchEvolutionInstances(cfg);
+  if (instances === null) {
+    log.warn('watchdog: Evolution indisponível — tick de reconciliação pulado', {});
+    return 0;
+  }
+  let fixed = 0;
+  for (const inst of instances) {
+    const status = statusInternoDaInstancia({ state: inst.connectionStatus ?? '', ownerJid: inst.ownerJid ?? null });
+    if (!status) continue;
+    const { rows } = await pool.query<{ id: string }>(
+      `update channel_sessions
+          set status = $2, updated_at = now()
+        where evolution_instance_name = $1
+          and to_jsonb(channel_sessions) ->> 'archived_at' is null
+          and status is distinct from $2
+       returning id`,
+      [inst.name, status],
+    );
+    for (const row of rows) {
+      fixed += 1;
+      log.warn('watchdog: espelho de sessão reconciliado com a Evolution real', {
+        channel_session_id: row.id,
+        status,
+      });
+    }
+  }
+  return fixed;
+}
+
 /** Corrige o espelho channel_sessions para o status REAL do WAHA e retoma STOPPED. */
 export async function reconcileSessions(
   pool: pg.Pool,
   cfg: WatchdogConfig,
   log: Logger,
 ): Promise<number> {
+  if (!cfg.wahaBaseUrl || !cfg.wahaApiKey) return 0;
   const sessions = await fetchWahaSessions(cfg);
   if (sessions === null) {
     log.warn('watchdog: WAHA indisponível — tick de reconciliação pulado', {});
@@ -159,7 +229,9 @@ interface QueuedRow {
   /** A limpeza do eco só procura na conversa da própria mensagem. */
   conversation_id: string;
   body: string | null;
-  waha_session_name: string;
+  waha_session_name: string | null;
+  /** Preenchido nas sessões da Evolution. */
+  evolution_instance_name?: string | null;
   wa_identity: string | null;
   wa_lid: string | null;
   phone_number: string | null;
@@ -183,6 +255,20 @@ function chatIdOf(m: QueuedRow): string | null {
   if (m.wa_identity?.startsWith('lid:')) return `${m.wa_identity.slice(4)}@lid`;
   if (m.wa_identity?.startsWith('phone:+')) return `${m.wa_identity.slice(7)}@c.us`;
   if (m.phone_number) return `${m.phone_number.replace('+', '')}@c.us`;
+  return null;
+}
+
+/**
+ * Destinatário no formato da Evolution — MESMA REGRA de `resolveRecipient` do adapter
+ * (grupo → id do grupo; lid → `<lid>@lid`; telefone → só dígitos). Duas cópias por ser
+ * outro processo (pg cru, sem o seam); divergir mandaria o reenvio a um endereço diferente.
+ */
+function evolutionNumberOf(m: QueuedRow): string | null {
+  if (m.is_group && m.group_chat_id) return m.group_chat_id;
+  if (m.wa_lid) return `${m.wa_lid}@lid`;
+  if (m.wa_identity?.startsWith('lid:')) return `${m.wa_identity.slice(4)}@lid`;
+  if (m.wa_identity?.startsWith('phone:+')) return m.wa_identity.slice(7).replace(/\D/g, '') || null;
+  if (m.phone_number) return m.phone_number.replace(/\D/g, '') || null;
   return null;
 }
 
@@ -297,14 +383,21 @@ async function stampExternalIdAfterEcho(
   }
 }
 
+/** `key.id` cru que a Evolution devolve no envio (é o `external_id` que o ACK e o eco casam). */
+function parseEvolutionKeyId(data: unknown): string | null {
+  const key = (data as { key?: { id?: unknown } } | null)?.key;
+  return typeof key?.id === 'string' && key.id ? key.id : null;
+}
+
 /** Reenvia mensagens AI presas em queued com sessão WORKING. */
 export async function redriveQueued(
   pool: pg.Pool,
   cfg: WatchdogConfig,
   log: Logger,
 ): Promise<number> {
+  const evolutionAtiva = Boolean(cfg.evolutionBaseUrl && cfg.evolutionApiKey);
   const { rows } = await pool.query<QueuedRow>(
-    `select m.id, m.organization_id, m.conversation_id, m.body, s.waha_session_name,
+    `select m.id, m.organization_id, m.conversation_id, m.body, s.waha_session_name, s.evolution_instance_name,
             c.wa_identity, c.wa_lid, c.phone_number, v.is_group, v.group_chat_id
      from messages m
      join channel_sessions s on s.id = m.channel_session_id and s.organization_id = m.organization_id
@@ -325,11 +418,11 @@ export async function redriveQueued(
        -- Deixar de fora NÃO é resolver: é parar de fazer a coisa errada. Quem
        -- conta as que ficaram sem resgate é o bloco logo abaixo — silêncio aqui
        -- é o que fez este defeito durar.
-       and s.waha_session_name is not null
+       and (s.waha_session_name is not null or ($3::boolean and s.evolution_instance_name is not null))
        and m.created_at < now() - make_interval(secs => $1 / 1000.0)
      order by m.created_at
      limit $2`,
-    [cfg.redriveMinAgeMs, cfg.redriveBatchSize],
+    [cfg.redriveMinAgeMs, cfg.redriveBatchSize, evolutionAtiva],
   );
 
   // As que este resgate NÃO alcança. Não são reenviadas daqui — enviar em dobro
@@ -342,8 +435,9 @@ export async function redriveQueued(
      where m.sent_via in ('ai', 'automation', 'system') and m.status = 'queued'
        and s.status = 'WORKING'
        and s.waha_session_name is null
+       and not ($2::boolean and s.evolution_instance_name is not null)
        and m.created_at < now() - make_interval(secs => $1 / 1000.0)`,
-    [cfg.redriveMinAgeMs],
+    [cfg.redriveMinAgeMs, evolutionAtiva],
   );
   const presas = Number(foraDoAlcance[0]?.n ?? '0');
   if (presas > 0) {
@@ -354,7 +448,8 @@ export async function redriveQueued(
 
   let sent = 0;
   for (const m of rows) {
-    const chatId = chatIdOf(m);
+    const viaEvolution = !m.waha_session_name && Boolean(m.evolution_instance_name);
+    const chatId = viaEvolution ? evolutionNumberOf(m) : chatIdOf(m);
     if (chatId === null || m.body === null) {
       log.warn('watchdog: queued sem destino/corpo — pulada', { message_id: m.id });
       continue;
@@ -390,14 +485,24 @@ export async function redriveQueued(
         log.info('watchdog: reenvio bloqueado pelo modo de teste', { message_id: m.id });
         continue;
       }
-      const res = await fetch(`${cfg.wahaBaseUrl}/api/sendText`, {
-        method: 'POST',
-        headers: { 'X-Api-Key': cfg.wahaApiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: m.waha_session_name, chatId, text: m.body }),
-        signal: AbortSignal.timeout(15_000),
-      });
+      const res = viaEvolution
+        ? await fetch(
+            `${cfg.evolutionBaseUrl!.replace(/\/+$/, '')}/message/sendText/${encodeURIComponent(m.evolution_instance_name!)}`,
+            {
+              method: 'POST',
+              headers: { apikey: cfg.evolutionApiKey!, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ number: chatId, text: m.body }),
+              signal: AbortSignal.timeout(15_000),
+            },
+          )
+        : await fetch(`${cfg.wahaBaseUrl}/api/sendText`, {
+            method: 'POST',
+            headers: { 'X-Api-Key': cfg.wahaApiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session: m.waha_session_name, chatId, text: m.body }),
+            signal: AbortSignal.timeout(15_000),
+          });
       if (!res.ok) {
-        log.warn('watchdog: redrive falhou no WAHA — mantida queued para o próximo tick', {
+        log.warn('watchdog: redrive falhou no transporte — mantida queued para o próximo tick', {
           message_id: m.id,
           status_code: res.status,
         });
@@ -405,7 +510,7 @@ export async function redriveQueued(
       }
       jaSaiu = true;
       const data = (await res.json().catch(() => null)) as unknown;
-      const externalId = parseWahaMessageId(data);
+      const externalId = viaEvolution ? parseEvolutionKeyId(data) : parseWahaMessageId(data);
       // Daqui em diante a mensagem JÁ SAIU para o cliente. Devolvê-la a `queued`
       // é o pior desfecho possível: o `catch` de baixo a trata como falha
       // transiente e o próximo tick a manda de novo — a cada tick, sem limite.
@@ -458,7 +563,7 @@ export async function runSessionWatchdogLoop(
 ): Promise<void> {
   while (!signal.aborted) {
     try {
-      const fixed = await reconcileSessions(pool, cfg, log);
+      const fixed = (await reconcileSessions(pool, cfg, log)) + (await reconcileEvolutionSessions(pool, cfg, log));
       const redriven = await redriveQueued(pool, cfg, log);
       if (fixed + redriven > 0) {
         log.info('watchdog: tick com ação', { reconciled: fixed, redriven });
