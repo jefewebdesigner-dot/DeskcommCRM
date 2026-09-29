@@ -272,7 +272,11 @@ describe("o resgate de presas não toca canal que não alcança", () => {
   it("filtra para as sessões que este transporte resolve", () => {
     // Sem o filtro, a consulta trazia mensagem de QUALQUER canal e postava com
     // a sessão nula.
-    expect(WATCHDOG).toMatch(/and s\.waha_session_name is not null/);
+    // Duas sessões que o resgate sabe alcançar: a do WAHA (sempre) e a da Evolution (só com
+    // credenciais no env do worker). Qualquer outra continua fora — e contada abaixo.
+    expect(WATCHDOG).toMatch(
+      /and \(s\.waha_session_name is not null or \(\$3::boolean and s\.evolution_instance_name is not null\)\)/,
+    );
   });
 
   it("mas CONTA as que ficaram de fora — silêncio é o que fez isso durar", () => {
@@ -284,5 +288,8 @@ describe("o resgate de presas não toca canal que não alcança", () => {
     // se o outro caminho já mandou.
     const envios = [...WATCHDOG.matchAll(/\/api\/sendText/g)];
     expect(envios.length, "apareceu um segundo caminho de envio no watchdog").toBe(1);
+    // A Evolution tem o SEU caminho, um só, e passa pelas mesmas guardas do laço (modo de teste,
+    // bloqueio, carimbo de `sent` só depois do envio).
+    expect([...WATCHDOG.matchAll(/\/message\/sendText\//g)].length).toBe(1);
   });
 });

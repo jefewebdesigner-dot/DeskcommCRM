@@ -26,7 +26,6 @@ import {
   segredoConfere,
   traduzirParaEnvelope,
 } from "@/lib/channels/evolution/webhook";
-import { dispatchWahaEvent } from "@/lib/waha/ingest";
 
 import { CHANNEL_PROVIDER_EVOLUTION, CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
 import { sincronizarSaudeDaConexao } from "./health";
@@ -141,6 +140,9 @@ async function evolutionInbound(
     return { ok: true, body: { status: "ignored", event: leitura.corpo.event ?? null } };
   }
 
+  // Import tardio: a ingestão comum puxa a cadeia inteira de contato/conversa/mídia, e os demais
+  // canais (e os testes deles) não devem pagar esse carregamento só por importar este arquivo.
+  const { dispatchWahaEvent } = await import("@/lib/waha/ingest");
   await dispatchWahaEvent(
     admin as Parameters<typeof dispatchWahaEvent>[0],
     {
