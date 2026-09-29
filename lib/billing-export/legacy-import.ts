@@ -72,6 +72,8 @@ export interface LegacyImportPlan {
     currentBillingActiveEvidence: number;
     currentBillingPastDueEvidence: number;
     currentBillingCanceledEvidence: number;
+    activeEntitiesWithMultipleSubscriptions: number;
+    activeEntitiesWithMultipleProviders: number;
     groupsWithoutEmailOrPhone: number;
     duplicateRowsCollapsed: number;
   };
@@ -425,6 +427,12 @@ export async function buildLegacyImportPlan(organizationId: string): Promise<Leg
       ).length,
       currentBillingCanceledEvidence: currentBillingRows.filter(
         (row) => row.kind === "billing_canceled",
+      ).length,
+      activeEntitiesWithMultipleSubscriptions: entities.filter(
+        (row) => row.bucket === "active" && row.paymentSubscriptionIds.length > 1,
+      ).length,
+      activeEntitiesWithMultipleProviders: entities.filter(
+        (row) => row.bucket === "active" && row.paymentProviders.length > 1,
       ).length,
       groupsWithoutEmailOrPhone: entities.filter((row) => !row.email && !row.phone).length,
       duplicateRowsCollapsed: Math.max(0, evidences.length - entities.length),
