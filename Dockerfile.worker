@@ -24,4 +24,4 @@ COPY . .
 # Healthz do worker (bind 0.0.0.0 dentro do container).
 EXPOSE 8787
 
-CMD ["pnpm", "exec", "tsx", "workers/agent-worker/main.ts"]
+CMD ["pnpm", "exec", "tsx", "--require", "./workers/agent-worker/server-only-shim.cjs", "workers/agent-worker/main.ts"]
