@@ -41,9 +41,9 @@ fi
 QUERY=""
 [[ "$JOB" == "storage-redaction" ]] && QUERY="?limit=50"
 
-INICIO=$(date +%s%3N)
+INICIO=$(( $(date +%s%N) / 1000000 ))
 STATUS=$(curl --silent --show-error --max-time 55 --output /dev/null --write-out '%{http_code}' \
   -H "Authorization: Bearer $SECRET" "$BASE_URL/api/v1/cron/$JOB$QUERY" || echo 000)
-FIM=$(date +%s%3N)
+FIM=$(( $(date +%s%N) / 1000000 ))
 printf '%s job=%s status=%s ms=%s\n' "$(date -u +%FT%TZ)" "$JOB" "$STATUS" "$((FIM - INICIO))" >> "$LOG_FILE" 2>/dev/null || true
 [[ "$STATUS" == 2* ]]
