@@ -41,6 +41,8 @@ const FONTE: Record<ProviderDeMensagem, FonteDeTemplates | null> = {
   // Manda texto livre a qualquer hora: não há definição a listar, e um seletor
   // ali ofereceria solução para um problema que este canal não tem.
   waha: null,
+  // Baileys, como o WAHA: texto livre a qualquer hora, sem definição aprovada.
+  evolution: null,
   meta_cloud: "oficial",
   zernio: "parceiro",
 };

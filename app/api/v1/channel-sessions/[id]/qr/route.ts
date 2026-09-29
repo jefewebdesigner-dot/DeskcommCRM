@@ -25,6 +25,9 @@ import { NextResponse } from "next/server";
 
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { getAdapter } from "@/lib/channels";
+import { DEFAULT_CHANNEL_PROVIDER } from "@/lib/channels/capabilities";
+import { CHANNEL_SESSION_REF_COLUMNS, resolveSessionRef, type ChannelSessionRef } from "@/lib/channels/session-ref";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -54,13 +57,12 @@ export async function GET(
   // arquivado, e exigir a coluna aqui apagaria o QR de quem está pareando agora
   // — o passo mais frágil da primeira instalação.
   const { data: sessionRaw } = await queryTolerantToMissingArchived(
-    () => buscar(`waha_session_name, ${ARCHIVED_AT}`),
-    () => buscar("waha_session_name"),
+    () => buscar(`${CHANNEL_SESSION_REF_COLUMNS}, ${ARCHIVED_AT}`),
+    () => buscar(CHANNEL_SESSION_REF_COLUMNS),
   );
-  const session = sessionRaw as {
-    waha_session_name: string | null;
-    archived_at?: string | null;
-  } | null;
+  const session = sessionRaw as
+    | (Record<string, string | null> & { archived_at?: string | null })
+    | null;
   if (!session) return new NextResponse(null, { status: 404 });
   // 409, não 404: o canal ESTÁ na organização — foi excluído. O corpo é vazio
   // porque quem consome isto é um <img>; o cabeçalho é para quem depura.
@@ -70,38 +72,33 @@ export async function GET(
       headers: { "x-channel-state": "archived" },
     });
   }
-  // Canal oficial não pareia por QR: `waha_session_name` é NULL nele por CHECK.
-  // Afirmar `string` aqui (era um cast) só adiava a mentira até a URL, que virava
-  // `/api/null/auth/qr` — 404 do transporte, indistinguível de "o QR ainda não
-  // ficou pronto", que é exatamente o estado em que a tela fica insistindo.
-  if (!session.waha_session_name) {
+  // Canal oficial não pareia por QR: a coluna de sessão do transporte é NULL nele por
+  // CHECK. Sem esta guarda o `null` seguiria para a URL do transporte como se fosse nome
+  // de sessão — 404 indistinguível de "o QR ainda não ficou pronto".
+  const provider = (session.provider ?? DEFAULT_CHANNEL_PROVIDER) as ChannelSessionRef["provider"];
+  const adapter = getAdapter(provider);
+  if (!(session.waha_session_name ?? session.evolution_instance_name) || !adapter.fetchPairingQr) {
     return new NextResponse(null, {
       status: 409,
       headers: { "x-channel-state": "no-session" },
     });
   }
 
-  const baseUrl = process.env.WAHA_API_BASE_URL;
-  const apiKey = process.env.WAHA_API_KEY;
-  if (!baseUrl || !apiKey || apiKey === "dev_plaintext_change_me") {
-    return new NextResponse(null, { status: 503 });
-  }
-
-  const upstream = await fetch(
-    `${baseUrl}/api/${encodeURIComponent(session.waha_session_name)}/auth/qr?format=image`,
-    { headers: { "X-Api-Key": apiKey }, cache: "no-store" },
-  );
-  if (!upstream.ok) {
+  const qr = await adapter.fetchPairingQr({
+    organizationId: activeOrg.orgId,
+    sessionRef: resolveSessionRef({ ...session, provider } as unknown as ChannelSessionRef),
+  });
+  if (qr.kind === "unavailable") {
     return new NextResponse(null, {
-      status: upstream.status,
-      headers: { "x-waha-status": String(upstream.status) },
+      status: qr.httpStatus,
+      headers: { "x-transport-status": String(qr.httpStatus) },
     });
   }
+  // QR ainda não gerado: 404, o mesmo que o transporte respondia — a tela segue tentando.
+  if (qr.kind === "pending") return new NextResponse(null, { status: 404 });
 
-  const ct = upstream.headers.get("content-type") ?? "image/png";
-  const buf = await upstream.arrayBuffer();
-  return new NextResponse(buf, {
+  return new NextResponse(qr.bytes as BodyInit, {
     status: 200,
-    headers: { "content-type": ct, "cache-control": "no-store, max-age=0" },
+    headers: { "content-type": qr.contentType, "cache-control": "no-store, max-age=0" },
   });
 }

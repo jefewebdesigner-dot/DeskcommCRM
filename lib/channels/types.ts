@@ -9,7 +9,7 @@ import type { OutboundMedia } from "@/lib/waha/media-send";
 
 export type { OutboundMedia };
 
-export type ChannelProvider = "waha" | "meta_cloud" | "zernio" | "wacalls";
+export type ChannelProvider = "waha" | "meta_cloud" | "zernio" | "wacalls" | "evolution";
 
 /**
  * Os providers que transportam MENSAGEM — o subconjunto sobre o qual a matriz
@@ -308,6 +308,26 @@ export interface ChannelAdapter {
   checkHealth?(input: ChannelTenantScope & { sessionRef: string }): Promise<ChannelHealth>;
 
   /**
+   * Pareamento do número: o que o operador escaneia ou digita no celular.
+   *
+   * OPCIONAL, e provider-neutro por desenho: as rotas de QR e de código de
+   * pareamento pedem ao adapter e testam a presença do método — nunca perguntam
+   * QUAL provider é, e nenhuma fala HTTP com o transporte por conta própria. Um
+   * canal que não pareia por aparelho (Meta oficial, Zernio) simplesmente não
+   * implementa.
+   *
+   *  - `fetchPairingQr`: a imagem do QR do momento (`png`), ou `pending` quando o
+   *    transporte ainda não a gerou (a tela segue tentando), ou `unavailable` com o
+   *    status HTTP que o transporte devolveu.
+   *  - `requestPairingCode`: o código de 8 caracteres para digitar no WhatsApp,
+   *    para o número informado. Erros são `PairingCodeError`-compatíveis no código.
+   */
+  fetchPairingQr?(input: ChannelTenantScope & { sessionRef: string }): Promise<PairingQrResult>;
+  requestPairingCode?(
+    input: ChannelTenantScope & { sessionRef: string; phone: string },
+  ): Promise<PairingCodeResult>;
+
+  /**
    * Envia uma DEFINIÇÃO APROVADA — o único caminho de volta quando a janela de
    * 24h fechou.
    *
@@ -364,6 +384,19 @@ export interface ChannelAdapter {
 }
 
 /** O que o transporte respondeu quando perguntamos se está de pé. */
+export type PairingQrResult =
+  | { kind: "image"; contentType: string; bytes: Uint8Array }
+  | { kind: "pending" }
+  | { kind: "unavailable"; httpStatus: number };
+
+export type PairingCodeResult =
+  | { kind: "code"; code: string }
+  | { kind: "already_connected" }
+  | { kind: "not_ready" }
+  /** O transporte não respondeu (rede, tempo, não configurado) — distinto de "recusou". */
+  | { kind: "unavailable" }
+  | { kind: "failed" };
+
 export interface ChannelHealth {
   /** Deu para perguntar? `false` = transporte inalcançável, não canal caído. */
   reachable: boolean;

@@ -18,7 +18,14 @@ import { parseWahaMessageId, wahaEchoExternalIds } from "@/lib/waha/message-id";
 import { resolveWahaChatId } from "@/lib/waha/send";
 import type { FetchedMedia } from "@/lib/messaging/media/types";
 import { DETALHE_CREDENCIAL_RECUSADA } from "../health";
-import type { ChannelAdapter, ChannelHealth, OutboundEnvelope, RecipientInput } from "../types";
+import type {
+  ChannelAdapter,
+  ChannelHealth,
+  OutboundEnvelope,
+  PairingCodeResult,
+  PairingQrResult,
+  RecipientInput,
+} from "../types";
 
 /**
  * O HTTP que o WAHA devolveu, lido do PREFIXO da mensagem de erro.
@@ -166,6 +173,49 @@ export const wahaAdapter: ChannelAdapter = {
       }
 
       return { reachable: false, status: null, detail: msg.slice(0, 200) };
+    }
+  },
+
+  /** QR de pareamento como imagem — o proxy que a rota `qr` fazia direto no WAHA. */
+  async fetchPairingQr(input: { sessionRef: string }): Promise<PairingQrResult> {
+    const baseUrl = process.env.WAHA_API_BASE_URL;
+    const apiKey = process.env.WAHA_API_KEY;
+    if (!baseUrl || !apiKey || apiKey === "dev_plaintext_change_me") return { kind: "unavailable", httpStatus: 503 };
+    const upstream = await fetch(`${baseUrl}/api/${encodeURIComponent(input.sessionRef)}/auth/qr?format=image`, {
+      headers: { "X-Api-Key": apiKey },
+      cache: "no-store",
+    });
+    if (!upstream.ok) return { kind: "unavailable", httpStatus: upstream.status };
+    return {
+      kind: "image",
+      contentType: upstream.headers.get("content-type") ?? "image/png",
+      bytes: new Uint8Array(await upstream.arrayBuffer()),
+    };
+  },
+
+  /** Código de 8 caracteres no lugar do QR. Nunca cria, desloga nem reinicia o número. */
+  async requestPairingCode(input: { sessionRef: string; phone: string }): Promise<PairingCodeResult> {
+    const client = getWahaClient();
+    if (!client) return { kind: "unavailable" };
+    try {
+      const remote = await client.getVerifiedSession(input.sessionRef);
+      if (remote?.status === "WORKING") return { kind: "already_connected" };
+      if (remote?.status !== "SCAN_QR_CODE") return { kind: "not_ready" };
+      const response = await fetch(`${process.env.WAHA_API_BASE_URL}/api/${encodeURIComponent(input.sessionRef)}/auth/request-code`, {
+        method: "POST",
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+        headers: { "Content-Type": "application/json", "X-Api-Key": process.env.WAHA_API_KEY! },
+        body: JSON.stringify({ phoneNumber: input.phone }),
+      });
+      if (!response.ok) return { kind: "failed" };
+      const body = (await response.json()) as { code?: unknown };
+      const code = typeof body.code === "string" && /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i.test(body.code) ? body.code : null;
+      return code
+        ? { kind: "code", code: code.toUpperCase().replace(/-/, "").replace(/^(.{4})(.{4})$/, "$1-$2") }
+        : { kind: "failed" };
+    } catch {
+      return { kind: "unavailable" };
     }
   },
 

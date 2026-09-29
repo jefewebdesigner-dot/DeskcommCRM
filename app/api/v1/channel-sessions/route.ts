@@ -11,13 +11,15 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 import { connectWahaChannel, ChannelConnectionError } from "@/lib/channels/connect-waha";
+import { connectEvolutionChannel } from "@/lib/channels/connect-evolution";
+import { getEvolutionClient } from "@/lib/channels/evolution/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mfaEmDivida } from "@/lib/auth/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
-import { PROVIDERS_DE_MENSAGEM } from "@/lib/channels/capabilities";
+import { CHANNEL_PROVIDER_EVOLUTION, PROVIDERS_DE_MENSAGEM } from "@/lib/channels/capabilities";
 import { createChannelSchema } from "@/lib/schemas/channels";
 import { createClient } from "@/lib/supabase/server";
 import { getWahaClient } from "@/lib/waha/client";
@@ -66,6 +68,15 @@ export async function GET(): Promise<Response> {
   });
 }
 
+function falhaDeConexao(error: unknown, t: (texto: string) => string, requestId: string): Response {
+  if (error instanceof ChannelConnectionError) return fail(error.code,
+    error.code === "connection_in_progress" ? t("A conexão ainda está sendo preparada. Aguarde e tente novamente.")
+      : error.code === "connection_session_name_too_long" ? t("O identificador desta conexão passou do limite que o WhatsApp aceita. Nada foi criado no WhatsApp — atualize o sistema e tente novamente.")
+      : t("Não foi possível concluir a conexão. Abra Conexões para tentar novamente ou reparar o número."),
+    error.status, { requestId, details: error.technical });
+  return fail("internal_error", t("Não foi possível concluir a conexão. Tente novamente."), 500, { requestId });
+}
+
 export async function POST(req: NextRequest): Promise<Response> {
   const supportDenied = await requireSupportWrite();
   if (supportDenied) return supportDenied;
@@ -81,16 +92,6 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { user, org: activeOrg } = authz;
   if (await mfaEmDivida()) return fail("mfa_required", t("Confirme a verificação em duas etapas."), 403, { requestId });
 
-  const waha = getWahaClient();
-  if (!waha) {
-    return fail(
-      "waha_not_configured",
-      t("O WhatsApp (WAHA) não está configurado neste ambiente: faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY. Configure-as e tente de novo."),
-      503,
-      { requestId },
-    );
-  }
-
   let raw: unknown = {};
   try {
     raw = await req.json();
@@ -105,6 +106,38 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   }
 
+  if (parsed.data.provider === CHANNEL_PROVIDER_EVOLUTION) {
+    const evolution = getEvolutionClient(process.env);
+    if (!evolution) {
+      return fail(
+        "evolution_not_configured",
+        t("O WhatsApp (Evolution) não está configurado neste ambiente: faltam EVOLUTION_API_BASE_URL e/ou EVOLUTION_API_KEY. Configure-as e tente de novo."),
+        503,
+        { requestId },
+      );
+    }
+    try {
+      const result = await connectEvolutionChannel(await createClient(), createAdminClient(), evolution, {
+        organizationId: activeOrg.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
+        userId: user.id, requestId, displayName: parsed.data.display_name,
+        publicBaseUrl: process.env.EVOLUTION_WEBHOOK_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin,
+      });
+      return ok(result.channel, { requestId, status: result.replay ? 200 : 201 });
+    } catch (error) {
+      return falhaDeConexao(error, t, requestId);
+    }
+  }
+
+  const waha = getWahaClient();
+  if (!waha) {
+    return fail(
+      "waha_not_configured",
+      t("O WhatsApp (WAHA) não está configurado neste ambiente: faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY. Configure-as e tente de novo."),
+      503,
+      { requestId },
+    );
+  }
+
   try {
     const result = await connectWahaChannel(await createClient(), createAdminClient(), waha, {
       organizationId: activeOrg.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
@@ -112,11 +145,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
     return ok(result.channel, { requestId, status: result.replay ? 200 : 201 });
   } catch (error) {
-    if (error instanceof ChannelConnectionError) return fail(error.code,
-      error.code === "connection_in_progress" ? t("A conexão ainda está sendo preparada. Aguarde e tente novamente.")
-        : error.code === "connection_session_name_too_long" ? t("O identificador desta conexão passou do limite que o WhatsApp aceita. Nada foi criado no WhatsApp — atualize o sistema e tente novamente.")
-        : t("Não foi possível concluir a conexão. Abra Conexões para tentar novamente ou reparar o número."),
-      error.status, { requestId, details: error.technical });
-    return fail("internal_error", t("Não foi possível concluir a conexão. Tente novamente."), 500, { requestId });
+    return falhaDeConexao(error, t, requestId);
   }
 }

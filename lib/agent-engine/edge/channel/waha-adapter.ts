@@ -30,7 +30,12 @@ import { SESSION_HEALTHY_STATUS } from '../crm/session-watchdog';
 /** id do canal da v1 — o único adapter (WAHA através do sink do CRM). */
 export const WAHA_VIA_CRM_CHANNEL = 'waha_via_crm';
 
-export class WahaChannelAdapter implements ChannelAdapter {
+/**
+ * Porta de envio do agent-engine: entrega pelo sink do CRM (`sendTurnMessage`), que resolve o
+ * provider da conversa via `getAdapter`. NÃO fala com nenhum transporte — serve a qualquer canal
+ * de mensagem (Baileys/QR ou oficial). O nome antigo segue exportado abaixo por compatibilidade.
+ */
+export class CrmChannelAdapter implements ChannelAdapter {
   readonly channel = WAHA_VIA_CRM_CHANNEL;
   // Campos declarados + atribuídos no corpo (não parameter properties): o daemon
   // roda em `node --experimental-strip-types` (strip-only), que não transforma.
@@ -121,3 +126,6 @@ export class WahaChannelAdapter implements ChannelAdapter {
     return { perMessageUsdCents: 0, model: 'flat' };
   }
 }
+
+/** @deprecated nome de antes de a porta ser neutra — use `CrmChannelAdapter`. */
+export const WahaChannelAdapter = CrmChannelAdapter;

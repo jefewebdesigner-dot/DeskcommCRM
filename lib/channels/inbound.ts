@@ -18,7 +18,17 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
+import { randomUUID } from "node:crypto";
+
+import {
+  CABECALHO_DO_SEGREDO,
+  lerCorpoDoWebhook,
+  segredoConfere,
+  traduzirParaEnvelope,
+} from "@/lib/channels/evolution/webhook";
+import { dispatchWahaEvent } from "@/lib/waha/ingest";
+
+import { CHANNEL_PROVIDER_EVOLUTION, CHANNEL_PROVIDER_ZERNIO } from "./capabilities";
 import { sincronizarSaudeDaConexao } from "./health";
 import {
   atualizarEspelhoDoTemplate,
@@ -43,6 +53,10 @@ export interface InboundWebhookInput {
      *  números ligados, "WhatsApp fora do ar" não diz QUAL. */
     display_name?: string | null;
     phone_number?: string | null;
+    /** Só canais por instância (Evolution). */
+    evolution_instance_name?: string | null;
+    is_warmup_complete?: boolean | null;
+    warmup_started_at?: string | null;
   };
   rawBody: string;
   /** Todos os headers da requisição — cada canal lê o SEU. */
@@ -70,7 +84,7 @@ export type InboundWebhookOutcome =
  * trabalho — e respondido sem nomear provider do lado de fora.
  */
 export function acceptsInboundWebhook(provider: string): boolean {
-  return provider === CHANNEL_PROVIDER_ZERNIO;
+  return provider === CHANNEL_PROVIDER_ZERNIO || provider === CHANNEL_PROVIDER_EVOLUTION;
 }
 
 export async function handleInboundWebhook(
@@ -82,11 +96,63 @@ export async function handleInboundWebhook(
   switch (provider) {
     case CHANNEL_PROVIDER_ZERNIO:
       return zernioInbound(admin, input);
+    case CHANNEL_PROVIDER_EVOLUTION:
+      return evolutionInbound(admin, input);
     default:
       // Token de um canal que não entra por aqui. É configuração trocada, não
       // ataque — mas processar seria ler o payload com o parser errado.
       return { ok: false, code: "provider_mismatch", message: "canal não recebe por esta rota" };
   }
+}
+
+/**
+ * Evolution: a Evolution não assina o corpo, ela reenvia o cabeçalho configurado na
+ * instância. Sem segredo utilizável a rota FALHA FECHADA (mesma regra do Zernio): uma
+ * instalação aceitando mensagem forjada de quem soubesse a URL seria pior que não
+ * receber. O evento é traduzido e entregue à MESMA ingestão dos demais canais.
+ */
+async function evolutionInbound(
+  admin: SupabaseClient,
+  input: InboundWebhookInput,
+): Promise<InboundWebhookOutcome> {
+  if (!input.secret || input.secret.length < MIN_SECRET_LEN) {
+    return { ok: false, code: "unauthorized", message: "webhook_secret_unavailable" };
+  }
+  if (!segredoConfere(input.headers.get(CABECALHO_DO_SEGREDO), input.secret)) {
+    return { ok: false, code: "unauthorized", message: "bad_secret" };
+  }
+
+  const leitura = lerCorpoDoWebhook(input.rawBody);
+  if (!leitura.ok) {
+    return leitura.motivo === "json_invalido"
+      ? { ok: false, code: "invalid_json", message: "invalid_json" }
+      : { ok: false, code: "contrato_violado", message: "payload fora do contrato do canal" };
+  }
+
+  const instancia = input.session.evolution_instance_name ?? null;
+  // Um webhook só vale para a instância desta sessão: o segredo é por sessão, mas o
+  // corpo carrega o nome da instância e os dois têm de bater.
+  if (!instancia || leitura.corpo.instance !== instancia) {
+    return { ok: false, code: "contrato_violado", message: "instance_mismatch" };
+  }
+
+  const envelope = traduzirParaEnvelope(leitura.corpo, instancia);
+  if (!envelope) {
+    return { ok: true, body: { status: "ignored", event: leitura.corpo.event ?? null } };
+  }
+
+  await dispatchWahaEvent(
+    admin as Parameters<typeof dispatchWahaEvent>[0],
+    {
+      id: input.session.id,
+      organization_id: input.session.organization_id,
+      is_warmup_complete: input.session.is_warmup_complete ?? null,
+      warmup_started_at: input.session.warmup_started_at ?? null,
+    },
+    envelope,
+    randomUUID(),
+  );
+  return { ok: true, body: { status: "processed", event: envelope.event ?? null } };
 }
 
 async function zernioInbound(

@@ -63,13 +63,13 @@ export async function POST(
     () =>
       admin
         .from("channel_sessions")
-        .select(`id, organization_id, provider, display_name, phone_number, webhook_secret_encrypted, ${ARCHIVED_AT}`)
+        .select(`id, organization_id, provider, display_name, phone_number, webhook_secret_encrypted, evolution_instance_name, is_warmup_complete, warmup_started_at, ${ARCHIVED_AT}`)
         .eq("webhook_path_token", token)
         .maybeSingle(),
     () =>
       admin
         .from("channel_sessions")
-        .select("id, organization_id, provider, display_name, phone_number, webhook_secret_encrypted")
+        .select("id, organization_id, provider, display_name, phone_number, webhook_secret_encrypted, evolution_instance_name, is_warmup_complete, warmup_started_at")
         .eq("webhook_path_token", token)
         .maybeSingle(),
   );
@@ -81,6 +81,9 @@ export async function POST(
     display_name: string | null;
     phone_number: string | null;
     webhook_secret_encrypted: unknown;
+    evolution_instance_name: string | null;
+    is_warmup_complete: boolean | null;
+    warmup_started_at: string | null;
     archived_at?: string | null;
   } | null;
 

@@ -30,6 +30,21 @@ export const CHANNEL_CAPABILITIES: Record<ProviderDeMensagem, ChannelCapabilitie
     groups: "full",
     costPerMessage: false,
   },
+  // Evolution API (Baileys): o MESMO protocolo não oficial do WAHA/NOWEB, então a mesma
+  // auto-restrição — fala quando quiser, sem janela nem template, e o WhatsApp bane quem
+  // abusa (throttle, warm-up e cap seguem armados). `voiceNote: "server-convert"`:
+  // `sendWhatsAppAudio` converte para opus/ogg no servidor. Grupos: o protocolo suporta;
+  // o CRM os ignora na origem (`groupsIgnore` na criação da instância).
+  evolution: {
+    freeformOutsideWindow: true,
+    requiresTemplates: false,
+    canManageTemplates: false,
+    banRisk: true,
+    minIntervalMs: null,
+    voiceNote: "server-convert",
+    groups: "full",
+    costPerMessage: false,
+  },
   // Hetero-restrição: não me banem, mas a Meta me proíbe e me cobra.
   meta_cloud: {
     freeformOutsideWindow: false,
@@ -97,6 +112,8 @@ export const DEFAULT_CHANNEL_PROVIDER: ChannelProvider = "waha";
 export const CHANNEL_PROVIDER_WAHA: ChannelProvider = "waha";
 export const CHANNEL_PROVIDER_META: ChannelProvider = "meta_cloud";
 export const CHANNEL_PROVIDER_ZERNIO: ChannelProvider = "zernio";
+/** Evolution API (Baileys) — transporte de WhatsApp da plataforma, uma instância por canal. */
+export const CHANNEL_PROVIDER_EVOLUTION: ChannelProvider = "evolution";
 /** Chamada de voz WhatsApp (spec 18). Não transporta mensagem — ver abaixo. */
 export const CHANNEL_PROVIDER_WACALLS: ChannelProvider = "wacalls";
 
@@ -119,6 +136,7 @@ export const PROVIDERS_DE_MENSAGEM = [
   "waha",
   "meta_cloud",
   "zernio",
+  "evolution",
 ] as const satisfies readonly ProviderDeMensagem[];
 
 /**

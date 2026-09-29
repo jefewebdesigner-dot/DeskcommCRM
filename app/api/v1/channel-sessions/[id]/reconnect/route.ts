@@ -35,6 +35,9 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
+import { reconnectEvolutionChannel } from "@/lib/channels/connect-evolution";
+import { CHANNEL_PROVIDER_EVOLUTION } from "@/lib/channels/capabilities";
+import { EvolutionError, getEvolutionClient } from "@/lib/channels/evolution/client";
 import { assertWahaConnectionIdle, ChannelConnectionError, renomearSessaoParaOTeto } from "@/lib/channels/connect-waha";
 import { nomeDaSessaoCabeNoWaha, podeRenomearSessaoDoWaha } from "@/lib/channels/nome-da-sessao";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -92,11 +95,13 @@ export async function POST(
   // arquivado, e exigir a coluna aqui derrubaria a reconexão inteira — que é o
   // socorro de quem está com o número fora do ar.
   const { data: sessionRaw } = await queryTolerantToMissingArchived(
-    () => buscar(`id, waha_session_name, status, phone_number, ${ARCHIVED_AT}`),
-    () => buscar("id, waha_session_name, status, phone_number"),
+    () => buscar(`id, provider, evolution_instance_name, waha_session_name, status, phone_number, ${ARCHIVED_AT}`),
+    () => buscar("id, provider, evolution_instance_name, waha_session_name, status, phone_number"),
   );
   const session = sessionRaw as {
     id: string;
+    provider?: string | null;
+    evolution_instance_name?: string | null;
     waha_session_name: string | null;
     status?: string | null;
     phone_number?: string | null;
@@ -110,6 +115,39 @@ export async function POST(
       409,
       { requestId },
     );
+  }
+  if (session.provider === CHANNEL_PROVIDER_EVOLUTION && session.evolution_instance_name) {
+    const evolution = getEvolutionClient(process.env);
+    if (!evolution) {
+      return fail(
+        "evolution_not_configured",
+        t("O WhatsApp (Evolution) não está configurado neste ambiente: faltam EVOLUTION_API_BASE_URL e/ou EVOLUTION_API_KEY. Configure-as e tente de novo."),
+        503,
+        { requestId },
+      );
+    }
+    try {
+      await assertWahaConnectionIdle(createAdminClient(), activeOrg.orgId, id);
+      const nextStatus = await reconnectEvolutionChannel(evolution, session.evolution_instance_name, force);
+      const { error: syncError } = await supabase.from("channel_sessions")
+        .update({ status: nextStatus, status_reason: null, last_status_change_at: new Date().toISOString(), consecutive_health_fails: 0 })
+        .eq("organization_id", activeOrg.orgId).eq("id", id);
+      if (syncError) throw new Error("connection_sync_failed");
+      void audit({
+        action: "channel.reconnected", actorUserId: user.id, organizationId: activeOrg.orgId,
+        resourceType: "channel_session", resourceId: id, requestId,
+        metadata: { provider: CHANNEL_PROVIDER_EVOLUTION, force },
+      });
+      return ok({ id, status: nextStatus, force }, { requestId });
+    } catch (err) {
+      if (err instanceof ChannelConnectionError) return fail(err.code, "Uma conexão está em andamento. Aguarde e tente novamente.", err.status, { requestId });
+      if (err instanceof EvolutionError && err.instanceMissing) {
+        return fail("channel_instance_missing", t("Esta conexão não existe mais no servidor de WhatsApp. Conecte um número novamente."), 409, { requestId });
+      }
+      await supabase.from("channel_sessions").update({ status: "FAILED", status_reason: "connection_repair_required", last_status_change_at: new Date().toISOString() })
+        .eq("organization_id", activeOrg.orgId).eq("id", id);
+      return fail("evolution_error", t("O servidor de WhatsApp não respondeu. Tente novamente em instantes."), 502, { requestId });
+    }
   }
   // O nome da sessão é NULL no canal oficial, e o CHECK
   // `channel_sessions_provider_ref_check` garante que só nele. Afirmar `string`

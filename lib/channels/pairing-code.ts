@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getWahaClient } from "@/lib/waha/client";
+import { DEFAULT_CHANNEL_PROVIDER } from "./capabilities";
+import { getAdapter } from "./index";
+import { CHANNEL_SESSION_REF_COLUMNS, resolveSessionRef, type ChannelSessionRef } from "./session-ref";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "./archived";
 import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
 
@@ -37,8 +39,8 @@ export async function requestChannelPairingCode(
       .eq("id", channelId)
       .maybeSingle();
   const { data, error } = await queryTolerantToMissingArchived(
-    () => buscar(`waha_session_name, ${ARCHIVED_AT}`),
-    () => buscar("waha_session_name"),
+    () => buscar(`${CHANNEL_SESSION_REF_COLUMNS}, ${ARCHIVED_AT}`),
+    () => buscar(CHANNEL_SESSION_REF_COLUMNS),
   );
   if (error)
     throw new PairingCodeError(
@@ -46,7 +48,7 @@ export async function requestChannelPairingCode(
       "Não foi possível consultar esta conexão. Tente novamente.",
       503,
     );
-  const session = data as { waha_session_name: string | null; archived_at?: string | null } | null;
+  const session = data as (Record<string, string | null> & { archived_at?: string | null }) | null;
   if (!session) throw new PairingCodeError("not_found", "Canal não encontrado.", 404);
   if (session.archived_at)
     throw new PairingCodeError(
@@ -54,19 +56,17 @@ export async function requestChannelPairingCode(
       "Este canal foi excluído. Conecte um número para voltar a atender.",
       409,
     );
-  if (!session.waha_session_name)
+  const provider = (session.provider ?? DEFAULT_CHANNEL_PROVIDER) as ChannelSessionRef["provider"];
+  const adapter = getAdapter(provider);
+  const ref = session.waha_session_name ?? session.evolution_instance_name;
+  // Canal oficial não pareia por código: sem sessão no transporte, ou o adapter não sabe.
+  if (!ref || !adapter.requestPairingCode)
     throw new PairingCodeError(
       "pairing_not_supported",
       "Este canal não conecta por código de pareamento.",
       422,
     );
-  const client = getWahaClient();
-  if (!client)
-    throw new PairingCodeError(
-      "pairing_unavailable",
-      "O serviço de conexão não está configurado.",
-      503,
-    );
+  const sessionRef = resolveSessionRef({ ...session, provider } as unknown as ChannelSessionRef);
 
   // Per-channel bucket prevents two operators from continuously invalidating codes.
   const limit = await checkRateLimit(`pairing-code:${organizationId}:${channelId}`, 1, 30);
@@ -76,53 +76,38 @@ export async function requestChannelPairingCode(
       "Aguarde 30 segundos antes de pedir outro código.",
       429,
     );
-  try {
-    const remote = await client.getVerifiedSession(session.waha_session_name);
-    if (remote?.status === "WORKING")
-      throw new PairingCodeError(
-        "channel_already_connected",
-        "Este WhatsApp já está conectado.",
-        409,
-      );
-    if (remote?.status !== "SCAN_QR_CODE")
-      throw new PairingCodeError(
-        "pairing_not_ready",
-        "A conexão ainda não está pronta. Aguarde ou use Reconectar e tente novamente.",
-        409,
-      );
-    const response = await fetch(
-      `${process.env.WAHA_API_BASE_URL}/api/${encodeURIComponent(session.waha_session_name)}/auth/request-code`,
-      {
-        method: "POST",
-        cache: "no-store",
-        signal: AbortSignal.timeout(15_000),
-        headers: { "Content-Type": "application/json", "X-Api-Key": process.env.WAHA_API_KEY! },
-        body: JSON.stringify({ phoneNumber }),
-      },
-    );
-    if (!response.ok)
-      throw new PairingCodeError(
-        "pairing_code_failed",
-        "Não foi possível gerar o código. Confira o número e tente novamente, ou use o QR Code.",
-        502,
-      );
-    const parsed = z
-      .object({ code: z.string().regex(/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i) })
-      .safeParse(await response.json());
-    if (!parsed.success) throw new Error("invalid_pairing_response");
-    return {
-      code: parsed.data.code
-        .toUpperCase()
-        .replace(/-/, "")
-        .replace(/^(.{4})(.{4})$/, "$1-$2"),
-    };
-  } catch (error) {
-    if (error instanceof PairingCodeError) throw error;
+  const result = await adapter
+    .requestPairingCode({ organizationId, sessionRef, phone: phoneNumber })
     // Neither upstream bodies nor exceptions may expose a phone, code or credential.
+    .catch(() => null);
+  if (!result)
     throw new PairingCodeError(
       "pairing_unavailable",
       "O serviço de conexão não respondeu. Tente novamente ou use o QR Code.",
       502,
     );
+  switch (result.kind) {
+    case "code":
+      return { code: result.code };
+    case "already_connected":
+      throw new PairingCodeError("channel_already_connected", "Este WhatsApp já está conectado.", 409);
+    case "not_ready":
+      throw new PairingCodeError(
+        "pairing_not_ready",
+        "A conexão ainda não está pronta. Aguarde ou use Reconectar e tente novamente.",
+        409,
+      );
+    case "unavailable":
+      throw new PairingCodeError(
+        "pairing_unavailable",
+        "O serviço de conexão não respondeu. Tente novamente ou use o QR Code.",
+        502,
+      );
+    default:
+      throw new PairingCodeError(
+        "pairing_code_failed",
+        "Não foi possível gerar o código. Confira o número e tente novamente, ou use o QR Code.",
+        502,
+      );
   }
 }

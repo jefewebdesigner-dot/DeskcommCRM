@@ -184,6 +184,16 @@ const schema = z.object({
   // assine — aí a verificação passa a ser obrigatória.
   WAHA_WEBHOOK_REQUIRE_SIGNATURE: z.string().optional().default("false"),
 
+  // ─── Evolution API (transporte Baileys alternativo) ───
+  //
+  // Opcionais: sem elas o canal Evolution não conecta (a tela diz "não configurado") e o
+  // resto do produto segue igual. A chave é a GLOBAL da instalação — server-only.
+  // `EVOLUTION_WEBHOOK_BASE_URL` é a origem pública do CRM que a Evolution chama de volta;
+  // vazia = `NEXT_PUBLIC_APP_URL`.
+  EVOLUTION_API_BASE_URL: z.string().optional().default(""),
+  EVOLUTION_API_KEY: z.string().optional().default(""),
+  EVOLUTION_WEBHOOK_BASE_URL: z.string().optional().default(""),
+
   // ─── Chamada de voz WhatsApp (WaCalls, spec 18) ───
   //
   // NUNCA `required()`: o serviço `wacalls` vive num profile do compose que
