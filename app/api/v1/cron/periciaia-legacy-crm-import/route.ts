@@ -22,6 +22,15 @@ async function handle(req: NextRequest): Promise<Response> {
 
   try {
     const plan = await buildLegacyImportPlan(PERICIAIA_ORG_ID);
+    // TEMPORÁRIO: entrega o plano completo (com dados pessoais) UMA vez, por HTTPS e
+    // protegido pelo segredo de cron, para a importação rodar na VPS — as credenciais
+    // do Stripe/billing só existem neste runtime. Remover este bloco depois da migração.
+    if (new URL(req.url).searchParams.get("formato") === "plano-completo") {
+      return new Response(JSON.stringify({ summary: plan.summary, entities: plan.entities }), {
+        status: 200,
+        headers: { "content-type": "application/json", "cache-control": "no-store, private", "x-request-id": requestId },
+      });
+    }
     return ok(
       {
         configured: true,
