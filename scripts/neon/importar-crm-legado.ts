@@ -209,6 +209,10 @@ async function main() {
     if (!org) throw new Error(`Organização não encontrada: ${orgSlug}`);
 
     const antesEnvio = await contadoresDeEnvio(db, org);
+    // contatos já marcados como "sem evidência" em rodadas anteriores (a régua é medida no banco, não na rodada)
+    const revisadosAntes = Number((await db.query<{ n: string }>(
+      "select count(*)::int n from public.contacts where organization_id=$1 and 'revisao_billing' = any(tags) and 'importacao_legado' = any(tags)", [org],
+    )).rows[0]!.n);
     const estado = await carregarEstado(db, org);
     const agora = new Date().toISOString();
     const p1 = planejar("importacao", plano.entities, estado.contatos, estado.cards, estado.destinos, agora, { foraDoPlano: "revisar" });
@@ -308,13 +312,14 @@ async function main() {
     const revisadosMarcados = Number((await q<{ n: string }>(
       "select count(*)::int n from public.contacts where organization_id=$1 and 'revisao_billing' = any(tags) and 'importacao_legado' = any(tags)", [org],
     ))[0]!.n);
-    ver("contatos sem evidência no billing vivo: marcados (revisao_billing + trava)", p1.resumo.foraDoPlanoRevisados, revisadosMarcados);
+    const revisadosEsperados = revisadosAntes + p1.resumo.foraDoPlanoRevisados;
+    ver("contatos sem evidência no billing vivo: marcados (revisao_billing + trava)", revisadosEsperados, revisadosMarcados);
     ver("contatos duplicados (e-mail, telefone ou id legado)", 0, duplicados);
     ver("Pós-vendas / Cliente ativo", ativos, await etapaCount("post_sales", "cliente_ativo"));
     ver("Vendas / Primeiro contato", porBucket("lead"), await etapaCount("sales", "primeiro_contato"));
-    ver("Retenção / Cancelados para recuperar (cancelados do billing + sem evidência)", porBucket("canceled") + p1.resumo.foraDoPlanoRevisados, await etapaCount("retention", "cancelados_para_recuperar"));
+    ver("Retenção / Cancelados para recuperar (cancelados do billing + sem evidência)", porBucket("canceled") + revisadosEsperados, await etapaCount("retention", "cancelados_para_recuperar"));
     ver("Retenção / Vencido", porBucket("past_due"), await etapaCount("retention", "vencido"));
-    ver("1 card do sistema por pessoa (total, incl. sem evidência)", plano.entities.length + p1.resumo.foraDoPlanoRevisados, cardsDoSistema);
+    ver("1 card do sistema por pessoa (total, incl. sem evidência)", plano.entities.length + revisadosEsperados, cardsDoSistema);
     ver("máximo de cards do sistema por contato", 1, maxCardsPorContato);
     ver("cards billing won/lost poluindo Vendas", 0, poluemVendas);
     ver("clientes ativos únicos", ativos, pessoasAtivasNoBanco);
