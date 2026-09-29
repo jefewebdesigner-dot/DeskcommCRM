@@ -3116,6 +3116,7 @@ export type Database = {
           daily_message_limit: number
           display_name: string | null
           engine: string
+          evolution_instance_name: string | null
           id: string
           is_warmup_complete: boolean | null
           last_health_check_at: string | null
@@ -3152,6 +3153,7 @@ export type Database = {
           daily_message_limit?: number
           display_name?: string | null
           engine?: string
+          evolution_instance_name?: string | null
           id?: string
           is_warmup_complete?: boolean | null
           last_health_check_at?: string | null
@@ -3188,6 +3190,7 @@ export type Database = {
           daily_message_limit?: number
           display_name?: string | null
           engine?: string
+          evolution_instance_name?: string | null
           id?: string
           is_warmup_complete?: boolean | null
           last_health_check_at?: string | null
@@ -8232,6 +8235,10 @@ export type Database = {
           p_onboarding?: boolean
           p_org: string
         }
+        Returns: Json
+      }
+      fn_reserve_evolution_connection: {
+        Args: { p_display_name?: string; p_hash: string; p_key: string; p_org: string }
         Returns: Json
       }
       fn_extensions_admit_catalog: {
