@@ -34,3 +34,47 @@ export function withFields(log: Logger, bindings: LogFields): Logger {
     error: (msg, fields) => log.error(msg, { ...bindings, ...fields }),
   };
 }
+
+/**
+ * Redação de dado sensível em TEXTO que vai para log ou para o painel de saúde: e-mail,
+ * sequência longa de dígitos (telefone/documento), credencial com cara de token e conexão
+ * com senha. A disciplina do call site continua sendo a primeira defesa (PII não entra em
+ * `fields`); esta é a rede embaixo, para o erro cru de driver/HTTP que ninguém escreveu.
+ */
+export function sanitizarTexto(texto: string): string {
+  return texto
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
+    .replace(/\b(?:postgres(?:ql)?|https?|redis):\/\/[^\s"']*@[^\s"']+/gi, '[url]')
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 [token]')
+    .replace(/\b(?:sk|pk|rk|ghp|gho|xox[abp])[-_][A-Za-z0-9_-]{12,}/g, '[token]')
+    // UUID (id de job/tenant) é útil e não é segredo: só o resto longo vira [token].
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, (m) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m) ? m : '[token]',
+    )
+    // 10+ dígitos com separadores simples: telefone/documento. Data (8 dígitos) não casa.
+    .replace(/\+?\d(?:[\s().-]{0,2}\d){9,}/g, '[numero]');
+}
+
+function sanitizarCampos(v: unknown, fundo = 0): unknown {
+  if (typeof v === 'string') return sanitizarTexto(v);
+  if (fundo > 3 || v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map((x) => sanitizarCampos(x, fundo + 1));
+  return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, sanitizarCampos(x, fundo + 1)]));
+}
+
+/**
+ * Logger que sanitiza mensagem e campos ANTES de escrever e guarda o último erro (já
+ * sanitizado) para o heartbeat do worker. `aoErro` recebe só texto limpo.
+ */
+export function comSanitizacao(base: Logger, aoErro?: (msgLimpa: string) => void): Logger {
+  const limpo = (fields?: LogFields) => (fields ? (sanitizarCampos(fields) as LogFields) : undefined);
+  return {
+    info: (msg, fields) => base.info(sanitizarTexto(msg), limpo(fields)),
+    warn: (msg, fields) => base.warn(sanitizarTexto(msg), limpo(fields)),
+    error: (msg, fields) => {
+      const detalhe = typeof fields?.error === 'string' ? `: ${fields.error}` : '';
+      aoErro?.(sanitizarTexto(`${msg}${detalhe}`).slice(0, 200));
+      base.error(sanitizarTexto(msg), limpo(fields));
+    },
+  };
+}

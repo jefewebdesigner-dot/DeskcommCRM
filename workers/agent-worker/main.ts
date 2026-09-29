@@ -99,7 +99,7 @@ import { runHealthLoop } from "@/lib/agent-engine/health/circuit";
 import { runFlywheelLoop } from "@/lib/agent-engine/flywheel/live";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/run-model-call";
 import { loadEnv, type Env } from "@/lib/agent-engine/env";
-import { createLogger, type Logger } from "@/lib/agent-engine/obs/logger";
+import { comSanitizacao, createLogger, type Logger } from "@/lib/agent-engine/obs/logger";
 import {
   evaluateCacheHitAlert,
   metricsSnapshot,
@@ -254,6 +254,9 @@ export function createHealthzServer(
   return http.createServer((req, res) => void handle(req, res));
 }
 
+/** Último erro (já sanitizado) visto pelo logger do processo — sobe no próximo batimento. */
+const estadoDoWorker: { ultimoErro: string | null } = { ultimoErro: null };
+
 export async function startWorker(
   env: Env,
   handlers: Map<JobKind, JobHandler>,
@@ -298,6 +301,23 @@ export async function startWorker(
 
   let shuttingDown = false;
   const inFlight = new Set<Promise<void>>();
+
+  // Batimento: é o que faz o health da instalação dizer "worker parado" sem ninguém olhar o
+  // PM2. Falha de escrita só vira log (nunca derruba o worker) — e a ausência do batimento é,
+  // justamente, o sinal que o health lê.
+  const iniciadoEm = new Date();
+  const baterCoracao = (): void => {
+    const erro = estadoDoWorker.ultimoErro;
+    estadoDoWorker.ultimoErro = null;
+    pool
+      .query("select public.fn_agent_worker_beat($1, $2, $3)", [workerId, iniciadoEm, erro])
+      .catch((err: unknown) => {
+        if (erro) estadoDoWorker.ultimoErro = erro;
+        log.warn("batimento do worker falhou", { error: errMsg(err) });
+      });
+  };
+  baterCoracao();
+  const heartbeatTimer = setInterval(baterCoracao, 30_000);
 
   const reaperTimer = setInterval(() => {
     // Recarrega o comportamento da INSTALAÇÃO no ritmo do reaper: é o que faz
@@ -576,6 +596,7 @@ export async function startWorker(
     });
     clearInterval(reaperTimer);
     clearInterval(holdsTimer);
+    clearInterval(heartbeatTimer);
     server.close();
     server.closeIdleConnections();
     loopsAbort.abort();
@@ -643,7 +664,9 @@ export async function startWorker(
 
 export async function main(): Promise<void> {
   const env = loadEnv();
-  const log = createLogger();
+  const log = comSanitizacao(createLogger(), (msg) => {
+    estadoDoWorker.ultimoErro = msg;
+  });
   const handlers = new Map<JobKind, JobHandler>();
   const turnDeps: FollowupTurnDeps = {
     crmCfg: crmEdgeConfigFromEnv(),

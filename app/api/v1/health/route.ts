@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { alvoDe, classificarFalhaDeAlcance, type FalhaDeAlcance } from "@/lib/net/alcance";
 import { validarConfigRedisRest } from "@/lib/redis-config";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,6 +40,8 @@ type MotivoDeFalha =
   | "credencial_recusada"
   | "resposta_inesperada"
   | "nao_configurado"
+  | "worker_parado"
+  | "fila_atrasada"
   | "configuracao_invalida";
 
 type Check = {
@@ -46,6 +49,8 @@ type Check = {
   latency_ms: number;
   error?: string;
   reason?: MotivoDeFalha;
+  /** Agregados sem PII (só o worker): idade do batimento, erro sanitizado, fila. */
+  detalhe?: Record<string, unknown>;
   /** Protocolo + host + porta que tentamos. Só com `?verbose=1` autenticado. */
   target?: string;
 };
@@ -223,6 +228,52 @@ async function checkWaha(): Promise<Check> {
   }
 }
 
+/** O batimento acima disto = worker parado (o intervalo do worker é 30 s). */
+const WORKER_SEM_BATER_S = 120;
+
+/**
+ * Worker do agent-engine: vivo, último erro (já sanitizado na origem) e estado da fila. É o
+ * único consumidor do dispatch de IA — parado, o app e o banco continuam respondendo enquanto
+ * ninguém atende, e por isso ele é sinal de produção e não item de PM2. Só agregados: nenhuma
+ * linha de tenant, nenhum conteúdo.
+ */
+async function checkAgentWorker(): Promise<Check> {
+  const t0 = Date.now();
+  try {
+    const { data, error } = await withTimeout(
+      Promise.resolve(createAdminClient().rpc("fn_agent_worker_status" as never)),
+    );
+    if (error || !data) {
+      return { status: "degraded", latency_ms: Date.now() - t0, error: "status_indisponivel", reason: "resposta_inesperada" };
+    }
+    const d = data as {
+      registrado?: boolean;
+      ultimo_batimento_s?: number | null;
+      ultimo_erro?: string | null;
+      ultimo_erro_em?: string | null;
+      pendentes?: number;
+      prontos_atrasados?: number;
+      mais_velho_s?: number | null;
+      em_execucao?: number;
+    };
+    const detalhe = {
+      ultimo_batimento_s: d.ultimo_batimento_s ?? null,
+      ultimo_erro: d.ultimo_erro ?? null,
+      ultimo_erro_em: d.ultimo_erro_em ?? null,
+      jobs_pendentes: d.pendentes ?? 0,
+      job_mais_antigo_s: d.mais_velho_s ?? null,
+      jobs_em_execucao: d.em_execucao ?? 0,
+    };
+    const latency_ms = Date.now() - t0;
+    if (!d.registrado) return { status: "degraded", latency_ms, reason: "nao_configurado", detalhe };
+    if ((d.ultimo_batimento_s ?? Infinity) > WORKER_SEM_BATER_S) return { status: "down", latency_ms, reason: "worker_parado", detalhe };
+    if ((d.prontos_atrasados ?? 0) > 0) return { status: "degraded", latency_ms, reason: "fila_atrasada", detalhe };
+    return { status: "ok", latency_ms, detalhe };
+  } catch (e) {
+    return { status: "degraded", latency_ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e), reason: "resposta_inesperada" };
+  }
+}
+
 /**
  * Evolution: só entra no health quando o transporte está configurado (instalação sem ele
  * não vê nada novo). `fetchInstances` valida conectividade E chave num tiro só.
@@ -309,11 +360,12 @@ function semAlvo(check: Check): Check {
 }
 
 export async function GET(req: NextRequest) {
-  const [neon, redis, waha, evolution] = await Promise.all([
+  const [neon, redis, waha, evolution, agentWorker] = await Promise.all([
     checkNeon(),
     checkRedis(),
     checkWaha(),
     checkEvolution(),
+    checkAgentWorker(),
   ]);
 
   const verboso = req.nextUrl.searchParams.get("verbose") === "1" && segredoInternoConfere(req);
@@ -323,6 +375,7 @@ export async function GET(req: NextRequest) {
     redis: filtrar(redis),
     waha: filtrar(waha),
     ...(evolution ? { evolution: filtrar(evolution) } : {}),
+    agent_worker: filtrar(agentWorker),
   };
 
   const anyDown = Object.values(checks).some((c) => c.status === "down");

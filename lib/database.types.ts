@@ -8237,6 +8237,14 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_agent_worker_beat: {
+        Args: { p_error?: string; p_started: string; p_worker: string }
+        Returns: undefined
+      }
+      fn_agent_worker_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       fn_reserve_evolution_connection: {
         Args: { p_display_name?: string; p_hash: string; p_key: string; p_org: string }
         Returns: Json
