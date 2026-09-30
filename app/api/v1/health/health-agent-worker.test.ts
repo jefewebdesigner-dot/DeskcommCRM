@@ -55,6 +55,20 @@ describe("GET /api/v1/health — agent_worker", () => {
     expect(c.detalhe).toMatchObject({ ultimo_batimento_s: 10, jobs_pendentes: 2, job_mais_antigo_s: 5 });
   });
 
+  it("erro histórico resolvido não aparece como falha atual com worker saudável", async () => {
+    rpc.mockResolvedValue({
+      data: {
+        ...base,
+        ultimo_erro: "permission denied for function fn_can_view_conversation",
+        ultimo_erro_em: "2026-09-30T10:24:02.308Z",
+      },
+      error: null,
+    });
+    const c = (await saude()).checks.agent_worker!;
+    expect(c.status).toBe("ok");
+    expect(c.detalhe).toMatchObject({ ultimo_erro: null, ultimo_erro_em: null });
+  });
+
   it("sem batimento há mais de 2 min → down e a instalação fica unhealthy", async () => {
     rpc.mockResolvedValue({ data: { ...base, ultimo_batimento_s: 400, ultimo_erro: "reaper falhou" }, error: null });
     const s = await saude();

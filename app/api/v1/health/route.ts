@@ -230,6 +230,8 @@ async function checkWaha(): Promise<Check> {
 
 /** O batimento acima disto = worker parado (o intervalo do worker é 30 s). */
 const WORKER_SEM_BATER_S = 120;
+/** Erro antigo continua no banco para auditoria, mas não deve parecer falha atual com worker saudável. */
+const WORKER_ERRO_RECENTE_MS = 5 * 60 * 1000;
 
 /**
  * Worker do agent-engine: vivo, último erro (já sanitizado na origem) e estado da fila. É o
@@ -256,19 +258,36 @@ async function checkAgentWorker(): Promise<Check> {
       mais_velho_s?: number | null;
       em_execucao?: number;
     };
-    const detalhe = {
+    const erroEmMs = d.ultimo_erro_em ? Date.parse(d.ultimo_erro_em) : Number.NaN;
+    const erroRecente =
+      Boolean(d.ultimo_erro) &&
+      Number.isFinite(erroEmMs) &&
+      Date.now() - erroEmMs <= WORKER_ERRO_RECENTE_MS;
+
+    const detalheBase = {
       ultimo_batimento_s: d.ultimo_batimento_s ?? null,
-      ultimo_erro: d.ultimo_erro ?? null,
-      ultimo_erro_em: d.ultimo_erro_em ?? null,
       jobs_pendentes: d.pendentes ?? 0,
       job_mais_antigo_s: d.mais_velho_s ?? null,
       jobs_em_execucao: d.em_execucao ?? 0,
     };
+    const detalheAtual = {
+      ...detalheBase,
+      ultimo_erro: erroRecente ? (d.ultimo_erro ?? null) : null,
+      ultimo_erro_em: erroRecente ? (d.ultimo_erro_em ?? null) : null,
+    };
+    const detalheComHistorico = {
+      ...detalheBase,
+      ultimo_erro: d.ultimo_erro ?? null,
+      ultimo_erro_em: d.ultimo_erro_em ?? null,
+    };
+
     const latency_ms = Date.now() - t0;
-    if (!d.registrado) return { status: "degraded", latency_ms, reason: "nao_configurado", detalhe };
-    if ((d.ultimo_batimento_s ?? Infinity) > WORKER_SEM_BATER_S) return { status: "down", latency_ms, reason: "worker_parado", detalhe };
-    if ((d.prontos_atrasados ?? 0) > 0) return { status: "degraded", latency_ms, reason: "fila_atrasada", detalhe };
-    return { status: "ok", latency_ms, detalhe };
+    if (!d.registrado) return { status: "degraded", latency_ms, reason: "nao_configurado", detalhe: detalheAtual };
+    if ((d.ultimo_batimento_s ?? Infinity) > WORKER_SEM_BATER_S) {
+      return { status: "down", latency_ms, reason: "worker_parado", detalhe: detalheComHistorico };
+    }
+    if ((d.prontos_atrasados ?? 0) > 0) return { status: "degraded", latency_ms, reason: "fila_atrasada", detalhe: detalheAtual };
+    return { status: "ok", latency_ms, detalhe: detalheAtual };
   } catch (e) {
     return { status: "degraded", latency_ms: Date.now() - t0, error: e instanceof Error ? e.message : String(e), reason: "resposta_inesperada" };
   }
