@@ -20,7 +20,7 @@
     "db:reset": "echo 'Use uma branch Neon descartável e recrie-a pelo Gravity; reset Supabase foi removido.' && exit 1",
     "neon:registrar-worker": "tsx --env-file=.env --env-file=.env.local scripts/neon/registrar-worker-por-organizacao.ts",
     "neon:semear-playbook": "tsx --env-file=.env --env-file=.env.local scripts/neon/semear-playbook-plataforma.ts",
-    "test:rls-worker": "vitest run tests/neon-rls",
+    "test:rls-worker": "vitest run --config vitest.neon-rls.config.ts",
     "neon:register-service":"tsx --env-file=.env --env-file=.env.local scripts/neon/registrar-identidade-servico.ts",
     "test:e2e": "playwright test",
     "e2e:build": "bash scripts/e2e-build.sh",

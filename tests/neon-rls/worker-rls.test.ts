@@ -15,6 +15,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTenantPool, TenantContextError, type TenantPool } from '@/lib/agent-engine/db/tenant-pool';
+import { claimJobs, completeJob, enqueueJob, failJob, reapExpiredJobs } from '@/lib/agent-engine/queue/queue';
 
 const DONO = process.env.RLS_DB_DONO;
 const APP = process.env.RLS_DB_APP;
@@ -54,6 +55,7 @@ suite('agent-worker — contexto de organização por transação (RLS real)', (
       '20260930_0015_worker_org_context.sql',
       '20260930_0016_worker_status_para_o_health.sql',
       '20260930_0017_gravity_app_executa_funcoes_das_policies.sql',
+      '20260930_0018_worker_rpcs_do_motor.sql',
     ]) {
       await dono.query(readFileSync(resolve(process.cwd(), 'neon/migrations', m), 'utf8'));
     }
@@ -372,6 +374,106 @@ suite('agent-worker — contexto de organização por transação (RLS real)', (
       }
     });
     expect(falhas).toEqual([]);
+  });
+
+  // ── A fila durável sob o contexto ────────────────────────────────────────────────────────
+  it('fila: enqueue, claim, complete, fail e reaper funcionam no contexto — e só enxergam a organização', async () => {
+    const worker = 'worker-teste-fila';
+    const idsA = await tenant.withOrganization(ORG_A, async () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const { job } = await enqueueJob(tenant, ORG_A, { kind: 'watchdog', payload: { i } });
+        ids.push(job.id);
+      }
+      return ids;
+    });
+    // B enqueue no contexto de A é negado pela RLS (organização diferente do contexto)
+    await expect(tenant.withOrganization(ORG_A, () => enqueueJob(tenant, ORG_B, { kind: 'watchdog' }))).rejects.toMatchObject({ code: '42501' });
+
+    const claimed = await tenant.withOrganization(ORG_A, () => claimJobs(tenant, { workerId: worker, maxConcurrency: 50 }));
+    expect(claimed.map((j) => j.organization_id).every((o) => o === ORG_A)).toBe(true);
+    expect(claimed.map((j) => j.id)).toEqual(expect.arrayContaining(idsA));
+
+    const [j1, j2] = claimed.filter((j) => idsA.includes(j.id));
+    await tenant.withOrganization(ORG_A, async () => {
+      await completeJob(tenant, j1!.id, worker, undefined, j1!.claim_acquired_at);
+      const falhou = await failJob(tenant, j2!.id, worker, new Error('erro de teste'), j2!.claim_acquired_at);
+      expect(falhou?.status).toBe('pending');
+    });
+    expect(await contagem(dono, `select count(*) n from job_queue where id = $1 and status = 'done'`, [j1!.id])).toBe(1);
+
+    // o reaper recolhe job 'running' esquecido (visibility timeout 0) — só da própria organização
+    const reaped = await tenant.withOrganization(ORG_A, () => reapExpiredJobs(tenant, { visibilityTimeoutMs: 0 }));
+    expect(reaped.revived + reaped.dead).toBeGreaterThan(0);
+    const emB = await dono.query(`select count(*)::int n from job_queue where organization_id = $1 and status = 'running'`, [ORG_B]);
+    expect(emB.rows[0].n).toBe(0); // B nunca foi tocada
+  });
+
+  it('claim concorrente: quatro workers no mesmo tenant nunca pegam o MESMO job', async () => {
+    const total = 40;
+    await tenant.withOrganization(ORG_B, async () => {
+      for (let i = 0; i < total; i++) await enqueueJob(tenant, ORG_B, { kind: 'watchdog', payload: { lote: 'concorrencia', i } });
+    });
+    const rodadas = await Promise.all(
+      Array.from({ length: 4 }, (_, w) =>
+        tenant.withOrganization(ORG_B, async () => {
+          const meus: string[] = [];
+          for (let k = 0; k < 6; k++) {
+            const jobs = await claimJobs(tenant, { workerId: `w${w}`, maxConcurrency: 1000, batchSize: 7 });
+            meus.push(...jobs.filter((j) => (j.payload as { lote?: string }).lote === 'concorrencia').map((j) => j.id));
+          }
+          return meus;
+        }),
+      ),
+    );
+    const todos = rodadas.flat();
+    expect(new Set(todos).size).toBe(todos.length); // nenhum job em dois workers
+    expect(todos.length).toBe(total); // e nenhum ficou para trás
+  });
+
+  it('RPCs do motor: executáveis sob o contexto e ESCOPADAS — p_org de outra organização é recusado no banco', async () => {
+    const guardadas: Array<[string, number]> = [
+      ['fn_reply_begin', 0], ['fn_reply_settle', 0], ['fn_meet_delivery_settle', 0], ['fn_meet_delivery_policy', 0],
+      ['fn_followup_apply_step', 0], ['fn_followup_patch', 0], ['fn_buscar_trechos_das_fontes', 0], ['retrieve_top_k_chunks', 0],
+    ];
+    const sem_guard = ['fn_agora', 'fn_gasto_de_ia_do_mes', 'fn_appointment_enrollment_current', 'fn_followup_claim_current', 'fn_followup_job_current', 'fn_reply_context_current', 'fn_reply_delivery_policy', 'fn_reply_receipt_policy'];
+    const assinatura = async (nome: string) => {
+      const r = await dono.query<{ args: string }>(
+        `select pg_get_function_identity_arguments(p.oid) args from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = $1`, [nome]);
+      const tipos = r.rows[0]!.args.split(',').map((a) => a.trim().split(/\s+/).slice(1).join(' ')).filter(Boolean);
+      return tipos;
+    };
+    const chamar = async (nome: string, org: string | null) => {
+      const tipos = await assinatura(nome);
+      const args = tipos.map((t, i) => (i === 0 && org ? `'${org}'::uuid` : `null::${t}`));
+      return tenant.query(`select public.${nome}(${args.join(', ')})`);
+    };
+    await tenant.withOrganization(ORG_A, async () => {
+      for (const [nome] of guardadas) {
+        // com a organização do contexto: nunca é o guard nem falta de EXECUTE que barra
+        const ok = await chamar(nome, ORG_A).then(() => null, (e: { code?: string; message: string }) => e);
+        // (algumas funções usam 42501 para erro de NEGÓCIO: o que não pode aparecer é o guard nem a falta de EXECUTE)
+        expect(ok === null || !/worker_rpc_fora_do_contexto|permission denied for function/.test(ok.message), `${nome} com a org do contexto: ${ok?.message}`).toBe(true);
+        // com OUTRA organização: o banco recusa
+        await expect(chamar(nome, ORG_B), nome).rejects.toMatchObject({ code: '42501', message: expect.stringContaining('worker_rpc_fora_do_contexto') });
+      }
+      for (const nome of sem_guard) {
+        const e = await chamar(nome, ORG_A).then(() => null, (x: { code?: string; message: string }) => x);
+        expect(e === null || !/permission denied for function/.test(e.message), `${nome}: ${e?.message}`).toBe(true);
+      }
+    });
+    // sem contexto de organização (só a identidade), o guard também recusa
+    await tenant.withGlobal(async () => {
+      await expect(chamar('fn_reply_settle', ORG_A)).rejects.toMatchObject({ code: '42501' });
+    });
+    // o caminho de serviço (o dono/superusuário, como o Data API) não é afetado pelo guard
+    const c = await dono.connect();
+    try {
+      const r = await c.query(`select public.fn_worker_rpc_guard('${ORG_B}'::uuid) g`);
+      expect(r.rows.length).toBe(1);
+    } finally {
+      c.release();
+    }
   });
 
   it('fn_agent_worker_status: só a identidade de serviço (ou o worker) lê; usuário comum recebe NULL', async () => {

@@ -38,6 +38,8 @@ export default defineConfig({
       "tests/e2e-neon/**",
       "tests/invariants/**",
       "tests/journeys/**",
+      // Provas de banco real do worker (harness Docker + config própria): `pnpm test:rls-worker`.
+      "tests/neon-rls/**",
       // Bancada opcional: usa node:test, PostgreSQL próprio e Playwright com
       // configuração dedicada. Não depende do ambiente da suíte do produto.
       "experiments/extensoes/**",
