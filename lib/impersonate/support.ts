@@ -42,12 +42,45 @@ export async function requireSupportWrite(targetOrganizationId?: string) {
 }
 
 /** Identidade vem do state HMAC já verificado, nunca do body. */
-export async function supportCallbackWriteAllowed(organizationId: string, actorId?: string, sessionId?: string): Promise<boolean> {
+export async function supportCallbackWriteAllowed(
+  organizationId: string,
+  actorId?: string,
+  sessionId?: string,
+): Promise<boolean> {
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const { data, error } = await createAdminClient().rpc("fn_support_callback_write_allowed", {
-    p_org: organizationId, p_actor: actorId ?? null, p_session: sessionId ?? null,
+    p_org: organizationId,
+    p_actor: actorId ?? null,
+    p_session: sessionId ?? null,
   });
-  return !error && data === true;
+  if (!error) return data === true;
+
+  // Neon Data API usa uma identidade técnica com role `authenticated`.
+  // Esta RPC é fechada para usuários autenticados comuns, então o admin client
+  // pode receber 42501 mesmo sendo uma chamada server-side.
+  // O fallback usa a DATABASE_URL privada da aplicação (gravity_app_*), cuja ACL
+  // é concedida pela migration Neon 0021.
+  try {
+    const [{ Pool }, { env }] = await Promise.all([import("pg"), import("@/lib/env")]);
+    const pool = new Pool({
+      connectionString: env.DATABASE_URL,
+      max: 1,
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 5_000,
+      statement_timeout: 10_000,
+    });
+    try {
+      const resultado = await pool.query<{ permitido: boolean }>(
+        "select public.fn_support_callback_write_allowed($1::uuid, $2::uuid, $3::uuid) as permitido",
+        [organizationId, actorId ?? null, sessionId ?? null],
+      );
+      return resultado.rows[0]?.permitido === true;
+    } finally {
+      await pool.end().catch(() => undefined);
+    }
+  } catch {
+    return false;
+  }
 }
 export async function authenticatedSessionId(): Promise<string> {
   const db = await createClient();

@@ -222,7 +222,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // `code` do Google — que é de uso único — antes de descobrir que o `state`
   // era repetido, e quem apresentasse o legítimo receberia "código já usado",
   // um erro que aponta para o Google e não para o replay.
-  if (!(await supportCallbackWriteAllowed(organizationId, userId, estado.authSessionId))) return voltar("erro=retorno_nao_verificavel");
+  if (!(await supportCallbackWriteAllowed(organizationId, userId, estado.authSessionId))) {
+    await audit({
+      action: "agenda.google.conexao_falhou",
+      organizationId,
+      metadata: {
+        reason: "support_callback_write_not_allowed",
+        user_id: userId,
+        tem_auth_session_id: Boolean(estado.authSessionId),
+      },
+    });
+    return voltar("erro=retorno_nao_verificavel");
+  }
   const admin = createAdminClient();
   const { error: erroDoNonce } = await admin.from("calendar_oauth_nonces").insert({
     nonce: estado.nonce,

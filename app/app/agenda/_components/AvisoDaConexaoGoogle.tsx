@@ -85,8 +85,8 @@ const DESFECHOS: Record<string, Desfecho> = {
   // ---- transitórios: tentar de novo costuma resolver ----
   retorno_nao_verificavel: {
     formato: "aviso",
-    titulo: "A conexão demorou demais e expirou",
-    corpo: "Isso acontece quando a página fica aberta muito tempo. Conectar de novo resolve.",
+    titulo: "Não foi possível validar o retorno do Google",
+    corpo: "A autorização não foi concluída com segurança. Conectar de novo inicia uma tentativa limpa.",
     acao: "reconectar",
   },
   retorno_incompleto: {
