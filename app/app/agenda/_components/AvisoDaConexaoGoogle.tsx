@@ -232,8 +232,14 @@ export function AvisoDaConexaoGoogle() {
         <p className="mt-0.5 text-xs leading-4 text-text-muted">{t(faixa.corpo)}</p>
       </div>
       {faixa.acao === "reconectar" && (
-        <Button variant="outline" size="sm" data-testid="reconectar" className="shrink-0">
-          {t("Conectar de novo")}
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid="reconectar"
+          className="shrink-0"
+          asChild
+        >
+          <a href="/api/v1/agenda/google/connect">{t("Conectar de novo")}</a>
         </Button>
       )}
       <button
