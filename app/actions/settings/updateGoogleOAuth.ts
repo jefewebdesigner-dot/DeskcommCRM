@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { salvarAppDoGoogleNoPostgres } from "@/lib/agenda/google/admin-store";
 import { invalidarCredencialDoGoogle } from "@/lib/agenda/google/config";
 import { audit } from "@/lib/audit";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
@@ -90,15 +91,45 @@ export async function updateGoogleOAuth(input: GoogleOAuthInput): Promise<Update
     valores.client_secret_encrypted = cifrado;
   }
 
-  const { error } = await admin
-    .from("platform_google_oauth")
-    // `upsert` e não `update`: a linha não existe numa instalação que nunca
-    // configurou o Google, e um `update` casaria zero linhas devolvendo SUCESSO
-    // — a tela diria "salvo" e nada seria gravado. É o modo de falha que a issue
-    // #144 mediu em `organizations`, e a defesa é não escrever a query que o
-    // permite.
-    .upsert({ id: 1, ...valores }, { onConflict: "id" });
-  if (error) return { ok: false, error: error.message };
+  const gravacaoDireta = () =>
+    admin
+      .from("platform_google_oauth")
+      .upsert({ id: 1, ...valores }, { onConflict: "id" });
+
+  let gravacao;
+  if (typeof admin.rpc === "function") {
+    gravacao = await admin.rpc("fn_platform_google_oauth_put", {
+      p_client_id: parsed.data.client_id,
+      p_client_secret_encrypted:
+        (valores.client_secret_encrypted as string | undefined) ?? null,
+      p_updated_by: authUser.id,
+    });
+    if (
+      gravacao.error &&
+      /function .*fn_platform_google_oauth_put.*does not exist|Could not find the function/i.test(
+        gravacao.error.message,
+      )
+    ) {
+      gravacao = await gravacaoDireta();
+    }
+  } else {
+    gravacao = await gravacaoDireta();
+  }
+  if (gravacao.error) {
+    try {
+      await salvarAppDoGoogleNoPostgres({
+        clientId: parsed.data.client_id,
+        clientSecretEncrypted:
+          (valores.client_secret_encrypted as string | undefined) ?? null,
+        updatedBy: authUser.id,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : gravacao.error.message,
+      };
+    }
+  }
 
   // No MESMO processo que renderiza (na VPS há um processo de app só), então a
   // credencial nova vale no próximo render sem esperar o TTL de 30s.

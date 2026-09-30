@@ -30,6 +30,7 @@
  */
 
 import { env } from "@/lib/env";
+import { lerAppDoGoogleNoPostgres } from "@/lib/agenda/google/admin-store";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
@@ -104,7 +105,6 @@ export function configuracaoDoAmbiente(): AppDoGoogleConfigurado | null {
 const TTL_MS = 30_000;
 
 declare global {
-  // eslint-disable-next-line no-var
   var __memoDoAppDoGoogle: { readonly valor: LinhaDoApp | null; readonly expiraEm: number } | null | undefined;
 }
 
@@ -124,19 +124,42 @@ async function linhaDoBanco(): Promise<LinhaDoApp | null> {
 
   let valor: LinhaDoApp | null = null;
   try {
-    const { data, error } = await createAdminClient()
-      .from("platform_google_oauth")
-      .select("client_id, client_secret_encrypted")
-      .eq("id", 1)
-      .maybeSingle();
+    const admin = createAdminClient();
+    const leituraDireta = () =>
+      admin
+        .from("platform_google_oauth")
+        .select("client_id, client_secret_encrypted")
+        .eq("id", 1)
+        .maybeSingle();
+
+    let leitura;
+    if (typeof admin.rpc === "function") {
+      leitura = await admin.rpc("fn_platform_google_oauth_get");
+      if (
+        leitura.error &&
+        /function .*fn_platform_google_oauth_get.*does not exist|Could not find the function/i.test(
+          leitura.error.message,
+        )
+      ) {
+        leitura = await leituraDireta();
+      }
+    } else {
+      leitura = await leituraDireta();
+    }
+    const { data, error } = leitura;
     // Clone que ainda não aplicou a 0201 devolve 42P01 aqui. Isso NÃO é erro
     // desta instalação — é o piso de rollback funcionando, e o `.env` assume.
     if (error) {
-      logger.info("[agenda.google.config] sem credencial no banco; vale o .env", {
-        codigo: error.code,
-      });
+      try {
+        valor = await lerAppDoGoogleNoPostgres();
+      } catch {
+        logger.info("[agenda.google.config] sem credencial no banco; vale o .env", {
+          codigo: error.code,
+        });
+      }
     } else {
-      valor = (data as LinhaDoApp | null) ?? null;
+      const linha = Array.isArray(data) ? data[0] ?? null : data;
+      valor = (linha as LinhaDoApp | null) ?? null;
     }
   } catch (err) {
     // NUNCA LANÇA: esta função é chamada no render da Agenda, e um throw aqui é

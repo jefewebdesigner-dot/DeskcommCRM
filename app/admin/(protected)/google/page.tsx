@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { lerAppDoGoogleNoPostgres } from "@/lib/agenda/google/admin-store";
 import { configuracaoDoAmbiente, enderecoDeRetorno } from "@/lib/agenda/google/config";
 import { loadAuthUser } from "@/lib/auth/server";
 import { tagDeIdioma } from "@/lib/i18n/datas";
@@ -50,13 +51,38 @@ export default async function Page() {
   // A tabela é server-side only (RLS ligada, zero policies, grants revogados de
   // anon/authenticated), então o admin client é o único caminho — como em
   // `platform_branding`.
-  const { data } = await createAdminClient()
-    .from("platform_google_oauth")
-    .select("client_id, client_secret_encrypted, updated_at")
-    .eq("id", 1)
-    .maybeSingle();
+  const admin = createAdminClient();
+  const leituraDireta = () =>
+    admin
+      .from("platform_google_oauth")
+      .select("client_id, client_secret_encrypted, updated_at")
+      .eq("id", 1)
+      .maybeSingle();
 
-  const linha = data as
+  let leitura;
+  if (typeof admin.rpc === "function") {
+    leitura = await admin.rpc("fn_platform_google_oauth_get");
+    if (
+      leitura.error &&
+      /function .*fn_platform_google_oauth_get.*does not exist|Could not find the function/i.test(
+        leitura.error.message,
+      )
+    ) {
+      leitura = await leituraDireta();
+    }
+  } else {
+    leitura = await leituraDireta();
+  }
+
+  let bruto = Array.isArray(leitura.data) ? leitura.data[0] ?? null : leitura.data;
+  if (leitura.error) {
+    try {
+      bruto = await lerAppDoGoogleNoPostgres();
+    } catch {
+      bruto = null;
+    }
+  }
+  const linha = bruto as
     | { client_id: string | null; client_secret_encrypted: string | null; updated_at: string | null }
     | null;
 
