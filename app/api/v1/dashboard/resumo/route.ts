@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { isServiceRoleConfigured } from "@/lib/audit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +15,10 @@ export async function GET(): Promise<Response> {
 
   const db = await createClient();
   const org = authz.org.orgId;
+  // O resumo operacional precisa enxergar configuração da organização inteira
+  // (equipe/canais/agenda), não só o que a RLS do papel atual deixa listar.
+  // Com service role, o escopo continua explícito pelo organization_id abaixo.
+  const configDb = isServiceRoleConfigured() ? createAdminClient() : db;
   const agora = new Date();
   const inicioHoje = new Date(agora);
   inicioHoje.setHours(0, 0, 0, 0);
@@ -22,7 +28,20 @@ export async function GET(): Promise<Response> {
   const count = (table: string) =>
     db.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org);
 
-  const [contatos, negocios, fila, tarefas, atrasadas, agenda, leads30d] = await Promise.all([
+  const [
+    contatos,
+    negocios,
+    fila,
+    tarefas,
+    atrasadas,
+    agenda,
+    leads30d,
+    responsaveis,
+    canais,
+    conexoesAgenda,
+    credenciaisIa,
+    conexaoMeta,
+  ] = await Promise.all([
     count("contacts"),
     count("crm_leads").eq("status", "open"),
     count("conversations").eq("comando_da_conversa", "humano").not("status", "in", "(closed,archived)"),
@@ -39,6 +58,33 @@ export async function GET(): Promise<Response> {
       .select("id,status,value_cents,currency,source_metadata,created_at,closed_at")
       .eq("organization_id", org)
       .or(`created_at.gte.${ha30Dias.toISOString()},closed_at.gte.${ha30Dias.toISOString()}`),
+    configDb
+      .from("user_organizations")
+      .select("user_id", { count: "exact", head: true })
+      .eq("organization_id", org)
+      .is("revoked_at", null)
+      .in("role", ["agent", "manager", "admin"]),
+    configDb
+      .from("channel_sessions")
+      .select("status")
+      .eq("organization_id", org)
+      .is("archived_at", null),
+    configDb
+      .from("calendar_connections")
+      .select("status")
+      .eq("organization_id", org)
+      .eq("provider", "google_calendar")
+      .neq("status", "disconnected"),
+    configDb
+      .from("ai_provider_credentials")
+      .select("is_active,validated_at")
+      .eq("organization_id", org),
+    configDb
+      .from("ad_insights_connections")
+      .select("id")
+      .eq("organization_id", org)
+      .eq("platform", "meta_ads")
+      .maybeSingle(),
   ]);
 
   const erro = [contatos, negocios, fila, tarefas, atrasadas, agenda, leads30d].find((r) => r.error)?.error;
@@ -59,6 +105,11 @@ export async function GET(): Promise<Response> {
     0,
   );
 
+  const canaisRows = canais.error ? null : (canais.data ?? []);
+  const agendaRows = conexoesAgenda.error ? null : (conexoesAgenda.data ?? []);
+  const iaRows = credenciaisIa.error ? null : (credenciaisIa.data ?? []);
+  const metaRow = conexaoMeta.error ? null : conexaoMeta.data;
+
   return ok(
     {
       contatos: contatos.count ?? 0,
@@ -72,6 +123,24 @@ export async function GET(): Promise<Response> {
         vendas: vendasMeta30d.length,
         receita_cents: receitaMeta30dCents,
         moeda: "BRL",
+      },
+      prontidao: {
+        responsaveis_ativos: responsaveis.error ? null : (responsaveis.count ?? 0),
+        whatsapp: {
+          total: canaisRows === null ? null : canaisRows.length,
+          conectados: canaisRows === null ? null : canaisRows.filter((c) => c.status === "WORKING").length,
+        },
+        agenda_google: {
+          total: agendaRows === null ? null : agendaRows.length,
+          saudaveis: agendaRows === null ? null : agendaRows.filter((c) => c.status === "healthy").length,
+        },
+        inteligencia_artificial: {
+          credenciais_ativas: iaRows === null ? null : iaRows.filter((c) => c.is_active).length,
+          validadas: iaRows === null ? null : iaRows.filter((c) => c.is_active && c.validated_at !== null).length,
+        },
+        meta_ads: {
+          conectada: conexaoMeta.error ? null : Boolean(metaRow),
+        },
       },
       atualizado_em: agora.toISOString(),
     },

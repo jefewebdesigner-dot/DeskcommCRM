@@ -20,6 +20,13 @@ type ResumoOperacional = {
   tarefas_atrasadas: number;
   compromissos_30d: number;
   meta_atribuicao_30d: { oportunidades: number; vendas: number; receita_cents: number; moeda: string };
+  prontidao: {
+    responsaveis_ativos: number | null;
+    whatsapp: { total: number | null; conectados: number | null };
+    agenda_google: { total: number | null; saudaveis: number | null };
+    inteligencia_artificial: { credenciais_ativas: number | null; validadas: number | null };
+    meta_ads: { conectada: boolean | null };
+  };
   atualizado_em: string;
 };
 
@@ -61,6 +68,31 @@ function Metric({ title, value, note }: { title: string; value: string | number;
       <p className="text-sm text-muted-foreground">{title}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight break-words tabular-nums">{value}</p>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{note}</p>
+    </article>
+  );
+}
+function ReadinessCard({
+  title,
+  ready,
+  detail,
+  href,
+}: {
+  title: string;
+  ready: boolean | null;
+  detail: string;
+  href: string;
+}) {
+  const label = ready === null ? "Verificar" : ready ? "Pronto" : "Pendente";
+  return (
+    <article className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-medium">{title}</p>
+        <Badge variant={ready ? "default" : "outline"}>{label}</Badge>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+      <Link className="mt-3 inline-block text-xs font-medium underline underline-offset-4" href={href}>
+        Abrir configuração
+      </Link>
     </article>
   );
 }
@@ -365,7 +397,11 @@ export function BillingDashboardClient({
               <p className="text-xs text-muted-foreground">Todos os clientes e valores juntos. O detalhamento por fonte fica logo abaixo.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric title="Clientes ativos (total)" value={stripe.active_subscriptions + other.active_customers} note={`${stripe.active_subscriptions} no Stripe + ${other.active_customers} no PIX/manual.`} />
+              <Metric
+                title="Contratos ativos"
+                value={`${stripe.active_subscriptions + other.subscriptions.filter((row) => row.status === "active").length} contratos`}
+                note={`${stripe.active_subscriptions} assinatura(s) ativa(s) no Stripe + ${other.subscriptions.filter((row) => row.status === "active").length} no PIX/manual. Clientes em atraso são mostrados separadamente.`}
+              />
               <Metric title="Receita recorrente mensal (total)" value={currency(stripe.mrr_cents + (other.mrr_cents ?? 0))} note={`Stripe ${currency(stripe.mrr_cents)} + PIX/manual ${currency(other.mrr_cents)}.`} />
               <Metric title="Receita recorrente anual (total)" value={currency(stripe.arr_cents + (other.mrr_cents ?? 0) * 12)} note="ARR do Stripe (informado pela fonte) + MRR do PIX/manual × 12." />
               <Metric title="Em atraso (total)" value={stripe.past_due_count + other.past_due_customers} note={`${stripe.past_due_count} no Stripe + ${other.past_due_customers} no PIX/manual.`} />
@@ -403,6 +439,55 @@ export function BillingDashboardClient({
             <Button asChild variant="outline"><Link href="/app/agenda">Agenda</Link></Button>
           </div>
         </section>
+
+        {operacao && (
+          <section aria-label="Prontidão da operação">
+            <div className="mb-3">
+              <h2 className="font-semibold">Prontidão da operação</h2>
+              <p className="text-xs text-muted-foreground">
+                O que já está realmente configurado para a PeríciaIA operar sem depender de ajuste manual.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <ReadinessCard
+                title="Responsáveis"
+                ready={operacao.prontidao.responsaveis_ativos === null ? null : operacao.prontidao.responsaveis_ativos > 0}
+                detail={operacao.prontidao.responsaveis_ativos === null ? "Não foi possível conferir a equipe." : `${operacao.prontidao.responsaveis_ativos} responsável(is) apto(s) a receber negócios e atendimentos.`}
+                href="/app/team"
+              />
+              <ReadinessCard
+                title="Agenda Google"
+                ready={operacao.prontidao.agenda_google.saudaveis === null ? null : operacao.prontidao.agenda_google.saudaveis > 0}
+                detail={operacao.prontidao.agenda_google.total === null ? "Não foi possível conferir as contas conectadas." : `${operacao.prontidao.agenda_google.saudaveis ?? 0} saudável(is) de ${operacao.prontidao.agenda_google.total} conexão(ões).`}
+                href="/app/agenda"
+              />
+              <ReadinessCard
+                title="WhatsApp"
+                ready={operacao.prontidao.whatsapp.conectados === null ? null : operacao.prontidao.whatsapp.conectados > 0}
+                detail={operacao.prontidao.whatsapp.total === null ? "Não foi possível conferir os canais." : `${operacao.prontidao.whatsapp.conectados ?? 0} conectado(s) de ${operacao.prontidao.whatsapp.total} canal(is).`}
+                href="/app/connections"
+              />
+              <ReadinessCard
+                title="Inteligência artificial"
+                ready={operacao.prontidao.inteligencia_artificial.validadas === null ? null : operacao.prontidao.inteligencia_artificial.validadas > 0}
+                detail={operacao.prontidao.inteligencia_artificial.credenciais_ativas === null ? "Não foi possível conferir as credenciais." : `${operacao.prontidao.inteligencia_artificial.validadas ?? 0} validada(s) de ${operacao.prontidao.inteligencia_artificial.credenciais_ativas} credencial(is) ativa(s).`}
+                href="/app/ai/credentials"
+              />
+              <ReadinessCard
+                title="Meta Ads"
+                ready={operacao.prontidao.meta_ads.conectada}
+                detail={operacao.prontidao.meta_ads.conectada === null ? "Não foi possível conferir a conexão de leitura." : operacao.prontidao.meta_ads.conectada ? "Token de leitura conectado para alimentar os indicadores do Dashboard." : "Falta conectar o token de leitura da conta de anúncios."}
+                href="/app/settings/meta-ads"
+              />
+              <ReadinessCard
+                title="Cobrança e contratos"
+                ready={state === null ? null : state.configured}
+                detail={state === null ? "Conferindo a integração financeira." : state.configured ? "Fonte financeira conectada ao Dashboard." : "Integração financeira ainda não configurada para esta organização."}
+                href="/app/assinaturas"
+              />
+            </div>
+          </section>
+        )}
 
         {(configure || state?.configured === false) && (
           <Section
