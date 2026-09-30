@@ -82,7 +82,7 @@ import {
 import { createCaseReplyTurnHandler } from "@/lib/agent-engine/agent/case-reply-turn";
 import { createOperatorTurnHandler } from "@/lib/agent-engine/agent/operator-turn";
 import { completeTurnForEnrollment, createPgAdminClient } from "@/lib/followup/turn-bridge";
-import { seedPlatformPlaybook } from "@/lib/agent-engine/agent/playbook-seed";
+import { seedPlatformPlaybook, verificarPlaybookDePlataforma } from "@/lib/agent-engine/agent/playbook-seed";
 import { runCronLoop } from "@/lib/agent-engine/cron/scheduler";
 import { createPool } from "@/lib/agent-engine/db/pool";
 import {
@@ -99,10 +99,20 @@ import { runHealthLoop } from "@/lib/agent-engine/health/circuit";
 import { runFlywheelLoop } from "@/lib/agent-engine/flywheel/live";
 import { llmEdgeConfigFromEnv } from "@/lib/agent-engine/edge/llm/run-model-call";
 import { loadEnv, type Env } from "@/lib/agent-engine/env";
+import { createTenantPool, type TenantPool } from "@/lib/agent-engine/db/tenant-pool";
+import {
+  ehTenantPool,
+  emCadaOrganizacao,
+  filaPorStatus,
+  jobsEmExecucao,
+  msParaOProximoJob,
+  organizacoesComJobVencido,
+  organizacoesDoWorker,
+} from "@/lib/agent-engine/db/por-organizacao";
 import { comSanitizacao, createLogger, type Logger } from "@/lib/agent-engine/obs/logger";
 import {
   evaluateCacheHitAlert,
-  metricsSnapshot,
+  metricsDeTodasAsOrganizacoes,
   recordRunMetrics,
   type CacheAlertKnobs,
 } from "@/lib/agent-engine/obs/metrics";
@@ -207,7 +217,7 @@ export function createHealthzServer(
     }
     if (route === "/metrics") {
       try {
-        respond(res, 200, await metricsSnapshot(pool, metricsWindowMs));
+        respond(res, 200, await metricsDeTodasAsOrganizacoes(pool, log, metricsWindowMs));
       } catch (err) {
         log.error("metrics: snapshot indisponível", { error: errMsg(err) });
         respond(res, 503, { status: "degraded", db: "error" });
@@ -216,14 +226,21 @@ export function createHealthzServer(
     }
     const uptime_s = Math.round(process.uptime());
     try {
-      const { rows } = await pool.query<{ status: string; n: number }>(
-        "select status, count(*)::int as n from job_queue group by status",
-      );
       const queue = { pending: 0, running: 0, dead: 0 };
-      for (const row of rows) {
-        if (row.status in queue) queue[row.status as keyof typeof queue] = row.n;
+      if (ehTenantPool(pool)) {
+        const porStatus = await filaPorStatus(pool);
+        for (const k of Object.keys(queue) as Array<keyof typeof queue>) queue[k] = porStatus[k] ?? 0;
+      } else {
+        const { rows } = await pool.query<{ status: string; n: number }>(
+          "select status, count(*)::int as n from job_queue group by status",
+        );
+        for (const row of rows) {
+          if (row.status in queue) queue[row.status as keyof typeof queue] = row.n;
+        }
       }
-      const sessions = await sessionHealthMetrics(pool);
+      const sessions = (
+        await emCadaOrganizacao(pool, log, () => sessionHealthMetrics(pool))
+      ).flat();
       // O laço do event_log é informação de saúde de PRIMEIRA classe (#604): na
       // #648 este mesmo handler respondia 200 com o laço parado havia dez dias.
       // `event_log_drain` vai nos DOIS ramos, 200 e 503, de propósito — a
@@ -262,24 +279,50 @@ export async function startWorker(
   handlers: Map<JobKind, JobHandler>,
   log: Logger = createLogger(),
 ): Promise<void> {
-  const pool = createPool(env.DATABASE_URL, (err) =>
+  const rawPool = createPool(env.DATABASE_URL, (err) =>
     log.error("pool: conexão caiu — recria no próximo uso", { error: errMsg(err) }),
   );
+  // Com WORKER_DB_SECRET o worker é uma identidade de serviço ESCOPADA por organização (Neon, migration
+  // 0015): nenhuma consulta de tenant passa sem contexto. Sem o segredo, é o pool de sempre.
+  let pool: pg.Pool = rawPool;
+  if (env.WORKER_DB_SECRET) {
+    const serviceUserId = env.WORKER_SERVICE_USER_ID ?? env.NEON_SERVICE_USER_ID;
+    if (!serviceUserId) {
+      throw new Error("WORKER_DB_SECRET definido sem WORKER_SERVICE_USER_ID/NEON_SERVICE_USER_ID");
+    }
+    pool = createTenantPool(rawPool, { serviceUserId, secret: env.WORKER_DB_SECRET });
+  }
+  const tenant: TenantPool | null = ehTenantPool(pool) ? pool : null;
+  const noPlanoGlobal = <T>(fn: () => Promise<T>): Promise<T> => (tenant ? tenant.withGlobal(fn) : fn());
   const workerId = `agent-engine-${hostname()}-${process.pid}`;
 
-  await assertHarnessSchema(pool);
+  await noPlanoGlobal(() => assertHarnessSchema(pool));
 
   // Self-host limpo: sem ponteiro platform, TODO inbound_turn morre. O seed só
   // age quando não existe ponteiro nenhum (regra dura nº 10 — nunca move
   // ponteiro existente) e é concorrência-safe (advisory lock).
-  const playbookSeed = await seedPlatformPlaybook(pool);
-  if (playbookSeed === "seeded") {
-    log.info("playbook platform seedado no boot (primeiro boot do self-host)");
+  if (tenant) {
+    // Não escreve dado global: a role do worker não tem, de propósito. Ausente = erro operacional.
+    await noPlanoGlobal(() => verificarPlaybookDePlataforma(pool));
+    const orgs = await organizacoesDoWorker(tenant);
+    log.info("worker com contexto de organização por transação", { organizacoes_cadastradas: orgs.length });
+    if (orgs.length === 0) {
+      log.warn("nenhuma organização cadastrada para a identidade do worker — nada será processado", {});
+    }
+  } else {
+    const playbookSeed = await seedPlatformPlaybook(pool);
+    if (playbookSeed === "seeded") {
+      log.info("playbook platform seedado no boot (primeiro boot do self-host)");
+    }
   }
 
-  const bootReap = await reapExpiredJobs(pool, {
-    visibilityTimeoutMs: env.QUEUE_VISIBILITY_TIMEOUT_MS,
-  });
+  const reapEmTodas = async (): Promise<{ revived: number; dead: number }> => {
+    const partes = await emCadaOrganizacao(pool, log, () =>
+      reapExpiredJobs(pool, { visibilityTimeoutMs: env.QUEUE_VISIBILITY_TIMEOUT_MS }),
+    );
+    return partes.reduce((a, r) => ({ revived: a.revived + r.revived, dead: a.dead + r.dead }), { revived: 0, dead: 0 });
+  };
+  const bootReap = await reapEmTodas();
   if (bootReap.revived + bootReap.dead > 0) {
     log.warn("órfãos soltos no boot", bootReap);
   }
@@ -289,7 +332,7 @@ export async function startWorker(
   // (QUEUE_REAPER_INTERVAL_MS, 60 s por padrão), e até lá o orçamento e os knobs
   // do turno responderiam com o piso do `.env`, não com a escolha da tela.
   // Nunca lança: sem leitura boa, vale o piso — o comportamento de antes.
-  await carregarComportamentoPorPool(pool, pisoDoComportamentoDoMotor(env));
+  await noPlanoGlobal(() => carregarComportamentoPorPool(pool, pisoDoComportamentoDoMotor(env)));
 
   const server = createHealthzServer(pool, log, env.METRICS_WINDOW_MS);
   await new Promise<void>((resolve, reject) => {
@@ -309,8 +352,7 @@ export async function startWorker(
   const baterCoracao = (): void => {
     const erro = estadoDoWorker.ultimoErro;
     estadoDoWorker.ultimoErro = null;
-    pool
-      .query("select public.fn_agent_worker_beat($1, $2, $3)", [workerId, iniciadoEm, erro])
+    noPlanoGlobal(() => pool.query("select public.fn_agent_worker_beat($1, $2, $3)", [workerId, iniciadoEm, erro]))
       .catch((err: unknown) => {
         if (erro) estadoDoWorker.ultimoErro = erro;
         log.warn("batimento do worker falhou", { error: errMsg(err) });
@@ -325,10 +367,10 @@ export async function startWorker(
     // (issue #1034). O memo de 30 s evita ir ao banco a cada tique, e o
     // carregador nunca lança — o `.catch` cobre o caso impossível sem deixar
     // rejeição solta (o worker morre com promise rejeitada não tratada).
-    carregarComportamentoPorPool(pool, pisoDoComportamentoDoMotor(env)).catch((err: unknown) =>
+    noPlanoGlobal(() => carregarComportamentoPorPool(pool, pisoDoComportamentoDoMotor(env))).catch((err: unknown) =>
       log.error("comportamento da instalação: releitura falhou", { error: errMsg(err) }),
     );
-    reapExpiredJobs(pool, { visibilityTimeoutMs: env.QUEUE_VISIBILITY_TIMEOUT_MS })
+    reapEmTodas()
       .then((reaped) => {
         if (reaped.revived + reaped.dead > 0) log.warn("reaper devolveu jobs órfãos", reaped);
       })
@@ -338,7 +380,11 @@ export async function startWorker(
   // Holds de sessão/saúde: retém jobs de envio de número fora do ar (WORKING é a
   // fonte channel_sessions, mantida pelo webhook do WAHA) — ritmo do reaper serve.
   const holdsTimer = setInterval(() => {
-    enforceHolds(pool)
+    emCadaOrganizacao(pool, log, () => enforceHolds(pool))
+      .then((partes) => ({
+        held: partes.reduce((a, r) => a + r.held, 0),
+        released: partes.reduce((a, r) => a + r.released, 0),
+      }))
       .then(({ held, released }) => {
         if (held + released > 0) log.info("holds de sessão aplicados", { held, released });
       })
@@ -466,7 +512,7 @@ export async function startWorker(
     cacheHitAlertMinRuns: env.CACHE_HIT_ALERT_MIN_RUNS,
   };
 
-  const runJob = async (job: JobRow): Promise<void> => {
+  const runJobNoContexto = async (job: JobRow): Promise<void> => {
     try {
       const handler = handlers.get(job.kind);
       if (!handler) {
@@ -559,9 +605,36 @@ export async function startWorker(
     }
   };
 
+  // A organização do contexto vem SEMPRE da linha persistida do job (claimada do banco), nunca de
+  // texto da IA, de mensagem do cliente ou de parâmetro arbitrário. Toda consulta do turno (e o
+  // complete/fail do job) roda dentro dela.
+  const runJob = (job: JobRow): Promise<void> =>
+    tenant ? tenant.withOrganization(job.organization_id, () => runJobNoContexto(job)) : runJobNoContexto(job);
+
+  // Claim entre organizações: só ids/números no plano global; o claim em si roda no contexto de cada
+  // organização com job vencido. O cap de concorrência continua GLOBAL (jobs em execução somados).
+  let rodizio = 0;
+  const claimarEmTodas = async (): Promise<JobRow[]> => {
+    if (!tenant) return claimJobs(pool, { workerId, maxConcurrency: env.QUEUE_MAX_CONCURRENCY });
+    const orgs = await organizacoesComJobVencido(tenant);
+    if (orgs.length === 0) return [];
+    let livre = env.QUEUE_MAX_CONCURRENCY - (await jobsEmExecucao(tenant));
+    const claimed: JobRow[] = [];
+    const inicio = rodizio++ % orgs.length; // rodízio: nenhuma organização passa fome atrás de outra
+    for (let i = 0; i < orgs.length && livre > 0; i += 1) {
+      const org = orgs[(inicio + i) % orgs.length]!;
+      const jobs = await tenant.withOrganization(org, () =>
+        claimJobs(pool, { workerId, maxConcurrency: env.QUEUE_MAX_CONCURRENCY, batchSize: livre }),
+      );
+      claimed.push(...jobs);
+      livre -= jobs.length;
+    }
+    return claimed;
+  };
+
   const workerLoop = rodarLoopDaFila<JobRow>({
-    relogio: () => faltaParaOProximoJob(pool),
-    claimar: () => claimJobs(pool, { workerId, maxConcurrency: env.QUEUE_MAX_CONCURRENCY }),
+    relogio: () => (tenant ? msParaOProximoJob(tenant) : faltaParaOProximoJob(pool)),
+    claimar: claimarEmTodas,
     aoClaimar: (jobs) => {
       for (const job of jobs) {
         const running = runJob(job);

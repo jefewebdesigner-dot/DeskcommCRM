@@ -33,6 +33,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import type pg from 'pg';
 
+import { emCadaOrganizacao, somarContagens } from '../db/por-organizacao';
 import type { Logger } from '../obs/logger';
 import { enforceHolds } from '../edge/crm/session-watchdog';
 import { HEALTH_DEFAULTS, type HealthKnobs } from './defaults';
@@ -418,7 +419,10 @@ export async function runHealthLoop(
 ): Promise<void> {
   while (!signal.aborted) {
     try {
-      const tick = await channelHealthTick(harness, log);
+      const tick = somarContagens(
+        await emCadaOrganizacao(harness, log, () => channelHealthTick(harness, log)),
+        { evaluated: 0, held: 0, released: 0, alerts: 0, jobsHeld: 0, jobsReleased: 0 },
+      );
       const activity = tick.held + tick.released + tick.alerts + tick.jobsHeld + tick.jobsReleased;
       if (activity > 0) log.info('health: tick processado', { ...tick });
     } catch (err) {

@@ -19,6 +19,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import type pg from 'pg';
 
+import { emCadaOrganizacao, somarContagens } from '../db/por-organizacao';
 import type { Logger } from '../obs/logger';
 import { enqueueJob, type JobKind, type Queryable } from '../queue/queue';
 import {
@@ -301,7 +302,10 @@ export async function runCronLoop(
 ): Promise<void> {
   while (!signal.aborted) {
     try {
-      const tick = await tickCron(pool, cfg, log);
+      const tick = somarContagens(
+        await emCadaOrganizacao(pool, log, () => tickCron(pool, cfg, log)),
+        { fired: 0, retried: 0, disabled: 0 },
+      );
       if (tick.fired + tick.retried + tick.disabled > 0) log.info('cron: tick processado', { ...tick });
     } catch (err) {
       log.error('cron: tick falhou — tenta no próximo intervalo', { error: errMsg(err) });

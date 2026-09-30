@@ -7,6 +7,7 @@
 import type pg from 'pg';
 
 import { runModelCall, type LlmEdgeConfig } from '../edge/llm/run-model-call';
+import { emCadaOrganizacao } from '../db/por-organizacao';
 import type { Logger } from '../obs/logger';
 import { aggregateFollowupOutcomes, type FlowOutcomeStat } from '../../followup/outcome-stats';
 
@@ -257,8 +258,12 @@ export async function runFlywheelLoop(
     });
     if (signal.aborted) return;
     try {
-      const result = await runFlywheelOnce(pool, llmCfg, { limit: opts.limit, log: opts.log });
-      opts.log.info('flywheel: rodada agendada concluída', result as unknown as Record<string, unknown>);
+      const results = await emCadaOrganizacao(pool, opts.log, () =>
+        runFlywheelOnce(pool, llmCfg, { limit: opts.limit, log: opts.log }),
+      );
+      for (const result of results) {
+        opts.log.info('flywheel: rodada agendada concluída', result as unknown as Record<string, unknown>);
+      }
     } catch (err) {
       opts.log.error('flywheel: rodada agendada falhou', {
         error: (err instanceof Error ? err.message : String(err)).slice(0, 200),

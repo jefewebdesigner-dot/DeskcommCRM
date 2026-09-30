@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import type pg from 'pg';
 
+import { somaPorOrganizacao } from '../../db/por-organizacao';
 import { insertInboxItem } from '../../db/repository';
 import type { Logger } from '../../obs/logger';
 import { enqueueJob } from '../../queue/queue';
@@ -485,7 +486,9 @@ export async function runDrainLoop(
   while (!signal.aborted) {
     let drained = 0;
     try {
-      drained = await drainTick(pool, knobs, log);
+      // Uma organização por vez, dentro do contexto dela (o worker não é usuário: a RLS só libera o
+      // que o contexto declara). Sem contexto (pg.Pool comum, testes) é a chamada única de sempre.
+      drained = await somaPorOrganizacao(pool, log, () => drainTick(pool, knobs, log));
     } catch (err) {
       log.error('drain: tick falhou', {
         error: (err instanceof Error ? err.message : String(err)).slice(0, 300),

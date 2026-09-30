@@ -20,7 +20,9 @@
  */
 import type pg from 'pg';
 
+import { emCadaOrganizacao } from '../db/por-organizacao';
 import { sessionHealthMetrics, type SessionHealthMetric } from '../edge/crm/session-watchdog';
+import type { Logger } from './logger';
 import type { JobRow } from '../queue/queue';
 
 /** nome da métrica de 1ª classe do caching — âncora do alerta e dos testes */
@@ -242,5 +244,51 @@ export async function metricsSnapshot(db: pg.Pool, windowMs: number): Promise<Me
     queue,
     sends,
     sessions,
+  };
+}
+
+/**
+ * `/metrics` do worker com contexto de organização: um snapshot por organização (cada um dentro do
+ * contexto dela) somado num só. Sem contexto (`pg.Pool` comum) devolve o snapshot único de sempre.
+ */
+export async function metricsDeTodasAsOrganizacoes(
+  db: pg.Pool,
+  log: Logger | undefined,
+  windowMs: number,
+): Promise<MetricsSnapshot> {
+  const snaps = await emCadaOrganizacao(db, log, () => metricsSnapshot(db, windowMs));
+  if (snaps.length === 1) return snaps[0]!;
+  const soma = <K extends string>(get: (s: MetricsSnapshot) => number, _k?: K): number =>
+    snaps.reduce((a, s) => a + get(s), 0);
+  const totalRuns = soma((s) => s.runs.count);
+  const media = (get: (s: MetricsSnapshot) => number | null): number | null => {
+    const com = snaps.filter((s) => get(s) !== null && s.runs.count > 0);
+    const peso = com.reduce((a, s) => a + s.runs.count, 0);
+    return peso === 0 ? null : com.reduce((a, s) => a + (get(s) as number) * s.runs.count, 0) / peso;
+  };
+  return {
+    window_ms: windowMs,
+    runs: {
+      count: totalRuns,
+      input_tokens: soma((s) => s.runs.input_tokens),
+      output_tokens: soma((s) => s.runs.output_tokens),
+      cache_read_tokens: soma((s) => s.runs.cache_read_tokens),
+      cache_read_ratio_avg: media((s) => s.runs.cache_read_ratio_avg),
+      cost_cents: snaps.some((s) => s.runs.cost_cents !== null) ? soma((s) => s.runs.cost_cents ?? 0) : null,
+      avg_llm_latency_ms: media((s) => s.runs.avg_llm_latency_ms),
+    },
+    queue: {
+      pending: soma((s) => s.queue.pending),
+      running: soma((s) => s.queue.running),
+      dead: soma((s) => s.queue.dead),
+    },
+    sends: {
+      requested: soma((s) => s.sends.requested),
+      accepted: soma((s) => s.sends.accepted),
+      queued: soma((s) => s.sends.queued),
+      vetoed: soma((s) => s.sends.vetoed),
+      failed: soma((s) => s.sends.failed),
+    },
+    sessions: snaps.flatMap((s) => s.sessions).slice(0, 50),
   };
 }

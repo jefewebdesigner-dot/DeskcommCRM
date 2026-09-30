@@ -26,6 +26,24 @@ export const PLATFORM_PLAYBOOK_PATH = path.join(
   'platform.md',
 );
 
+/**
+ * Modo com contexto de organização (Neon): o worker NÃO escreve dado global — a role dele não tem,
+ * de propósito. O playbook de plataforma é semeado no DEPLOY, com a role dona do banco
+ * (`scripts/neon/semear-playbook-plataforma.ts`); aqui só se confere e, se faltar, o erro é
+ * operacional e explícito em vez de uma tentativa de ganhar privilégio.
+ */
+export async function verificarPlaybookDePlataforma(pool: pg.Pool): Promise<void> {
+  const { rowCount } = await pool.query(
+    `select 1 from playbook_pointers where organization_id is null and layer = 'platform' limit 1`,
+  );
+  if (!rowCount) {
+    throw new Error(
+      'playbook de plataforma ausente no banco — o worker não o cria (não escreve dado global). ' +
+        'Semeie no deploy: pnpm neon:semear-playbook (role dona do banco).',
+    );
+  }
+}
+
 export async function seedPlatformPlaybook(
   pool: pg.Pool,
   opts?: { filePath?: string },

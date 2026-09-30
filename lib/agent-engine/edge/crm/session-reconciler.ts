@@ -28,6 +28,7 @@
 import type pg from 'pg';
 
 import { statusInternoDaInstancia } from '@/lib/channels/evolution/estado';
+import { somaPorOrganizacao } from '../../db/por-organizacao';
 import { parseWahaMessageId, wahaEchoExternalIds } from '@/lib/waha/message-id';
 import { lerNumerosDeTeste, numeroPodeTestar, preGoLiveAtivo } from '@/lib/ai/elegibilidade/pre-go-live';
 
@@ -563,8 +564,14 @@ export async function runSessionWatchdogLoop(
 ): Promise<void> {
   while (!signal.aborted) {
     try {
-      const fixed = (await reconcileSessions(pool, cfg, log)) + (await reconcileEvolutionSessions(pool, cfg, log));
-      const redriven = await redriveQueued(pool, cfg, log);
+      // Por organização, dentro do contexto dela: a consulta continua sem filtro de tenant e a RLS
+      // restringe. Sem contexto (pg.Pool comum, testes) é a chamada única de sempre.
+      const fixed = await somaPorOrganizacao(
+        pool,
+        log,
+        async () => (await reconcileSessions(pool, cfg, log)) + (await reconcileEvolutionSessions(pool, cfg, log)),
+      );
+      const redriven = await somaPorOrganizacao(pool, log, () => redriveQueued(pool, cfg, log));
       if (fixed + redriven > 0) {
         log.info('watchdog: tick com ação', { reconciled: fixed, redriven });
       }

@@ -16,6 +16,12 @@ const envSchema = z.object({
   // Postgres do Neon. O motor usa `pg` direto para FOR UPDATE SKIP LOCKED,
   // advisory locks, FTS e filas duráveis. Sempre a role restrita de aplicação.
   DATABASE_URL: z.string().url(),
+  // Contexto de organização por transação (Neon, migration 0015). Com o segredo presente o worker
+  // fala com o banco como identidade de serviço ESCOPADA por organização; sem ele, o pool é o de
+  // sempre (instalação cujo DATABASE_URL já é uma role que ignora RLS). O banco guarda só o hash.
+  WORKER_DB_SECRET: z.string().min(24).max(200).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  WORKER_SERVICE_USER_ID: z.string().uuid().optional(),
+  NEON_SERVICE_USER_ID: z.string().uuid().optional(),
   // Alias legado opcional enquanto scripts antigos ainda são removidos.
   SUPABASE_DB_URL: z.string().url().optional(),
   // Chave LLM de plataforma (fallback quando a org não tem BYOK em

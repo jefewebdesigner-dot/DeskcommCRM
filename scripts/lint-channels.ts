@@ -148,6 +148,7 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       // linha: `wahaBaseUrl`/`wahaApiKey` do mesmo teste não casam com o padrão
       // (letra colada em letra não é fronteira). Sai quando a coluna sair.
       "lib/agent-engine/edge/crm/session-reconciler.test.ts",
+      "lib/agent-engine/edge/crm/session-reconciler-evolution.test.ts",
       // `components/connections/AntiBanSheet.tsx` SAIU desta lista: ele lia
       // `waha_session_name` como último degrau do NOME que o usuário vê, e por
       // isso um canal sem apelido aparecia no painel como `org_2dd5e6ea`. Agora

@@ -15,7 +15,6 @@ vi.mock("@/lib/env", () => ({
     NEON_AUTH_JWKS_URL: "https://auth.exemplo.test/jwks",
     UPSTASH_REDIS_REST_URL: "https://redis.exemplo.test",
     UPSTASH_REDIS_REST_TOKEN: "token-de-teste",
-    WAHA_API_BASE_URL: "",
     INTERNAL_CRON_SECRET: "segredo-interno-de-teste-com-tamanho-suficiente",
     INTERNAL_SECRET: "",
   },
