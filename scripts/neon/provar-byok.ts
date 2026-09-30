@@ -61,8 +61,17 @@ async function main(): Promise<void> {
         ...(provider ? { llmOverride: { provider } } : {}),
         ...(modelo ? { model: modelo } : {}),
       });
-      const texto = String((res as { text?: unknown }).text ?? "").trim().slice(0, 40);
-      console.info(JSON.stringify({ etapa: "chamada", ok: texto.length > 0, resposta: texto }));
+      const r2 = res as unknown as Record<string, unknown>;
+      const texto = String((r2.result as { text?: unknown } | undefined)?.text ?? r2.text ?? "").trim().slice(0, 40);
+      console.info(
+        JSON.stringify({
+          etapa: "chamada",
+          ok: texto.length > 0,
+          resposta: texto,
+          campos: Object.keys(r2).slice(0, 12),
+          uso: r2.usage ?? null,
+        }),
+      );
     });
   } finally {
     await raw.end();
