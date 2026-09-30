@@ -3,7 +3,7 @@
  *   pool com contexto de organização → resolveOrgLlmConfig (decifra com AI_CRED_AES_KEY) → runModelCall.
  *
  *   pnpm tsx --require ./workers/agent-worker/server-only-shim.cjs --env-file=.env \
- *     scripts/neon/provar-byok.ts <organization_id> [--chamar]
+ *     scripts/neon/provar-byok.ts <organization_id> [--provider google] [--modelo <id>] [--chamar]
  *
  * Sem `--chamar` só resolve e decifra (nenhum token gasto). Com `--chamar` faz UMA chamada curta
  * real ("responda ok"), que grava a linha normal em `llm_calls`. A chave nunca é impressa — só
@@ -24,6 +24,12 @@ const PREFIXOS: Record<string, RegExp> = {
 async function main(): Promise<void> {
   const org = process.argv[2];
   const chamar = process.argv.includes("--chamar");
+  const flag = (nome: string): string | undefined => {
+    const i = process.argv.indexOf(nome);
+    return i >= 0 ? process.argv[i + 1] : undefined;
+  };
+  const provider = flag("--provider");
+  const modelo = flag("--modelo");
   if (!org) throw new Error("Informe o organization_id.");
   const env = loadEnv();
   const serviceUserId = env.WORKER_SERVICE_USER_ID ?? env.NEON_SERVICE_USER_ID;
@@ -33,7 +39,7 @@ async function main(): Promise<void> {
   const cfg = llmEdgeConfigFromEnv(env);
   try {
     await pool.withOrganization(org, async () => {
-      const r = await resolveOrgLlmConfig(pool, cfg, org);
+      const r = await resolveOrgLlmConfig(pool, cfg, org, provider ? { provider } : undefined);
       const formato = PREFIXOS[r.provider]?.test(r.apiKey) ?? null;
       console.info(
         JSON.stringify({
@@ -52,6 +58,8 @@ async function main(): Promise<void> {
         purpose: "connection_test",
         messages: [{ role: "user", content: "Responda apenas com a palavra: ok" }],
         maxSteps: 1,
+        ...(provider ? { llmOverride: { provider } } : {}),
+        ...(modelo ? { model: modelo } : {}),
       });
       const texto = String((res as { text?: unknown }).text ?? "").trim().slice(0, 40);
       console.info(JSON.stringify({ etapa: "chamada", ok: texto.length > 0, resposta: texto }));
