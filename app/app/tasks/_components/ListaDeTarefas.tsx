@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
@@ -10,6 +11,7 @@ import {
   estaAtrasada,
   estaEncerrada,
   type FaixaDePrazo,
+  type PerfilResponsavelTarefa,
   type PrioridadeDaTarefa,
   type Tarefa,
 } from "@/lib/tarefas/tipos";
@@ -22,6 +24,8 @@ interface Props {
   aoAlternarConcluida: (tarefa: Tarefa) => Promise<unknown>;
   aoEditar: (tarefa: Tarefa) => void;
   aoApagar: (tarefa: Tarefa) => Promise<unknown>;
+  aoAbrirDetalhe: (tarefa: Tarefa) => void;
+  responsaveis: PerfilResponsavelTarefa[];
 }
 
 /** A cor é do TEMA, nunca um hex: ela tem de sobreviver ao claro e ao escuro. */
@@ -38,12 +42,16 @@ function Linha({
   aoAlternarConcluida,
   aoEditar,
   aoApagar,
+  aoAbrirDetalhe,
+  responsavel,
 }: {
   tarefa: Tarefa;
   podeEditar: boolean;
   aoAlternarConcluida: (t: Tarefa) => Promise<unknown>;
   aoEditar: (t: Tarefa) => void;
   aoApagar: (t: Tarefa) => Promise<unknown>;
+  aoAbrirDetalhe: (t: Tarefa) => void;
+  responsavel: string | null;
 }) {
   const t = useT();
   const tag = useTagDeIdioma();
@@ -93,7 +101,15 @@ function Linha({
         {encerrada ? <Check size={12} weight="bold" aria-hidden /> : null}
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div
+        className="min-w-0 flex-1 cursor-pointer"
+        role="button"
+        tabIndex={0}
+        onClick={() => aoAbrirDetalhe(tarefa)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") aoAbrirDetalhe(tarefa);
+        }}
+      >
         <p
           className={cn(
             "text-sm font-medium",
@@ -107,6 +123,11 @@ function Linha({
         ) : null}
 
         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
+          {responsavel ? (
+            <Badge variant="info" className="px-2 py-0 text-[10px]">
+              {responsavel}
+            </Badge>
+          ) : null}
           <span
             className={cn(
               "rounded-full px-2 py-0.5 font-medium",
@@ -179,9 +200,12 @@ export function ListaDeTarefas({
   aoAlternarConcluida,
   aoEditar,
   aoApagar,
+  aoAbrirDetalhe,
+  responsaveis,
 }: Props) {
   const t = useT();
   const grupos = agrupaPorPrazo(tarefas);
+  const nomes = new Map(responsaveis.map((responsavel) => [responsavel.id, responsavel.name]));
 
   const rotuloDaFaixa: Record<FaixaDePrazo, string> = {
     atrasada: t("Atrasadas"),
@@ -224,6 +248,12 @@ export function ListaDeTarefas({
                 aoAlternarConcluida={aoAlternarConcluida}
                 aoEditar={aoEditar}
                 aoApagar={aoApagar}
+                aoAbrirDetalhe={aoAbrirDetalhe}
+                responsavel={
+                  tarefa.responsible_profile_id
+                    ? (nomes.get(tarefa.responsible_profile_id) ?? null)
+                    : null
+                }
               />
             ))}
           </div>

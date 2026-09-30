@@ -22,12 +22,13 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
+import { responsavelDaTarefaExiste } from "@/lib/tarefas/responsaveis";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
 export const dynamic = "force-dynamic";
 
 const COLUNAS =
-  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at";
+  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, responsible_profile_id, created_by, created_at, updated_at";
 
 const edicaoSchema = z
   .object({
@@ -39,6 +40,7 @@ const edicaoSchema = z
     lead_id: z.string().uuid().nullable().optional(),
     contact_id: z.string().uuid().nullable().optional(),
     assigned_to: z.string().uuid().nullable().optional(),
+    responsible_profile_id: z.string().uuid().nullable().optional(),
   })
   // PATCH vazio gravaria só o `updated_at` e devolveria 200: a tela diria
   // "salvo" sobre uma edição que não existiu.
@@ -64,6 +66,15 @@ export async function PATCH(req: NextRequest, ctx: Contexto): Promise<Response> 
     return fail("validation_failed", t("Dados inválidos."), 422, {
       requestId,
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
+    });
+  }
+
+  if (
+    parsed.data.responsible_profile_id &&
+    !(await responsavelDaTarefaExiste(authz.org.orgId, parsed.data.responsible_profile_id))
+  ) {
+    return fail("validation_failed", t("O perfil responsável não pertence a esta organização."), 422, {
+      requestId,
     });
   }
 

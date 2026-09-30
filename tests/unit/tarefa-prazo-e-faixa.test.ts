@@ -36,6 +36,7 @@ function tarefa(p: Partial<Tarefa>): Tarefa {
     lead_id: null,
     contact_id: null,
     assigned_to: null,
+    responsible_profile_id: null,
     created_by: null,
     created_at: AGORA.toISOString(),
     updated_at: AGORA.toISOString(),

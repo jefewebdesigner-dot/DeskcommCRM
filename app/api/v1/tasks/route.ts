@@ -35,13 +35,14 @@ import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/act
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
+import { responsavelDaTarefaExiste } from "@/lib/tarefas/responsaveis";
 import { PRIORIDADES_DA_TAREFA, SITUACOES_DA_TAREFA, type Tarefa } from "@/lib/tarefas/tipos";
 
 export const dynamic = "force-dynamic";
 
 /** As colunas que a tela lê. Explícitas para o `select *` não vazar coluna nova. */
 const COLUNAS =
-  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, created_by, created_at, updated_at";
+  "id, organization_id, title, description, due_date, priority, status, lead_id, contact_id, assigned_to, responsible_profile_id, created_by, created_at, updated_at";
 
 const criacaoSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -52,6 +53,7 @@ const criacaoSchema = z.object({
   lead_id: z.string().uuid().nullable().optional(),
   contact_id: z.string().uuid().nullable().optional(),
   assigned_to: z.string().uuid().nullable().optional(),
+  responsible_profile_id: z.string().uuid().nullable().optional(),
 });
 
 const listaSchema = z.object({
@@ -59,6 +61,7 @@ const listaSchema = z.object({
   priority: z.enum(PRIORIDADES_DA_TAREFA).optional(),
   lead_id: z.string().uuid().optional(),
   contact_id: z.string().uuid().optional(),
+  responsible_profile_id: z.string().uuid().optional(),
   due_from: z.string().datetime({ offset: true }).optional(),
   due_to: z.string().datetime({ offset: true }).optional(),
   /** "abertas" = o que ainda pede ação. É o default da tela. */
@@ -97,6 +100,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (filtros.priority) query = query.eq("priority", filtros.priority);
   if (filtros.lead_id) query = query.eq("lead_id", filtros.lead_id);
   if (filtros.contact_id) query = query.eq("contact_id", filtros.contact_id);
+  if (filtros.responsible_profile_id) {
+    query = query.eq("responsible_profile_id", filtros.responsible_profile_id);
+  }
   if (filtros.due_from) query = query.gte("due_date", filtros.due_from);
   if (filtros.due_to) query = query.lte("due_date", filtros.due_to);
   if (filtros.aberto === "true") query = query.in("status", ["pending", "in_progress"]);
@@ -207,6 +213,15 @@ export async function POST(req: NextRequest): Promise<Response> {
         requestId,
       });
     }
+  }
+
+  if (
+    parsed.data.responsible_profile_id &&
+    !(await responsavelDaTarefaExiste(authz.org.orgId, parsed.data.responsible_profile_id))
+  ) {
+    return fail("validation_failed", t("O perfil responsável não pertence a esta organização."), 422, {
+      requestId,
+    });
   }
 
   const { data, error } = await supabase

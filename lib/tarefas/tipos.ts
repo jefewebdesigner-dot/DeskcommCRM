@@ -40,6 +40,7 @@ export interface Tarefa {
   lead_id: string | null;
   contact_id: string | null;
   assigned_to: string | null;
+  responsible_profile_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -54,6 +55,16 @@ export interface NovaTarefa {
   lead_id?: string | null;
   contact_id?: string | null;
   assigned_to?: string | null;
+  responsible_profile_id?: string | null;
+}
+
+export interface PerfilResponsavelTarefa {
+  id: string;
+  organization_id: string;
+  code: string;
+  name: string;
+  linked_user_id: string | null;
+  is_active: boolean;
 }
 
 export type EdicaoDaTarefa = Partial<NovaTarefa>;

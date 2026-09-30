@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/hooks/i18n/useT";
 import type {
   NovaTarefa,
+  PerfilResponsavelTarefa,
   PrioridadeDaTarefa,
   SituacaoDaTarefa,
   Tarefa,
@@ -38,6 +39,8 @@ interface Props {
   aoSalvar: (entrada: NovaTarefa) => Promise<unknown>;
   leadId?: string | null;
   contactId?: string | null;
+  responsaveis?: PerfilResponsavelTarefa[];
+  responsavelPadraoId?: string;
 }
 
 /**
@@ -65,6 +68,8 @@ export function FormularioDeTarefa({
   aoSalvar,
   leadId,
   contactId,
+  responsaveis = [],
+  responsavelPadraoId,
 }: Props) {
   const t = useT();
   const editando = Boolean(tarefa);
@@ -82,6 +87,9 @@ export function FormularioDeTarefa({
   const [hora, setHora] = useState(tarefa?.due_date ? prazo.hora : "09:00");
   const [prioridade, setPrioridade] = useState<PrioridadeDaTarefa>(tarefa?.priority ?? "medium");
   const [situacao, setSituacao] = useState<SituacaoDaTarefa>(tarefa?.status ?? "pending");
+  const [responsavelPerfilId, setResponsavelPerfilId] = useState(
+    tarefa?.responsible_profile_id ?? responsavelPadraoId ?? "sem_responsavel",
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -107,6 +115,8 @@ export function FormularioDeTarefa({
         status: situacao,
         lead_id: tarefa?.lead_id ?? leadId ?? null,
         contact_id: tarefa?.contact_id ?? contactId ?? null,
+        responsible_profile_id:
+          responsavelPerfilId === "sem_responsavel" ? null : responsavelPerfilId,
       });
       aoMudarAbertura(false);
     } catch (falha) {
@@ -169,6 +179,25 @@ export function FormularioDeTarefa({
               />
             </div>
           </div>
+
+          {responsaveis.length > 0 ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="tarefa-responsavel">{t("Responsável operacional")}</Label>
+              <Select value={responsavelPerfilId} onValueChange={setResponsavelPerfilId}>
+                <SelectTrigger id="tarefa-responsavel">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sem_responsavel">{t("Sem responsável")}</SelectItem>
+                  {responsaveis.map((perfil) => (
+                    <SelectItem key={perfil.id} value={perfil.id}>
+                      {perfil.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
