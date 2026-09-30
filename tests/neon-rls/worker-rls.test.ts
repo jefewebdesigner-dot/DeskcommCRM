@@ -50,7 +50,11 @@ suite('agent-worker — contexto de organização por transação (RLS real)', (
     tenant1 = createTenantPool(app1, { serviceUserId: UID, secret: SEGREDO });
 
     // O teste aplica as migrations DO REPOSITÓRIO (idempotentes) — o harness pode ter só o schema de produção.
-    for (const m of ['20260930_0015_worker_org_context.sql', '20260930_0016_worker_status_para_o_health.sql']) {
+    for (const m of [
+      '20260930_0015_worker_org_context.sql',
+      '20260930_0016_worker_status_para_o_health.sql',
+      '20260930_0017_gravity_app_executa_funcoes_das_policies.sql',
+    ]) {
       await dono.query(readFileSync(resolve(process.cwd(), 'neon/migrations', m), 'utf8'));
     }
     await dono.query(`insert into neon_auth."user"(id, email, name, "emailVerified") values ($1, $2, 'servico', true), ($3, $4, 'humano', true)`, [
@@ -346,6 +350,28 @@ suite('agent-worker — contexto de organização por transação (RLS real)', (
     } finally {
       raw.release();
     }
+  });
+
+  it('TODA tabela de tenant é consultável sob o contexto: nenhuma policy exige função sem EXECUTE', async () => {
+    const { rows } = await dono.query<{ relname: string }>(
+      `select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind in ('r','p') and c.relrowsecurity
+          and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'organization_id' and not a.attisdropped)
+        order by 1`,
+    );
+    expect(rows.length).toBeGreaterThan(100);
+    const semAcesso = new Set(['neon_service_identities']); // sem GRANT nem policy, de propósito
+    const falhas: string[] = [];
+    await tenant.withOrganization(ORG_A, async () => {
+      for (const { relname } of rows) {
+        try {
+          await tenant.query(`select 1 from public."${relname}" limit 1`);
+        } catch (e) {
+          if (!semAcesso.has(relname)) falhas.push(`${relname}: ${(e as Error).message}`);
+        }
+      }
+    });
+    expect(falhas).toEqual([]);
   });
 
   it('fn_agent_worker_status: só a identidade de serviço (ou o worker) lê; usuário comum recebe NULL', async () => {
