@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getWahaClient } from "@/lib/waha/client";
 import {
   hidratarMidiaHistoricaWaha,
+  hidratarMidiaHistoricaWahaPorBanco,
   sincronizarHistoricoWaha,
 } from "@/lib/waha/history-sync";
 
@@ -90,8 +91,88 @@ export async function executarSincronizacaoHistoricaWaha(
   const waha = getWahaClient();
   if (!waha) throw new Error("waha_history_transport_not_configured");
 
-  const phase = job.payload.phase === "media" ? "media" : "messages";
+  const phase =
+    job.payload.phase === "media_db"
+      ? "media_db"
+      : job.payload.phase === "media"
+        ? "media"
+        : "messages";
   const atual = objeto(channel.metadata);
+
+  if (phase === "media_db") {
+    const afterMessageId =
+      typeof job.payload.after_message_id === "string"
+        ? job.payload.after_message_id
+        : null;
+
+    const resumo = await hidratarMidiaHistoricaWahaPorBanco(
+      admin,
+      waha,
+      {
+        id: channel.id,
+        organization_id: channel.organization_id,
+        waha_session_name: channel.waha_session_name,
+      },
+      {
+        afterMessageId,
+        batchSize: MIDIAS_POR_JOB,
+        scanPageSize: 250,
+        maxMessagesPerChat: 5_000,
+      },
+    );
+
+    if (!resumo.completed && resumo.next_message_id) {
+      await enqueueJob(pool, job.organization_id, {
+        kind: "waha_history_sync",
+        sourceEventId: uuidDeterministico(
+          channelId,
+          `media-db:${resumo.next_message_id}`,
+        ),
+        payload: {
+          phase: "media_db",
+          channel_session_id: channelId,
+          after_message_id: resumo.next_message_id,
+        },
+        priority: 190,
+        runAfter: new Date(Date.now() + 1_000),
+        maxAttempts: 8,
+      });
+    }
+
+    const historicoMidia = objeto(atual.whatsapp_history_media_sync);
+    const metadata = {
+      ...atual,
+      whatsapp_history_media_sync: {
+        ...historicoMidia,
+        strategy: "db-index-v1",
+        state: resumo.completed ? "completed" : "running",
+        last_batch_at: new Date().toISOString(),
+        next_message_id: resumo.completed ? null : resumo.next_message_id,
+        ...(resumo.completed
+          ? { completed_at: new Date().toISOString() }
+          : {}),
+      },
+    };
+    await atualizarMetadata(
+      admin,
+      job.organization_id,
+      channelId,
+      metadata,
+    );
+
+    log.info("waha history media db-index: lote concluído", {
+      job_id: job.id,
+      channel_session_id: channelId,
+      after_message_id: afterMessageId,
+      linhas_vistas: resumo.linhas_vistas,
+      midias_enfileiradas: resumo.midias_enfileiradas,
+      midias_ja_persistidas: resumo.midias_ja_persistidas,
+      midias_indisponiveis: resumo.midias_indisponiveis,
+      linhas_ignoradas: resumo.linhas_ignoradas,
+      final: resumo.completed,
+    });
+    return;
+  }
 
   if (phase === "media") {
     const chatOffset = inteiroNaoNegativo(job.payload.chat_offset);
@@ -220,12 +301,11 @@ export async function executarSincronizacaoHistoricaWaha(
     // Inbox. Assim um anexo grande nunca impede conversas posteriores de aparecer.
     await enqueueJob(pool, job.organization_id, {
       kind: "waha_history_sync",
-      sourceEventId: uuidDeterministico(channelId, "media-v2:0:0"),
+      sourceEventId: uuidDeterministico(channelId, "media-db:start"),
       payload: {
-        phase: "media",
+        phase: "media_db",
         channel_session_id: channelId,
-        chat_offset: 0,
-        message_offset: 0,
+        after_message_id: null,
       },
       priority: 190,
       runAfter: new Date(Date.now() + 2_000),
