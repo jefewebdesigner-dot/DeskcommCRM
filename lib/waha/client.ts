@@ -484,6 +484,35 @@ export class WahaClient {
     return body;
   }
 
+  /**
+   * Busca UMA mensagem pelo id no store do NOWEB.
+   *
+   * `chatId=all` é suportado por NOWEB/GOWS e evita depender de o chat ainda
+   * estar presente na paginação do store. É especialmente importante para
+   * recuperar mídia histórica: o índice geral pode ser compactado enquanto o
+   * id exato ainda é consultável.
+   */
+  async getChatMessage(
+    name: string,
+    messageId: string,
+    opts: { downloadMedia?: boolean } = {},
+  ): Promise<unknown | null> {
+    const qs = new URLSearchParams({
+      downloadMedia: opts.downloadMedia === false ? "false" : "true",
+    });
+    const res = await this.fetchComTeto(
+      `${this.baseUrl}/api/${encodeURIComponent(name)}/chats/all/messages/${encodeURIComponent(messageId)}?${qs}`,
+      { headers: { "X-Api-Key": this.apiKey } },
+      TETO_DE_MIDIA_MS,
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`waha_chat_message_${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      throw new Error("waha_chat_message_invalid_response");
+    }
+    return body;
+  }
   async getSessionQr(name: string): Promise<{ qr?: string; status: string }> {
     const res = await this.fetchComTeto(`${this.baseUrl}/api/sessions/${encodeURIComponent(name)}`, {
       headers: { "X-Api-Key": this.apiKey },
