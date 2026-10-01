@@ -29,6 +29,8 @@ export interface ResumoDoHistoricoWaha {
 export interface OpcoesDoHistoricoWaha {
   chatPageSize?: number;
   messagePageSize?: number;
+  /** Offset inicial de chats para permitir backfill em lotes do worker. */
+  startChatOffset?: number;
   maxChats?: number;
   onProgress?: (progress: ResumoDoHistoricoWaha) => void;
 }
@@ -75,7 +77,7 @@ export async function sincronizarHistoricoWaha(
     mensagens_ignoradas: 0,
   };
 
-  let chatOffset = 0;
+  let chatOffset = Math.max(0, Math.trunc(opts.startChatOffset ?? 0));
   while (resumo.chats_vistos < maxChats) {
     const chats = await waha.listChats(session.waha_session_name, {
       limit: Math.min(chatPageSize, maxChats - resumo.chats_vistos),

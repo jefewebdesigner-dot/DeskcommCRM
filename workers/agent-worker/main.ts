@@ -110,6 +110,7 @@ import {
   organizacoesDoWorker,
 } from "@/lib/agent-engine/db/por-organizacao";
 import { comSanitizacao, createLogger, type Logger } from "@/lib/agent-engine/obs/logger";
+import { executarSincronizacaoHistoricaWaha } from "@/workers/waha-history-sync-job";
 import {
   evaluateCacheHitAlert,
   metricsDeTodasAsOrganizacoes,
@@ -775,6 +776,9 @@ export async function main(): Promise<void> {
   // worker que não conhecesse o kind faria os jobs morrerem em 'dead' sem que
   // ninguém entendesse por quê.
   handlers.set("operator_turn", createOperatorTurnHandler(turnDeps));
+  handlers.set("waha_history_sync", (job, pool) =>
+    executarSincronizacaoHistoricaWaha(job, pool, log),
+  );
   await startWorker(env, handlers, log);
 }
 

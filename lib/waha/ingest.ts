@@ -1149,6 +1149,7 @@ async function handleAck(admin: Admin, session: Session, p: WahaPayload): Promis
 }
 
 interface SessionStatusRow extends Session {
+  status?: string | null;
   is_warmup_complete: boolean | null;
   warmup_started_at: string | null;
 }
@@ -1174,6 +1175,24 @@ async function handleSessionStatus(
     update.warmup_completed_at = now;
   }
   await admin.from("channel_sessions").update(update).eq("id", session.id);
+
+  // Primeira entrada em WORKING: enfileira UMA sincronização histórica por
+  // channel_session_id. A RPC é idempotente e server-only; eventos WORKING
+  // repetidos não criam jobs duplicados. Há um atraso curto para o NOWEB
+  // terminar de persistir os blocos de history sync antes do primeiro lote.
+  if (status === "WORKING" && session.status !== "WORKING") {
+    const { error: historyErr } = await admin.rpc(
+      "fn_enqueue_waha_history_sync" as never,
+      { p_org: session.organization_id, p_channel: session.id } as never,
+    );
+    if (historyErr) {
+      logger.warn("waha.ingest: backfill historico nao enfileirado", {
+        organization_id: session.organization_id,
+        channel_session_id: session.id,
+        detail: historyErr.message,
+      });
+    }
+  }
 
   // ─── E agora alguém precisa SABER ────────────────────────────────────────
   //
