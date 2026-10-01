@@ -123,7 +123,7 @@ export async function executarSincronizacaoHistoricaWaha(
         kind: "waha_history_sync",
         sourceEventId: uuidDeterministico(
           channelId,
-          `media:${resumo.next_chat_offset}:${resumo.next_message_offset}`,
+          `media-v2:${resumo.next_chat_offset}:${resumo.next_message_offset}`,
         ),
         payload: {
           phase: "media",
@@ -220,7 +220,7 @@ export async function executarSincronizacaoHistoricaWaha(
     // Inbox. Assim um anexo grande nunca impede conversas posteriores de aparecer.
     await enqueueJob(pool, job.organization_id, {
       kind: "waha_history_sync",
-      sourceEventId: uuidDeterministico(channelId, "media:0:0"),
+      sourceEventId: uuidDeterministico(channelId, "media-v2:0:0"),
       payload: {
         phase: "media",
         channel_session_id: channelId,

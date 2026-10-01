@@ -5,11 +5,20 @@ import {
   mediaUrlOf,
   parseChatId,
   persistirMensagemHistoricaWaha,
+  resolveMessageType,
   type ResultadoDaMensagemHistorica,
 } from "@/lib/waha/ingest";
 import { payloadHistoricoDoStore } from "@/lib/waha/history-normalization";
 
 type Objeto = Record<string, unknown>;
+
+const TIPOS_COM_BINARIO = new Set([
+  "audio",
+  "image",
+  "video",
+  "document",
+  "sticker",
+]);
 
 function objeto(v: unknown): Objeto {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Objeto) : {};
@@ -267,7 +276,9 @@ export async function hidratarMidiaHistoricaWaha(
     for (let i = 0; i < mensagens.length; i += 1) {
       resumo.mensagens_vistas += 1;
       const payload = payloadHistoricoDoStore(mensagens[i]);
-      if (!payload?.id || (!payload.hasMedia && !mediaUrlOf(payload))) continue;
+      if (!payload?.id) continue;
+      const tipo = resolveMessageType(payload);
+      if (!TIPOS_COM_BINARIO.has(tipo) && !mediaUrlOf(payload)) continue;
 
       resumo.midias_encontradas += 1;
       const { data: linhaRaw, error: linhaErr } = await admin

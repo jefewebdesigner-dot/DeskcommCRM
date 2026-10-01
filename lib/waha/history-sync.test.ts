@@ -8,6 +8,8 @@ vi.mock("@/lib/waha/ingest", () => ({
         ? { kind: "phone" }
         : { kind: "unknown" },
   persistirMensagemHistoricaWaha: vi.fn(),
+  resolveMessageType: (p: { id?: string | null }) =>
+    p.id === "TXT" ? "text" : "audio",
   mediaUrlOf: (p: { mediaUrl?: string | null; media?: { url?: string | null } | null }) =>
     p.mediaUrl ?? p.media?.url ?? null,
   mediaMimeOf: (p: { mimetype?: string | null; media?: { mimetype?: string | null } | null }) =>
