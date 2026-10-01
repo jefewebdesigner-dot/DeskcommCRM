@@ -113,11 +113,13 @@ export function tabToFilter(
 const FILTER_TABS: InboxTab[] = ["unassigned", "mine", "all", "closed", "archived", "ai"];
 
 /**
- * Lê ?filter= (G4-02, deep-link). ?filter=all é HONRADO mesmo para agent — a
- * lista volta RLS-scoped (a tab só some cosmeticamente); default: fila.
+ * Lê ?filter= (G4-02, deep-link). O Inbox é a tela operacional do WhatsApp,
+ * então sem filtro explícito abre em "Todas". A Fila continua disponível para
+ * o recorte de atendimento pendente, mas histórico importado não some da tela
+ * inicial só por estar fechado.
  */
 function parseFilterParam(v: string | null): InboxTab {
-  return v && FILTER_TABS.includes(v as InboxTab) ? (v as InboxTab) : "unassigned";
+  return v && FILTER_TABS.includes(v as InboxTab) ? (v as InboxTab) : "all";
 }
 
 interface InboxLayoutProps {

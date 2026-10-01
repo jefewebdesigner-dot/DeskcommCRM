@@ -55,6 +55,14 @@ export const CONVERSAS_IGNORADAS = {
 } as const;
 
 /**
+ * O Inbox é a tela operacional do WhatsApp, então o transporte precisa guardar
+ * chats e mensagens que o aparelho disponibilizar na sincronização inicial.
+ * `fullSync` precisa estar ativo ANTES do pareamento; ligá-lo depois não pede ao
+ * WhatsApp para repetir os blocos de histórico que já foram consumidos.
+ */
+export const NOWEB_STORE_COMPLETO = { enabled: true, fullSync: true } as const;
+
+/**
  * Teto de relógio das chamadas ao WAHA.
  *
  * 15s não é número escolhido aqui: é o que `docs/specs/03-spec-whatsapp-waha.md`
@@ -244,7 +252,14 @@ export class WahaClient {
     const res = await this.fetchComTeto(`${this.baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ name, start: false, config: { ignore: CONVERSAS_IGNORADAS } }),
+      body: JSON.stringify({
+        name,
+        start: false,
+        config: {
+          ignore: CONVERSAS_IGNORADAS,
+          noweb: { store: NOWEB_STORE_COMPLETO },
+        },
+      }),
     });
     if (!res.ok && !knownSessionConflict(await res.json().catch(() => null), res.status, "create", name)) {
       throw new WahaSessionError("create", res.status);
@@ -260,9 +275,18 @@ export class WahaClient {
   async startSession(name: string): Promise<{ qr?: string; status: string }> {
     const creation = await this.createSession(name);
     const ignore = creation.session.config?.ignore;
+    const noweb = creation.session.config?.noweb;
+    const store = noweb && typeof noweb === "object"
+      ? (noweb as Record<string, unknown>).store
+      : null;
     const filtersCurrent = ignore && typeof ignore === "object" && Object.entries(CONVERSAS_IGNORADAS)
       .every(([key, value]) => (ignore as Record<string, unknown>)[key] === value);
-    if (!creation.created && !filtersCurrent) await this.convergirConfigDaSessao(name);
+    const storeCurrent = store && typeof store === "object"
+      && (store as Record<string, unknown>).enabled === true
+      && (store as Record<string, unknown>).fullSync === true;
+    if (!creation.created && (!filtersCurrent || !storeCurrent)) {
+      await this.convergirConfigDaSessao(name);
+    }
     return this.startExistingSession(name);
   }
 
@@ -358,7 +382,22 @@ export class WahaClient {
       const sessao = parsed.data;
       if (!sessao.config) return;
 
-      const config = { ...sessao.config, ignore: CONVERSAS_IGNORADAS };
+      const atualNoweb =
+        typeof sessao.config.noweb === "object" && sessao.config.noweb !== null
+          ? (sessao.config.noweb as Record<string, unknown>)
+          : {};
+      const atualStore =
+        typeof atualNoweb.store === "object" && atualNoweb.store !== null
+          ? (atualNoweb.store as Record<string, unknown>)
+          : {};
+      const config = {
+        ...sessao.config,
+        ignore: CONVERSAS_IGNORADAS,
+        noweb: {
+          ...atualNoweb,
+          store: { ...atualStore, ...NOWEB_STORE_COMPLETO },
+        },
+      };
       // Já está como queremos: não reiniciar a sessão à toa. Este caminho roda
       // em TODA reconexão, e um restart desnecessário por rodada seria pior que
       // o gasto que ele evita.
@@ -371,7 +410,9 @@ export class WahaClient {
         sessao.config.ignore !== null &&
         Object.entries(CONVERSAS_IGNORADAS).every(
           ([k, v]) => (sessao.config!.ignore as Record<string, unknown>)[k] === v,
-        );
+        ) &&
+        atualStore.enabled === true &&
+        atualStore.fullSync === true;
       if (jaConvergida) return;
 
       const res = await this.fetchComTeto(url, {
@@ -397,6 +438,50 @@ export class WahaClient {
   /** Remoção só converge depois de GET da identidade exata confirmar ausência. */
   async deleteSession(name: string): Promise<void> {
     return this.finishSession(name, "delete");
+  }
+
+  async listChats(
+    name: string,
+    opts: { limit?: number; offset?: number } = {},
+  ): Promise<unknown[]> {
+    const qs = new URLSearchParams({
+      limit: String(opts.limit ?? 100),
+      offset: String(opts.offset ?? 0),
+      merge: "true",
+    });
+    const res = await this.fetchComTeto(
+      `${this.baseUrl}/api/${encodeURIComponent(name)}/chats?${qs}`,
+      { headers: { "X-Api-Key": this.apiKey } },
+      TETO_DE_MIDIA_MS,
+    );
+    if (!res.ok) throw new Error(`waha_chats_${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    if (!Array.isArray(body)) throw new Error("waha_chats_invalid_response");
+    return body;
+  }
+
+  async listChatMessages(
+    name: string,
+    chatId: string,
+    opts: { limit?: number; offset?: number; downloadMedia?: boolean } = {},
+  ): Promise<unknown[]> {
+    const qs = new URLSearchParams({
+      limit: String(opts.limit ?? 200),
+      offset: String(opts.offset ?? 0),
+      sortOrder: "asc",
+      sortBy: "timestamp",
+      merge: "true",
+      downloadMedia: opts.downloadMedia === false ? "false" : "true",
+    });
+    const res = await this.fetchComTeto(
+      `${this.baseUrl}/api/${encodeURIComponent(name)}/chats/${encodeURIComponent(chatId)}/messages?${qs}`,
+      { headers: { "X-Api-Key": this.apiKey } },
+      TETO_DE_MIDIA_MS,
+    );
+    if (!res.ok) throw new Error(`waha_chat_messages_${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    if (!Array.isArray(body)) throw new Error("waha_chat_messages_invalid_response");
+    return body;
   }
 
   async getSessionQr(name: string): Promise<{ qr?: string; status: string }> {

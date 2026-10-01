@@ -291,7 +291,7 @@ describe("sessões: conflito conhecido só converge com identidade e pós-condi�
   type Step = { method: string; path: string; status: number; body?: unknown };
   const name = "qa/session";
   const sessionPath = "/api/sessions/qa%2Fsession";
-  const config = { ignore: { status: true, broadcast: true, channels: true, groups: true } };
+  const config = { ignore: { status: true, broadcast: true, channels: true, groups: true }, noweb: { store: { enabled: true, fullSync: true } } };
   const session = (status = "STOPPED", extra: Record<string, unknown> = {}) =>
     ({ name, status, config, engine: { engine: "NOWEB" }, ...extra });
   const duplicate = { statusCode: 422, error: "Unprocessable Entity", message: `Session '${name}' already exists. Use PUT to update it.` };
@@ -329,6 +329,19 @@ describe("sessões: conflito conhecido só converge com identidade e pós-condi�
     await receive([create(422, duplicate), read(), start, read(session("SCAN_QR_CODE"))], async (c) => {
       await expect(c.startSession(name)).resolves.toMatchObject({ status: "SCAN_QR_CODE" });
     });
+  });
+
+  it("sessão legada sem Full Sync converge config antes de iniciar", async () => {
+    const legado = session("STOPPED", {
+      config: { ignore: { status: true, broadcast: true, channels: true, groups: true } },
+    });
+    const put: Step = { method: "PUT", path: sessionPath, status: 200, body: session("STOPPED") };
+    await receive(
+      [create(422, duplicate), read(legado), read(legado), put, start, read(session("WORKING"))],
+      async (c) => {
+        await expect(c.startSession(name)).resolves.toMatchObject({ status: "WORKING" });
+      },
+    );
   });
 
   it.each([409, 422])("create %i desconhecido não pode virar sucesso nem PUT", async (status) => {

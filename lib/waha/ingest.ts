@@ -990,6 +990,141 @@ async function handleOutboundFromUserPhone(
   }
 }
 
+export type ResultadoDaMensagemHistorica = "inserted" | "duplicate" | "ignored";
+
+/**
+ * Persiste uma mensagem trazida pelo store histórico do WAHA.
+ *
+ * Deliberadamente NÃO chama `aplicarEfeitosPosEntrada`, não pausa IA e não
+ * audita como `message.received`: o passado deve aparecer no Inbox, mas não
+ * pode executar o presente. As triggers do banco reconhecem
+ * `metadata.history_import=true` e também ficam silenciosas para esse caminho.
+ */
+export async function persistirMensagemHistoricaWaha(
+  admin: Admin,
+  session: Session,
+  args: { chatId: string; chatName?: string | null; payload: WahaPayload },
+): Promise<ResultadoDaMensagemHistorica> {
+  const p = args.payload;
+  if (!p.id) return "ignored";
+
+  const parsed = parseChatId(args.chatId);
+  if (!ehEnderecavel(parsed)) return "ignored";
+  if (await ehNumeroInternoDeAviso(admin, session.organization_id, parsed)) return "ignored";
+
+  const texto = bodyOf(p);
+  if (!texto && !mediaUrlOf(p) && !p.hasMedia) return "ignored";
+
+  const contactId = await upsertContact(
+    admin,
+    session.organization_id,
+    parsed,
+    args.chatId,
+    args.chatName?.trim() || notifyNameOf(p),
+    telefoneAlternativoDe(p),
+  );
+  if (!contactId) return "ignored";
+
+  const { data: existente, error: leituraConversaErr } = await admin
+    .from("conversations")
+    .select("id,status,last_message_at,last_inbound_at,last_outbound_at,last_message_preview")
+    .eq("organization_id", session.organization_id)
+    .eq("contact_id", contactId)
+    .eq("channel_session_id", session.id)
+    .eq("is_group", false)
+    .maybeSingle();
+  if (leituraConversaErr) {
+    throw new Error(`waha_history_conversation_read: ${leituraConversaErr.message}`);
+  }
+
+  let conversation = existente;
+  if (!conversation) {
+    const { data: criada, error: criarConversaErr } = await admin
+      .from("conversations")
+      .insert({
+        organization_id: session.organization_id,
+        contact_id: contactId,
+        channel_session_id: session.id,
+        channel: "whatsapp",
+        status: "closed",
+        is_group: false,
+        unread_count_for_assignee: 0,
+        metadata: { history_import: true },
+        service_closed_at: new Date().toISOString(),
+      })
+      .select("id,status,last_message_at,last_inbound_at,last_outbound_at,last_message_preview")
+      .maybeSingle();
+    if (criarConversaErr || !criada) {
+      throw new Error(`waha_history_conversation_create: ${criarConversaErr?.message ?? "missing_row"}`);
+    }
+    conversation = criada;
+  }
+  const conversationId = conversation.id;
+
+  const agora = new Date().toISOString();
+  const at = dataDoTimestamp(p.timestamp, agora);
+  const direction = p.fromMe ? "outbound" : "inbound";
+  const ack = p.ack ?? null;
+  const status = direction === "inbound" ? "delivered" : ackToStatus(ack ?? 1);
+
+  const { error: insertErr } = await admin.from("messages").insert({
+    organization_id: session.organization_id,
+    conversation_id: conversationId,
+    channel_session_id: session.id,
+    contact_id: contactId,
+    external_id: p.id,
+    type: resolveMessageType(p),
+    direction,
+    status,
+    ack,
+    body: texto,
+    media_url: mediaUrlOf(p),
+    media_mime: mediaMimeOf(p),
+    sent_via: "external_device",
+    sent_at: at,
+    delivered_at: direction === "inbound" || (ack ?? 0) >= 2 ? at : null,
+    read_at: (ack ?? 0) >= 3 ? at : null,
+    metadata: {
+      history_import: true,
+      raw_type: p.type ?? null,
+      ack_name: p.ackName ?? null,
+    },
+  });
+
+  if (insertErr?.code === "23505") return "duplicate";
+  if (insertErr) throw new Error(`waha_history_message: ${insertErr.message}`);
+
+  const atMs = Date.parse(at);
+  const lastMs = conversation.last_message_at ? Date.parse(conversation.last_message_at) : Number.NEGATIVE_INFINITY;
+  const inboundMs = conversation.last_inbound_at ? Date.parse(conversation.last_inbound_at) : Number.NEGATIVE_INFINITY;
+  const outboundMs = conversation.last_outbound_at ? Date.parse(conversation.last_outbound_at) : Number.NEGATIVE_INFINITY;
+  const patch: Record<string, unknown> = {};
+  if (atMs >= lastMs) {
+    patch.last_message_at = at;
+    patch.last_message_preview = previewFromMessage(p);
+    conversation.last_message_at = at;
+    conversation.last_message_preview = previewFromMessage(p);
+  }
+  if (direction === "inbound" && atMs > inboundMs) {
+    patch.last_inbound_at = at;
+    conversation.last_inbound_at = at;
+  }
+  if (direction === "outbound" && atMs > outboundMs) {
+    patch.last_outbound_at = at;
+    conversation.last_outbound_at = at;
+  }
+  if (Object.keys(patch).length > 0) {
+    const { error: markErr } = await admin
+      .from("conversations")
+      .update(patch)
+      .eq("organization_id", session.organization_id)
+      .eq("id", conversationId);
+    if (markErr) throw new Error(`waha_history_mark: ${markErr.message}`);
+  }
+
+  return "inserted";
+}
+
 async function handleAck(admin: Admin, session: Session, p: WahaPayload): Promise<void> {
   if (!p.id) return;
   const ack = p.ack ?? 0;
