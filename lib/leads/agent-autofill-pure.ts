@@ -27,23 +27,32 @@ export function camposDeclaradosDoFunil(settings: unknown): CampoDoFunil[] {
 }
 
 function normalizarValor(type: string, value: unknown): string | number | boolean | undefined {
-  if (typeof value === "string") {
+  const tipo = type.trim().toLowerCase();
+
+  if (tipo === "number") {
+    if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+    if (typeof value !== "string") return undefined;
     const texto = value.trim();
-    if (!texto || texto.length > 2000) return undefined;
-    if (type === "number") {
-      const numero = Number(texto.replace(",", "."));
-      return Number.isFinite(numero) ? numero : undefined;
-    }
-    if (type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return undefined;
-    return texto;
+    if (!texto) return undefined;
+    const numero = Number(texto.replace(",", "."));
+    return Number.isFinite(numero) ? numero : undefined;
   }
 
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : undefined;
+  if (tipo === "boolean" || tipo === "checkbox") {
+    return typeof value === "boolean" ? value : undefined;
   }
 
-  if (typeof value === "boolean") return value;
-  return undefined;
+  if (tipo === "date") {
+    if (typeof value !== "string") return undefined;
+    const texto = value.trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : undefined;
+  }
+
+  // Campos textuais/select não aceitam objeto, array, número ou booleano. A IA
+  // precisa devolver o valor na mesma forma que o formulário humano grava.
+  if (typeof value !== "string") return undefined;
+  const texto = value.trim();
+  return texto && texto.length <= 2000 ? texto : undefined;
 }
 
 /**
