@@ -170,7 +170,7 @@ import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/act
 import { recalculaScoreDoLead } from '@/lib/leads/score-writer';
 import {
   aplicarAutopreenchimentoDoCrm,
-  blocoDeAutopreenchimentoDoCrm,
+  prepararAutopreenchimentoDoCrm,
 } from '@/lib/leads/agent-autofill';
 import {
   JAILBREAK_ESCALATION_LEVEL,
@@ -3840,15 +3840,16 @@ async function executarTurnoDoAgente(
     // Sufixos por-lead (situacionais, voláteis — depois do prefixo cacheável F2-17): corpos de
     // skill casadas (F3-09) + hint do classificador (F3-11) + instrução de split (F4-xx, quando
     // split_messages está on — Onda 4). Vazios são omitidos.
-    const crmAutofillBlock =
+    const crmAutofillContext =
       preview?.kind === 'sandbox'
-        ? ''
-        : await blocoDeAutopreenchimentoDoCrm(pool, tenantId, leadId).catch((err) => {
-            runLog.warn('não foi possível listar campos vazios para autopreenchimento', {
+        ? null
+        : await prepararAutopreenchimentoDoCrm(pool, tenantId, leadId).catch((err) => {
+            runLog.warn('não foi possível preparar campos vazios para autopreenchimento', {
               error: err instanceof Error ? err.name : 'unknown',
             });
-            return '';
+            return null;
           });
+    const crmAutofillBlock = crmAutofillContext?.block ?? '';
     const splitHint =
       (agentConfig?.splitMessages ?? false)
         ? 'Responda em mensagens curtas e naturais, uma ideia por mensagem — como uma pessoa digitando no WhatsApp. Prefira várias mensagens curtas a um texto único e longo.'
@@ -4048,26 +4049,29 @@ async function executarTurnoDoAgente(
     // manter o card vivo. Não abre uma chamada extra de modelo: os fatos já
     // vieram em `crm_fields`. Falha é best-effort — nunca deixa o cliente sem
     // resposta porque um enriquecimento de CRM falhou.
-    try {
-      const autofill = await aplicarAutopreenchimentoDoCrm(pool, {
-        organizationId: tenantId,
-        contactId: leadId,
-        fields: content.crm_fields ?? {},
-        agentId: agentConfig?.agentId ?? null,
-        llmCallId: closing.callId ?? null,
-      });
-      if (autofill.updated) {
-        runLog.info('campos do CRM autopreenchidos a partir da conversa', {
-          lead_id: autofill.leadId,
-          fields: autofill.keys,
+    if (crmAutofillContext) {
+      try {
+        const autofill = await aplicarAutopreenchimentoDoCrm(pool, {
+          organizationId: tenantId,
+          contactId: leadId,
+          leadId: crmAutofillContext.leadId,
+          fields: content.crm_fields ?? {},
+          agentId: agentConfig?.agentId ?? null,
+          llmCallId: closing.callId ?? null,
         });
-      } else if (autofill.reason === 'conflito_humano') {
-        runLog.info('autopreenchimento não aplicado — edição humana venceu a trava otimista');
+        if (autofill.updated) {
+          runLog.info('campos do CRM autopreenchidos a partir da conversa', {
+            lead_id: autofill.leadId,
+            fields: autofill.keys,
+          });
+        } else if (autofill.reason === 'conflito_humano') {
+          runLog.info('autopreenchimento não aplicado — edição humana venceu a trava otimista');
+        }
+      } catch (err) {
+        runLog.error('falha no autopreenchimento do CRM (turno segue)', {
+          error: err instanceof Error ? err.name : 'unknown',
+        });
       }
-    } catch (err) {
-      runLog.error('falha no autopreenchimento do CRM (turno segue)', {
-        error: err instanceof Error ? err.name : 'unknown',
-      });
     }
 
     // Wave 3 (2.4): o checkpoint anterior é lido ANTES de gravar o novo — a
