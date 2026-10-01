@@ -388,3 +388,276 @@ export async function hidratarMidiaHistoricaWaha(
   resumo.next_message_offset = messageOffset;
   return resumo;
 }
+
+
+export interface ResumoDaMidiaHistoricaIndexadaWaha {
+  linhas_vistas: number;
+  midias_enfileiradas: number;
+  midias_ja_persistidas: number;
+  midias_indisponiveis: number;
+  linhas_ignoradas: number;
+  next_message_id: string | null;
+  completed: boolean;
+}
+
+export interface OpcoesDaMidiaHistoricaIndexadaWaha {
+  afterMessageId?: string | null;
+  batchSize?: number;
+  scanPageSize?: number;
+  maxMessagesPerChat?: number;
+}
+
+interface LinhaDeMidiaIndexada {
+  id: string;
+  external_id: string | null;
+  media_url: string | null;
+  media_mime: string | null;
+  media_storage_path: string | null;
+  metadata: Record<string, unknown> | null;
+  contact_id: string;
+  type: string;
+}
+
+interface ContatoDaMidiaIndexada {
+  source_metadata: Record<string, unknown> | null;
+  wa_lid: string | null;
+  phone_number: string | null;
+}
+
+type PayloadHistorico = NonNullable<ReturnType<typeof payloadHistoricoDoStore>>;
+
+function remoteJidDoExternalId(externalId: string | null): string | null {
+  if (!externalId) return null;
+  const primeiro = externalId.indexOf("_");
+  const ultimo = externalId.lastIndexOf("_");
+  if (primeiro < 0 || ultimo <= primeiro) return null;
+  const meio = externalId.slice(primeiro + 1, ultimo);
+  return meio.includes("@") ? meio : null;
+}
+
+function candidatosDeChatHistorico(
+  contato: ContatoDaMidiaIndexada | null,
+  externalId: string | null,
+): string[] {
+  const candidatos = new Set<string>();
+  const source = objeto(contato?.source_metadata);
+  const chatId = texto(source.waha_chat_id);
+  if (chatId) candidatos.add(chatId);
+
+  const remote = remoteJidDoExternalId(externalId);
+  if (remote) candidatos.add(remote);
+
+  const lid = texto(contato?.wa_lid);
+  if (lid) candidatos.add(`${lid}@lid`);
+
+  const phone = texto(contato?.phone_number)?.replace(/\D/g, "") ?? "";
+  if (phone) candidatos.add(`${phone}@s.whatsapp.net`);
+
+  return [...candidatos];
+}
+
+/**
+ * Hidratação v3: usa as mensagens já importadas como índice.
+ *
+ * A lista de chats do WAHA pode trocar/mesclar identidades @lid e
+ * @s.whatsapp.net depois do pareamento. Por isso o cursor da mídia não depende
+ * mais do offset da lista de chats: cada external_id histórico é procurado nos
+ * identificadores técnicos persistidos do próprio contato.
+ */
+export async function hidratarMidiaHistoricaWahaPorBanco(
+  admin: Admin,
+  waha: WahaClient,
+  session: { id: string; organization_id: string; waha_session_name: string },
+  opts: OpcoesDaMidiaHistoricaIndexadaWaha = {},
+): Promise<ResumoDaMidiaHistoricaIndexadaWaha> {
+  const batchSize = Math.min(Math.max(opts.batchSize ?? 5, 1), 20);
+  const scanPageSize = Math.min(Math.max(opts.scanPageSize ?? 250, 1), 500);
+  const maxMessagesPerChat = Math.min(
+    Math.max(opts.maxMessagesPerChat ?? 5_000, scanPageSize),
+    10_000,
+  );
+
+  let query = admin
+    .from("messages")
+    .select(
+      "id,external_id,media_url,media_mime,media_storage_path,metadata,contact_id,type",
+    )
+    .eq("organization_id", session.organization_id)
+    .eq("channel_session_id", session.id)
+    .in("type", [...TIPOS_COM_BINARIO])
+    .order("id", { ascending: true })
+    .limit(batchSize);
+
+  if (opts.afterMessageId) query = query.gt("id", opts.afterMessageId);
+
+  const { data: rawRows, error: rowsErr } = await query;
+  if (rowsErr) throw new Error(`waha_history_media_index_read: ${rowsErr.message}`);
+
+  const rows = (rawRows ?? []) as LinhaDeMidiaIndexada[];
+  const resumo: ResumoDaMidiaHistoricaIndexadaWaha = {
+    linhas_vistas: rows.length,
+    midias_enfileiradas: 0,
+    midias_ja_persistidas: 0,
+    midias_indisponiveis: 0,
+    linhas_ignoradas: 0,
+    next_message_id: null,
+    completed: rows.length < batchSize,
+  };
+
+  const indices = new Map<
+    string,
+    Promise<Map<string, { payload: PayloadHistorico; offset: number }>>
+  >();
+
+  const indexarChat = (
+    chatId: string,
+  ): Promise<Map<string, { payload: PayloadHistorico; offset: number }>> => {
+    const existente = indices.get(chatId);
+    if (existente) return existente;
+
+    const promessa = (async () => {
+      const mapa = new Map<string, { payload: PayloadHistorico; offset: number }>();
+      for (let offset = 0; offset < maxMessagesPerChat; offset += scanPageSize) {
+        const mensagens = await waha.listChatMessages(
+          session.waha_session_name,
+          chatId,
+          { limit: scanPageSize, offset, downloadMedia: false },
+        );
+        for (let i = 0; i < mensagens.length; i += 1) {
+          const payload = payloadHistoricoDoStore(mensagens[i]);
+          if (payload?.id) mapa.set(payload.id, { payload, offset: offset + i });
+        }
+        if (mensagens.length < scanPageSize) break;
+      }
+      return mapa;
+    })();
+
+    indices.set(chatId, promessa);
+    return promessa;
+  };
+
+  for (const linha of rows) {
+    resumo.next_message_id = linha.id;
+    const metadataAtual = objeto(linha.metadata);
+
+    if (metadataAtual.history_import !== true) {
+      resumo.linhas_ignoradas += 1;
+      continue;
+    }
+    if (linha.media_storage_path) {
+      resumo.midias_ja_persistidas += 1;
+      continue;
+    }
+    if (!linha.external_id) {
+      resumo.linhas_ignoradas += 1;
+      continue;
+    }
+
+    const { data: contatoRaw, error: contatoErr } = await admin
+      .from("contacts")
+      .select("source_metadata,wa_lid,phone_number")
+      .eq("organization_id", session.organization_id)
+      .eq("id", linha.contact_id)
+      .maybeSingle();
+    if (contatoErr) {
+      throw new Error(`waha_history_media_contact_read: ${contatoErr.message}`);
+    }
+
+    const contato = contatoRaw as ContatoDaMidiaIndexada | null;
+    const candidatos = candidatosDeChatHistorico(contato, linha.external_id);
+
+    let mediaUrl = linha.media_url;
+    let mediaMime = linha.media_mime;
+    let mensagemEncontrada = false;
+
+    if (!mediaUrl) {
+      for (const chatId of candidatos) {
+        let indice: Map<string, { payload: PayloadHistorico; offset: number }>;
+        try {
+          indice = await indexarChat(chatId);
+        } catch {
+          continue;
+        }
+
+        const achada = indice.get(linha.external_id);
+        if (!achada) continue;
+        mensagemEncontrada = true;
+        mediaUrl = mediaUrlOf(achada.payload);
+        mediaMime = mediaMimeOf(achada.payload) ?? mediaMime;
+
+        if (!mediaUrl) {
+          const hidratadaRaw = (
+            await waha.listChatMessages(
+              session.waha_session_name,
+              chatId,
+              { limit: 1, offset: achada.offset, downloadMedia: true },
+            )
+          )[0];
+          const hidratada = payloadHistoricoDoStore(hidratadaRaw);
+          mediaUrl = hidratada ? mediaUrlOf(hidratada) : null;
+          mediaMime = (hidratada ? mediaMimeOf(hidratada) : null) ?? mediaMime;
+        }
+
+        if (mediaUrl) break;
+      }
+    }
+
+    if (!mediaUrl) {
+      resumo.midias_indisponiveis += 1;
+      const metadata = {
+        ...metadataAtual,
+        history_media_status: "unavailable",
+        history_media_strategy: "db-index-v1",
+        history_media_reason: mensagemEncontrada
+          ? "binary_unavailable"
+          : "message_not_found",
+        history_media_checked_at: new Date().toISOString(),
+      };
+      const { error: indisponivelErr } = await admin
+        .from("messages")
+        .update({ metadata })
+        .eq("organization_id", session.organization_id)
+        .eq("id", linha.id);
+      if (indisponivelErr) {
+        throw new Error(`waha_history_media_index_unavailable: ${indisponivelErr.message}`);
+      }
+      continue;
+    }
+
+    const metadata = {
+      ...metadataAtual,
+      history_media_status: "queued",
+      history_media_strategy: "db-index-v1",
+      history_media_queued_at: new Date().toISOString(),
+    };
+    const { error: updateErr } = await admin
+      .from("messages")
+      .update({ media_url: mediaUrl, media_mime: mediaMime, metadata })
+      .eq("organization_id", session.organization_id)
+      .eq("id", linha.id);
+    if (updateErr) {
+      throw new Error(`waha_history_media_index_update: ${updateErr.message}`);
+    }
+
+    const { error: emitErr } = await admin.rpc("emit_event" as never, {
+      p_event_type: "media.persist_requested",
+      p_entity_kind: "message",
+      p_entity_id: linha.id,
+      p_payload: { message_id: linha.id },
+      p_metadata: {
+        source: "waha_history_sync",
+        history_import: true,
+        strategy: "db-index-v1",
+      },
+      p_organization_id: session.organization_id,
+    } as never);
+    if (emitErr) {
+      throw new Error(`waha_history_media_index_emit: ${emitErr.message}`);
+    }
+
+    resumo.midias_enfileiradas += 1;
+  }
+
+  if (resumo.completed) resumo.next_message_id = null;
+  return resumo;
+}
