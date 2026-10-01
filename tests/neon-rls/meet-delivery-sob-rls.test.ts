@@ -121,7 +121,7 @@ suite('transactional_delivery sob RLS por organização', () => {
       const [claimed] = await m.tenant.withOrganization(f.org, () => claimJobs(m.tenant, { workerId: 'w-rls', maxConcurrency: 20, batchSize: 20 }));
       expect(claimed?.id).toBe(jobId);
       expect(claimed?.kind).toBe('transactional_delivery');
-      await m.tenant.withOrganization(f.org, () => handler(claimed!, m.tenant, { workerId: 'w-rls' }));
+      await m.tenant.withOrganization(f.org, () => handler(claimed!, m.tenant));
       expect(bodies).toHaveLength(0);
       expect((await m.dono.query(`select status from job_queue where id = $1`, [jobId])).rows[0].status).toBe('pending');
       expect((await m.dono.query(`select status from send_ledger where job_id = $1`, [jobId])).rows[0].status).toBe('queued');
@@ -131,7 +131,7 @@ suite('transactional_delivery sob RLS por organização', () => {
       const segundo = (
         await m.dono.query(`update job_queue set status = 'running', locked_by = 'w-rls', locked_at = clock_timestamp(), attempts = attempts + 1 where id = $1 returning *, locked_at::text claim_acquired_at`, [jobId])
       ).rows[0];
-      await m.tenant.withOrganization(f.org, () => handler(segundo, m.tenant, { workerId: 'w-rls' }));
+      await m.tenant.withOrganization(f.org, () => handler(segundo, m.tenant));
       // (db.errors acumula também o 23505 esperado do reenvio de uma mensagem já enfileirada: o que vale é o estado)
       const estado = (await m.dono.query(`select meeting_delivery from calendar_appointments where id = $1`, [f.id])).rows[0].meeting_delivery;
       expect(estado.state, JSON.stringify(db.errors)).toBe('sent');
