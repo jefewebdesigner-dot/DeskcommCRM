@@ -111,6 +111,7 @@ import {
 } from "@/lib/agent-engine/db/por-organizacao";
 import { comSanitizacao, createLogger, type Logger } from "@/lib/agent-engine/obs/logger";
 import { executarSincronizacaoHistoricaWaha } from "@/workers/waha-history-sync-job";
+import { runContactAvatarLoop } from "@/workers/contact-avatar-loop";
 import {
   evaluateCacheHitAlert,
   metricsDeTodasAsOrganizacoes,
@@ -433,6 +434,19 @@ export async function startWorker(
     loopsAbort.signal,
   );
 
+  // Fotos de perfil: drena o backlog depois do pareamento e mantém refresh
+  // periódico. Não fica no webhook para não atrasar a entrada de mensagens.
+  const contactAvatarLoop = runContactAvatarLoop(
+    {
+      batchSize: 25,
+      busyIntervalMs: 1_000,
+      idleIntervalMs: 6 * 60 * 60 * 1000,
+      errorIntervalMs: 60_000,
+    },
+    log,
+    loopsAbort.signal,
+  );
+
   // Watchdog de sessão (4A-2): reconcilia channel_sessions×WAHA + redrive de
   // queued. Liga só com as credenciais do WAHA no env (sem elas: warn + off).
   const temWaha = env.WAHA_API_BASE_URL !== undefined && env.WAHA_API_KEY !== undefined;
@@ -677,6 +691,7 @@ export async function startWorker(
     await Promise.all([
       drainLoop,
       eventLogLoop,
+      contactAvatarLoop,
       healthLoop,
       cronLoop,
       sessionWatchdogLoop,
