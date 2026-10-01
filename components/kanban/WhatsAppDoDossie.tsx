@@ -43,6 +43,7 @@ export function WhatsAppDoDossie({
   const [texto, setTexto] = useState("");
   const [modeloId, setModeloId] = useState<string | undefined>();
   const [enviando, setEnviando] = useState(false);
+  const [sugerindo, setSugerindo] = useState(false);
   const [conversationIdCriado, setConversationIdCriado] = useState<string | null>(null);
   const sugestao = useQuickReplySuggestion(lead.contact_id);
 
@@ -69,7 +70,7 @@ export function WhatsAppDoDossie({
     setTexto(interpolateTemplate(modelo.body, contextoTemplate));
   }
 
-  function sugerir() {
+  function aplicarSugestaoRapida() {
     const atalho = sugestao.data?.shortcut ?? "followup";
     const cadastrado = (modelos.data ?? []).find((m) => m.shortcut === atalho);
     if (cadastrado) {
@@ -82,6 +83,40 @@ export function WhatsAppDoDossie({
     if (!padrao) return;
     setModeloId(undefined);
     setTexto(interpolateTemplate(padrao.body, contextoTemplate));
+  }
+
+  async function sugerir() {
+    const conversationId = conversationIdCriado ?? lead.conversa?.id ?? null;
+    if (!conversationId) {
+      aplicarSugestaoRapida();
+      return;
+    }
+
+    setSugerindo(true);
+    try {
+      // A sugestão de IA lê o histórico REAL desta conversa e nunca envia por
+      // conta própria: só preenche o composer para revisão/edição humana.
+      const res = await fetch(
+        `/api/v1/conversations/${conversationId}/draft-reply`,
+        { method: "POST" },
+      );
+      const json = await res.json().catch(() => null);
+      if (res.ok) {
+        const data = corpoDaResposta<{ draft: string }>(json);
+        if (data.draft?.trim()) {
+          setModeloId(undefined);
+          setTexto(data.draft.trim());
+          return;
+        }
+      }
+    } catch {
+      // Sem agente publicado, canal ou provedor disponível, a heurística local
+      // continua útil e evita transformar "Sugerir" em botão quebrado.
+    } finally {
+      setSugerindo(false);
+    }
+
+    aplicarSugestaoRapida();
   }
 
   async function resolverConversa(): Promise<string> {
@@ -151,11 +186,15 @@ export function WhatsAppDoDossie({
           type="button"
           size="sm"
           variant="outline"
-          onClick={sugerir}
-          disabled={!lead.contact_id || sugestao.isLoading}
+          onClick={() => void sugerir()}
+          disabled={!lead.contact_id || sugestao.isLoading || sugerindo}
           className="shrink-0"
         >
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          {sugerindo ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          )}
           Sugerir
         </Button>
       </div>
