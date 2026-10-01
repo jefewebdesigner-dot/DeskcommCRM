@@ -476,4 +476,37 @@ describe("sessões: conflito conhecido só converge com identidade e pós-condi�
     });
   });
 
+  it("busca mensagem histórica por id em todos os chats com mídia", async () => {
+    const messageId = "3EB0965B123D06E0B70741";
+    await receive([
+      {
+        method: "GET",
+        path: `/api/qa%2Fsession/chats/all/messages/${messageId}?downloadMedia=true`,
+        status: 200,
+        body: {
+          id: messageId,
+          hasMedia: true,
+          media: { url: "http://transport.local/media/audio.ogg", mimetype: "audio/ogg" },
+        },
+      },
+    ], async (c) => {
+      await expect(c.getChatMessage(name, messageId, { downloadMedia: true }))
+        .resolves.toMatchObject({ id: messageId, hasMedia: true });
+    });
+  });
+
+  it("mensagem histórica ausente por id devolve null", async () => {
+    const messageId = "3EB0AUSENTE";
+    await receive([
+      {
+        method: "GET",
+        path: `/api/qa%2Fsession/chats/all/messages/${messageId}?downloadMedia=true`,
+        status: 404,
+        body: { statusCode: 404, error: "Not Found", message: "Message not found" },
+      },
+    ], async (c) => {
+      await expect(c.getChatMessage(name, messageId)).resolves.toBeNull();
+    });
+  });
+
 });
