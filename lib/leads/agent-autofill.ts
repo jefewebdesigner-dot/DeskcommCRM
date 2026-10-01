@@ -68,30 +68,38 @@ async function linhaDoNegocio(
  * Só expõe campos DECLARADOS pelo funil e ainda VAZIOS no card. O modelo não
  * recebe a possibilidade de reescrever um dado que uma pessoa já preencheu.
  */
-export async function blocoDeAutopreenchimentoDoCrm(
+export interface ContextoDeAutopreenchimentoDoCrm {
+  leadId: string;
+  block: string;
+}
+
+export async function prepararAutopreenchimentoDoCrm(
   pool: pg.Pool,
   organizationId: string,
   contactId: string,
-): Promise<string> {
+): Promise<ContextoDeAutopreenchimentoDoCrm | null> {
   const alvo = await negocioAtivo(pool, organizationId, contactId);
-  if (!alvo.routed) return "";
+  if (!alvo.routed) return null;
 
   const lead = await linhaDoNegocio(pool, organizationId, alvo.leadId);
-  if (!lead) return "";
+  if (!lead) return null;
 
   const atuais = lead.custom_fields ?? {};
   const disponiveis = camposDeclaradosDoFunil(lead.settings)
     .filter((field) => valorEstaVazio(atuais[field.key]))
     .slice(0, 30);
 
-  if (disponiveis.length === 0) return "";
+  if (disponiveis.length === 0) return null;
 
-  return [
-    "## Campos do CRM disponíveis para autopreenchimento",
-    "No JSON de fechamento, use `crm_fields` SOMENTE para fatos explícitos que o cliente revelou na conversa.",
-    "Nunca deduza, complete por contexto ou repita campo que não esteja na lista abaixo. Se não houver fato novo, use {}.",
-    JSON.stringify(disponiveis),
-  ].join("\n");
+  return {
+    leadId: lead.id,
+    block: [
+      "## Campos do CRM disponíveis para autopreenchimento",
+      "No JSON de fechamento, use `crm_fields` SOMENTE para fatos explícitos que o cliente revelou na conversa.",
+      "Nunca deduza, complete por contexto ou repita campo que não esteja na lista abaixo. Se não houver fato novo, use {}.",
+      JSON.stringify(disponiveis),
+    ].join("\n"),
+  };
 }
 
 export type ResultadoDoAutopreenchimento =
@@ -110,6 +118,7 @@ export async function aplicarAutopreenchimentoDoCrm(
   input: {
     organizationId: string;
     contactId: string;
+    leadId: string;
     fields: Record<string, unknown>;
     agentId?: string | null;
     llmCallId?: string | null;
@@ -119,10 +128,10 @@ export async function aplicarAutopreenchimentoDoCrm(
     return { updated: false, reason: "sem_campos_validos" };
   }
 
-  const alvo = await negocioAtivo(pool, input.organizationId, input.contactId);
-  if (!alvo.routed) return { updated: false, reason: "sem_negocio" };
-
-  const lead = await linhaDoNegocio(pool, input.organizationId, alvo.leadId);
+  // leadId foi fixado na abertura do mesmo turno. Não re-resolve o contato aqui:
+  // um negócio novo criado no meio do atendimento não pode sequestrar os campos
+  // que foram extraídos para o card que abriu o turno.
+  const lead = await linhaDoNegocio(pool, input.organizationId, input.leadId);
   if (!lead) return { updated: false, reason: "sem_negocio" };
 
   const patch = prepararPatchDeAutopreenchimento({
