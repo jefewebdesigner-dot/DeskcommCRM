@@ -147,7 +147,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     if (key.toLowerCase() === "cookie") return;
     headersJson[key] = value;
   });
-  await admin.from("webhook_events_log").insert({
+  const { error: erroDoArquivo } = await admin.from("webhook_events_log").insert({
     organization_id: session.organization_id,
     channel_session_id: session.id,
     provider: "waha",
@@ -163,6 +163,15 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     status: "received",
     attempts: 0,
   });
+  if (erroDoArquivo) {
+    logger.error("[waha.webhook] não foi possível arquivar o evento bruto", {
+      request_id: requestId,
+      channel_session_id: session.id,
+      event_type: eventType,
+      code: erroDoArquivo.code,
+      error: erroDoArquivo.message,
+    });
+  }
 
   // Estágio 2: o resto do contrato, agora que o corpo cru já está arquivado.
   const contrato = conferirContratoWaha(roteado);
