@@ -235,12 +235,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return voltar("erro=retorno_nao_verificavel");
   }
   const admin = createAdminClient();
-  const { error: erroDoNonce } = await admin.from("calendar_oauth_nonces").insert({
-    nonce: estado.nonce,
-    organization_id: organizationId,
-    user_id: userId,
-    expira_em: new Date(estado.expiraEmMs).toISOString(),
-  });
+  // No Neon Data API a identidade técnica chega como authenticated. A tabela
+  // continua fechada para sessões comuns; a RPC SECURITY DEFINER confere a
+  // identidade técnica e preserva a UNIQUE do nonce como trava anti-replay.
+  const { error: erroDoNonce } = await admin.rpc(
+    "fn_calendar_oauth_nonce_burn" as never,
+    {
+      p_nonce: estado.nonce,
+      p_org: organizationId,
+      p_user: userId,
+      p_expira: new Date(estado.expiraEmMs).toISOString(),
+    } as never,
+  );
   if (erroDoNonce) {
     // `23505` é unicidade: o nonce já foi usado. Qualquer outro erro também
     // recusa — não dá para garantir uso único sem conseguir gravar, e seguir
