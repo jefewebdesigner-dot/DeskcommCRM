@@ -169,6 +169,10 @@ import { emitAgentActivityForContact } from '@/lib/leads/agent-activity';
 import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/active-lead';
 import { recalculaScoreDoLead } from '@/lib/leads/score-writer';
 import {
+  aplicarAutopreenchimentoDoCrm,
+  blocoDeAutopreenchimentoDoCrm,
+} from '@/lib/leads/agent-autofill';
+import {
   JAILBREAK_ESCALATION_LEVEL,
   classifyJailbreak,
   escalateJailbreakPromise,
@@ -527,6 +531,17 @@ export const checkpointContentSchema = z.object({
   next_action: z.string().nullable().default(null),
   rolling_summary: z.string().default(''),
   /**
+   * Fatos estruturados para os campos personalizados do negócio.
+   *
+   * O modelo recebe em cada turno SOMENTE as chaves ainda vazias do funil
+   * ativo. O backend valida de novo antes de escrever; chave inventada ou valor
+   * complexo não chega ao card.
+   */
+  crm_fields: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .default({})
+    .refine((fields) => Object.keys(fields).length <= 30, 'crm_fields: máximo de 30 campos'),
+  /**
    * A declaração do turno (spec 16 §5) — a fronteira entre FALAR e OPERAR.
    *
    * `.optional()` SEM default, e a diferença importa: `undefined` significa que o
@@ -550,7 +565,7 @@ export type CheckpointContent = z.infer<typeof checkpointContentSchema>;
  * prometer `undefined` onde `select *` entrega `null` — e o `=== undefined` de
  * quem lesse a row seria falso justamente no caso que ele quer pegar.
  */
-export interface LeadCheckpointRow extends Omit<CheckpointContent, 'declaracao'> {
+export interface LeadCheckpointRow extends Omit<CheckpointContent, 'declaracao' | 'crm_fields'> {
   id: string;
   seq: string;
   organization_id: string;
@@ -571,9 +586,11 @@ export interface LeadCheckpointRow extends Omit<CheckpointContent, 'declaracao'>
  */
 export const CHECKPOINT_INSTRUCTION =
   'Feche o turno AGORA. Responda SOMENTE com um JSON válido no formato ' +
-  '{"commitments": string[], "objections": string[], "next_action": string|null, "rolling_summary": string} ' +
-  '— compromissos assumidos, objeções do lead, próxima ação e o resumo acumulado ' +
-  'da conversa até aqui (inclua o que o resumo anterior já dizia). ' +
+  '{"commitments": string[], "objections": string[], "next_action": string|null, "rolling_summary": string, "crm_fields": object} ' +
+  '— compromissos assumidos, objeções do lead, próxima ação, resumo acumulado e fatos estruturados do CRM. ' +
+  'Em `crm_fields`, use SOMENTE chaves listadas no bloco "Campos do CRM disponíveis para autopreenchimento" ' +
+  'e somente quando o cliente tiver informado o fato explicitamente; nunca deduza. Se não houver campo novo, use {}. ' +
+  'No resumo, inclua o que o resumo anterior já dizia. ' +
   // ⚠️ O REFERENCIAL DE `next_action`, e ele não é zelo de redação.
   //
   // Este JSON é escrito no FECHO do turno: a pergunta já saiu, a resposta ainda
@@ -3823,6 +3840,15 @@ async function executarTurnoDoAgente(
     // Sufixos por-lead (situacionais, voláteis — depois do prefixo cacheável F2-17): corpos de
     // skill casadas (F3-09) + hint do classificador (F3-11) + instrução de split (F4-xx, quando
     // split_messages está on — Onda 4). Vazios são omitidos.
+    const crmAutofillBlock =
+      preview?.kind === 'sandbox'
+        ? ''
+        : await blocoDeAutopreenchimentoDoCrm(pool, tenantId, leadId).catch((err) => {
+            runLog.warn('não foi possível listar campos vazios para autopreenchimento', {
+              error: err instanceof Error ? err.name : 'unknown',
+            });
+            return '';
+          });
     const splitHint =
       (agentConfig?.splitMessages ?? false)
         ? 'Responda em mensagens curtas e naturais, uma ideia por mensagem — como uma pessoa digitando no WhatsApp. Prefira várias mensagens curtas a um texto único e longo.'
@@ -3864,6 +3890,7 @@ async function executarTurnoDoAgente(
       stageHintBlock,
       splitHint,
       caseAwaitingLeadBlock,
+      crmAutofillBlock,
       preview?.feedback ? '## Revisão humana deste atendimento\n' + preview.feedback : '',
     ].filter((b) => b !== '');
     const openingText =
@@ -4015,6 +4042,31 @@ async function executarTurnoDoAgente(
           message: 'O agente não propôs uma resposta. Revise o cenário ou a configuração.',
         });
       return;
+    }
+
+    // O fechamento obrigatório do turno também é a oportunidade mais barata de
+    // manter o card vivo. Não abre uma chamada extra de modelo: os fatos já
+    // vieram em `crm_fields`. Falha é best-effort — nunca deixa o cliente sem
+    // resposta porque um enriquecimento de CRM falhou.
+    try {
+      const autofill = await aplicarAutopreenchimentoDoCrm(pool, {
+        organizationId: tenantId,
+        contactId: leadId,
+        fields: content.crm_fields,
+        agentId: agentConfig?.agentId ?? null,
+      });
+      if (autofill.updated) {
+        runLog.info('campos do CRM autopreenchidos a partir da conversa', {
+          lead_id: autofill.leadId,
+          fields: autofill.keys,
+        });
+      } else if (autofill.reason === 'conflito_humano') {
+        runLog.info('autopreenchimento não aplicado — edição humana venceu a trava otimista');
+      }
+    } catch (err) {
+      runLog.error('falha no autopreenchimento do CRM (turno segue)', {
+        error: err instanceof Error ? err.name : 'unknown',
+      });
     }
 
     // Wave 3 (2.4): o checkpoint anterior é lido ANTES de gravar o novo — a
