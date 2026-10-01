@@ -1549,6 +1549,7 @@ export function buildOpeningMessage(
       ? []
       : [
           'Houve avanço REAL no funil neste turno? Marque-o com update_lead_state (só o próximo estágio válido).',
+          'A conversa revelou ou corrigiu algum campo listado em crm_fields/campos_do_crm? Inclua-o em update_lead_state.crm_fields agora. Use somente fato explícito do cliente e nunca invente valor.',
         ]),
     ...(entregue('save_lead_note')
       ? []
