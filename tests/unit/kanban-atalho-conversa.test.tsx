@@ -125,18 +125,21 @@ describe("o elo que some sem barulho", () => {
     // caso só olhava a chamada e o sabote passou.
     //
     // A resposta não sai mais direto de `withConversas`: a cadeia é
-    // withConversas → withMarcadoresDoContato → resposta. Exigir o texto
-    // `leads: leadsComConversa.leads` reprovava quem acrescentava uma etapa
-    // CERTA depois dela; o que importa é o resultado dela alimentar a próxima,
-    // e a resposta sair da última.
+    // withConversas → withMarcadoresDoContato → withNextOperations → resposta.
+    // O importante é cada enriquecimento alimentar o próximo sem perder a
+    // conversa que chegou antes.
     expect(
       fonte,
-      "o resultado de withConversas não alimenta withMarcadoresDoContato (cadeia: withConversas → withMarcadoresDoContato → resposta)",
+      "o resultado de withConversas não alimenta withMarcadoresDoContato",
     ).toMatch(/withMarcadoresDoContato\(\s*supabase,[\s\S]*?leadsComConversa\.leads/);
     expect(
       fonte,
-      "a resposta não sai da última etapa (cadeia: withConversas → withMarcadoresDoContato → resposta)",
-    ).toMatch(/leads:\s*leadsComMarcadores\.leads/);
+      "o resultado enriquecido não alimenta withNextOperations",
+    ).toMatch(/withNextOperations\(\s*supabase,[\s\S]*?leadsComMarcadores\.leads/);
+    expect(
+      fonte,
+      "a resposta não sai da última etapa da cadeia",
+    ).toMatch(/leads:\s*leadsComOperacao\.leads/);
   });
 
   it("a mais RECENTE por contato — não a primeira que o banco devolver", () => {

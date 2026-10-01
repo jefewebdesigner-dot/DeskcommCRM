@@ -69,6 +69,22 @@ export const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("add_tag"), config: z.object({ tags: z.array(z.string().min(1).max(60)).min(1).max(10) }) }),
   z.object({ type: z.literal("assign_owner"), config: z.object({ user_id: z.string().uuid() }) }),
   z.object({
+    type: z.literal("assign_operational_responsible"),
+    config: z.object({
+      mode: z.enum(["round_robin", "fixed"]).default("round_robin"),
+      profile_id: z.string().uuid().optional(),
+    }),
+  }),
+  z.object({
+    type: z.literal("create_task"),
+    config: z.object({
+      title_template: z.string().min(1).max(255),
+      description_template: z.string().max(2000).optional(),
+      due_in_hours: z.number().int().min(0).max(2160),
+      priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+    }),
+  }),
+  z.object({
     type: z.literal("send_ai_message"),
     config: z.object({
       /** Agente PUBLICADO que assina a mensagem. */

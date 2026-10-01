@@ -12,6 +12,9 @@ import { LeadFieldsForm } from "./LeadFieldsForm";
 import { ScoreSlot } from "./ScoreSlot";
 import { LeadTimeline } from "./LeadTimeline";
 import { OwnerBadge } from "./OwnerBadge";
+import { WhatsAppDoDossie } from "./WhatsAppDoDossie";
+import { TarefasDoDossie } from "./TarefasDoDossie";
+import { AgendarNoDossie } from "./AgendarNoDossie";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
 import type { CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 
@@ -130,7 +133,12 @@ export function LeadDossier({
           </p>
         )}
 
-        <ConversaNoDossie conversa={lead.conversa} />
+        <div className="space-y-2 pt-3">
+          <ConversaNoDossie conversa={lead.conversa} />
+          <WhatsAppDoDossie lead={lead} pipelineId={pipelineId} />
+          <TarefasDoDossie lead={lead} />
+          <AgendarNoDossie lead={lead} pipelineId={pipelineId} />
+        </div>
 
         {/* ② timeline */}
         <section className="flex-1 py-3">

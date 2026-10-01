@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { useT } from "@/hooks/i18n/useT";
 import { Card } from "@/components/ui/card";
@@ -9,12 +9,15 @@ import { useMoveCard } from "@/hooks/kanban/useMoveCard";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
 import { useReactivations } from "@/hooks/leads/useReactivations";
+import { useTaskResponsibles } from "@/hooks/tasks/useTaskResponsibles";
 import { midpoint } from "@/lib/kanban/fractional-indexing";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { StageColumn } from "./StageColumn";
 import { LeadDossier } from "./LeadDossier";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface KanbanBoardProps {
   pipelineId: string;
@@ -84,6 +87,11 @@ export function KanbanBoard({
   const queryResult = useBoard(useExternal ? null : pipelineId);
   const moveCard = useMoveCard(pipelineId);
   const { data: members } = useAssignableMembers(true);
+  const { data: taskResponsibles } = useTaskResponsibles();
+  const responsibleProfileNames = useMemo(
+    () => new Map((taskResponsibles ?? []).map((r) => [r.id, r.name])),
+    [taskResponsibles],
+  );
   const ownerNames = useMemo(
     () => new Map((members ?? []).map((m) => [m.user_id, m.full_name])),
     [members],
@@ -126,6 +134,9 @@ export function KanbanBoard({
   // aberto, o estado local manda (fechar não reabre pela URL).
   const [dossieId, setDossieId] = useState<string | null>(leadInicial ?? null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const boardScrollRef = useRef<HTMLDivElement | null>(null);
+  const [podeRolarEsquerda, setPodeRolarEsquerda] = useState(false);
+  const [podeRolarDireita, setPodeRolarDireita] = useState(false);
   const selectedLeadIds = useMemo(
     () => (selectedIds ? new Set(selectedIds) : internalSelected),
     [selectedIds, internalSelected],
@@ -150,6 +161,29 @@ export function KanbanBoard({
     if (!data) return null;
     return groupLeadsByStage(data.stages, data.leads);
   }, [data]);
+
+  const atualizarNavegacaoHorizontal = useCallback(() => {
+    const el = boardScrollRef.current;
+    if (!el) return;
+    setPodeRolarEsquerda(el.scrollLeft > 8);
+    setPodeRolarDireita(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(atualizarNavegacaoHorizontal);
+    window.addEventListener("resize", atualizarNavegacaoHorizontal);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", atualizarNavegacaoHorizontal);
+    };
+  }, [atualizarNavegacaoHorizontal, data?.stages.length]);
+
+  const rolarQuadro = useCallback((direcao: -1 | 1) => {
+    boardScrollRef.current?.scrollBy({
+      left: direcao * 360,
+      behavior: "smooth",
+    });
+  }, []);
 
   // Um conjunto por vez, e não um card por vez: o board recebe o resultado do
   // gesto já resolvido pela coluna (um card, um intervalo, a etapa inteira). A
@@ -245,23 +279,55 @@ export function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex h-full gap-3 overflow-x-auto p-4">
-        {data.stages.map((stage) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            leads={grouped.get(stage.id) ?? []}
-            pipelineId={pipelineId}
-            ownerNames={ownerNames}
-            coolingIds={coolingIds}
-            reactivations={reactivations}
-            pulses={pulsesProp ?? queryResult.pulses}
-            canonicalTags={canonicalTags}
-            selectedLeadIds={selectedLeadIds}
-            onSelectMany={handleSelectMany}
-            onOpen={setDossieId}
-          />
-        ))}
+      <div className="relative h-full">
+        {podeRolarEsquerda ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={t("Ver etapas anteriores")}
+            onClick={() => rolarQuadro(-1)}
+            className="absolute left-2 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-full bg-background/95 shadow-md backdrop-blur"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        ) : null}
+        {podeRolarDireita ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={t("Ver próximas etapas")}
+            onClick={() => rolarQuadro(1)}
+            className="absolute right-2 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-full bg-background/95 shadow-md backdrop-blur"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        ) : null}
+
+        <div
+          ref={boardScrollRef}
+          onScroll={atualizarNavegacaoHorizontal}
+          className="flex h-full gap-3 overflow-x-auto p-4 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+        >
+          {data.stages.map((stage) => (
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              leads={grouped.get(stage.id) ?? []}
+              pipelineId={pipelineId}
+              ownerNames={ownerNames}
+              responsibleProfileNames={responsibleProfileNames}
+              coolingIds={coolingIds}
+              reactivations={reactivations}
+              pulses={pulsesProp ?? queryResult.pulses}
+              canonicalTags={canonicalTags}
+              selectedLeadIds={selectedLeadIds}
+              onSelectMany={handleSelectMany}
+              onOpen={setDossieId}
+            />
+          ))}
+        </div>
       </div>
       {leadDoDossie && (
         <LeadDossier

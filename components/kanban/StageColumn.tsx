@@ -16,6 +16,8 @@ interface StageColumnProps {
   pipelineId: string;
   /** owner_user_id → nome, resolvido no board. O dono agente vem no lead. */
   ownerNames?: Map<string, string | null>;
+  /** Perfil operacional visível (ex.: Jeferson/Luan), independente do login. */
+  responsibleProfileNames?: Map<string, string>;
   /** ids que o radar classificou como esfriando (fonte única, não recalculada). */
   coolingIds?: Set<string>;
   /** Propostas de retomada vivas, por lead. */
@@ -41,6 +43,7 @@ export function StageColumn({
   leads,
   pipelineId,
   ownerNames,
+  responsibleProfileNames,
   coolingIds,
   reactivations,
   canonicalTags,
@@ -158,6 +161,7 @@ export function StageColumn({
                 card={buildCardInput(lead, {
                   stageName: stage.name,
                   ownerNames,
+                  responsibleProfileNames,
                   coolingIds,
                   reactivations,
                   canonicalTags,

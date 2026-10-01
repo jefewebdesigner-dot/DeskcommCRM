@@ -19,6 +19,7 @@ import { usePipelines, usePipelineStages } from "@/hooks/webhooks/useWebhookSour
 import { useAgentsList } from "@/hooks/ai/useAgents";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
+import { useTaskResponsibles } from "@/hooks/tasks/useTaskResponsibles";
 import { apiClient } from "@/lib/api/client";
 import type { FollowupFlowPointerRow } from "@/hooks/followup/useFollowupFlows";
 
@@ -31,6 +32,19 @@ export type ActionItem =
     }
   | { type: "add_tag"; config: { tags: string[] } }
   | { type: "assign_owner"; config: { user_id: string } }
+  | {
+      type: "assign_operational_responsible";
+      config: { mode: "round_robin" | "fixed"; profile_id?: string };
+    }
+  | {
+      type: "create_task";
+      config: {
+        title_template: string;
+        description_template?: string;
+        due_in_hours: number;
+        priority: "low" | "medium" | "high" | "urgent";
+      };
+    }
   | { type: "call_webhook"; config: { url: string; secret?: string; secret_enc?: string } }
   | { type: "start_message_flow"; config: { flow_pointer_id: string } };
 
@@ -46,6 +60,18 @@ export function defaultActionConfig(type: ActionItem["type"]): ActionItem {
       return { type, config: { tags: [] } };
     case "assign_owner":
       return { type, config: { user_id: "" } };
+    case "assign_operational_responsible":
+      return { type, config: { mode: "round_robin" } };
+    case "create_task":
+      return {
+        type,
+        config: {
+          title_template: "Próxima ação com {{nome}}",
+          description_template: "",
+          due_in_hours: 24,
+          priority: "medium",
+        },
+      };
     case "call_webhook":
       return { type, config: { url: "" } };
     case "start_message_flow":
@@ -334,6 +360,145 @@ function AssignOwnerForm({ config, onChange }: FormProps<{ user_id: string }>) {
   );
 }
 
+function AssignOperationalResponsibleForm({
+  config,
+  onChange,
+}: FormProps<{ mode: "round_robin" | "fixed"; profile_id?: string }>) {
+  const t = useT();
+  const { data: profiles = [] } = useTaskResponsibles();
+
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1">
+        <Label>{t("Como distribuir")}</Label>
+        <Select
+          value={config.mode}
+          onValueChange={(mode) =>
+            onChange({
+              mode: mode as "round_robin" | "fixed",
+              ...(mode === "fixed" ? { profile_id: config.profile_id } : {}),
+            })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="round_robin">{t("Equilibrar automaticamente")}</SelectItem>
+            <SelectItem value="fixed">{t("Sempre a mesma pessoa")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {t(
+            "No modo automático, o CRM escolhe quem tem menos negócios abertos e mantém a carga equilibrada.",
+          )}
+        </p>
+      </div>
+      {config.mode === "fixed" ? (
+        <div className="space-y-1">
+          <Label>{t("Responsável operacional")}</Label>
+          <Select
+            value={config.profile_id ?? ""}
+            onValueChange={(profile_id) => onChange({ ...config, profile_id })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("Escolha a pessoa")} />
+            </SelectTrigger>
+            <SelectContent>
+              {profiles.map((profile) => (
+                <SelectItem key={profile.id} value={profile.id}>
+                  {profile.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CreateTaskForm({
+  config,
+  onChange,
+}: FormProps<{
+  title_template: string;
+  description_template?: string;
+  due_in_hours: number;
+  priority: "low" | "medium" | "high" | "urgent";
+}>) {
+  const t = useT();
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label>{t("Título da tarefa")}</Label>
+        <Input
+          value={config.title_template}
+          onChange={(e) => onChange({ ...config, title_template: e.target.value })}
+          placeholder="Fazer primeiro contato com {{nome}}"
+        />
+        <p className="text-xs text-muted-foreground">
+          {t("Você pode usar {{nome}}, {{telefone}} e {{lead.title}}.")}
+        </p>
+      </div>
+      <div className="space-y-1">
+        <Label>{t("Instrução para quem executar")}</Label>
+        <Textarea
+          rows={3}
+          value={config.description_template ?? ""}
+          onChange={(e) => onChange({ ...config, description_template: e.target.value })}
+          placeholder="Entender a necessidade, registrar o resultado e definir o próximo passo."
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label>{t("Prazo")}</Label>
+          <Select
+            value={String(config.due_in_hours)}
+            onValueChange={(v) => onChange({ ...config, due_in_hours: Number(v) })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">{t("Agora")}</SelectItem>
+              <SelectItem value="2">{t("Em 2 horas")}</SelectItem>
+              <SelectItem value="4">{t("Em 4 horas")}</SelectItem>
+              <SelectItem value="24">{t("Em 1 dia")}</SelectItem>
+              <SelectItem value="48">{t("Em 2 dias")}</SelectItem>
+              <SelectItem value="72">{t("Em 3 dias")}</SelectItem>
+              <SelectItem value="168">{t("Em 7 dias")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("Prioridade")}</Label>
+          <Select
+            value={config.priority}
+            onValueChange={(priority) =>
+              onChange({
+                ...config,
+                priority: priority as "low" | "medium" | "high" | "urgent",
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">{t("Baixa")}</SelectItem>
+              <SelectItem value="medium">{t("Normal")}</SelectItem>
+              <SelectItem value="high">{t("Alta")}</SelectItem>
+              <SelectItem value="urgent">{t("Urgente")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CallWebhookForm({
   config,
   onChange,
@@ -461,6 +626,20 @@ export function ActionConfigForm({
     case "assign_owner":
       return (
         <AssignOwnerForm
+          config={action.config}
+          onChange={(config) => onChange({ type: action.type, config })}
+        />
+      );
+    case "assign_operational_responsible":
+      return (
+        <AssignOperationalResponsibleForm
+          config={action.config}
+          onChange={(config) => onChange({ type: action.type, config })}
+        />
+      );
+    case "create_task":
+      return (
+        <CreateTaskForm
           config={action.config}
           onChange={(config) => onChange({ type: action.type, config })}
         />

@@ -333,22 +333,120 @@ async function withMarcadoresDoContato(
 
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, tags")
+    .select("id, name, display_name, phone_number, email, last_activity_at, tags")
     .eq("organization_id", organizationId)
     .in("id", contactIds);
   if (error) return { leads, error: error.message };
 
-  const porContato = new Map<string, string[]>();
-  for (const row of (data ?? []) as Array<{ id: string; tags: string[] | null }>) {
-    const tags = row.tags ?? [];
-    if (tags.length > 0) porContato.set(row.id, tags);
+  type LinhaContato = {
+    id: string;
+    name: string | null;
+    display_name: string | null;
+    phone_number: string | null;
+    email: string | null;
+    last_activity_at: string | null;
+    tags: string[] | null;
+  };
+  const porContato = new Map<string, LinhaContato>();
+  for (const row of (data ?? []) as LinhaContato[]) {
+    porContato.set(row.id, row);
   }
-  if (porContato.size === 0) return { leads, error: null };
 
   return {
     leads: leads.map((lead) => {
-      const contact_tags = lead.contact_id ? porContato.get(lead.contact_id) : undefined;
-      return contact_tags ? { ...lead, contact_tags } : lead;
+      if (!lead.contact_id) return lead;
+      const contato = porContato.get(lead.contact_id);
+      if (!contato) return lead;
+      const { tags, ...resumo } = contato;
+      return {
+        ...lead,
+        contact: resumo,
+        ...(tags && tags.length > 0 ? { contact_tags: tags } : {}),
+      };
+    }),
+    error: null,
+  };
+}
+
+async function withNextOperations(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  leads: Lead[],
+): Promise<{ leads: Lead[]; error: string | null }> {
+  if (leads.length === 0) return { leads, error: null };
+  const ids = new Set(leads.map((lead) => lead.id));
+  const agora = new Date().toISOString();
+
+  const [tarefas, links, compromissos] = await Promise.all([
+    supabase
+      .from("crm_tasks")
+      .select("id,lead_id,title,due_date,status")
+      .eq("organization_id", organizationId)
+      .in("status", ["pending", "in_progress"])
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .limit(2000),
+    supabase
+      .from("crm_lead_links")
+      .select("lead_id,target_id")
+      .eq("organization_id", organizationId)
+      .eq("target_kind", "appointment")
+      .limit(3000),
+    supabase
+      .from("calendar_appointments")
+      .select("id,title,starts_at,status,meeting_state,meeting_url")
+      .eq("organization_id", organizationId)
+      .in("status", ["pending", "confirmed"])
+      .gte("starts_at", agora)
+      .order("starts_at", { ascending: true })
+      .limit(2000),
+  ]);
+
+  const erro = tarefas.error ?? links.error ?? compromissos.error;
+  if (erro) return { leads, error: erro.message };
+
+  const tarefaPorLead = new Map<string, NonNullable<Lead["next_operation"]>>();
+  for (const tarefa of tarefas.data ?? []) {
+    if (!tarefa.lead_id || !ids.has(tarefa.lead_id) || tarefaPorLead.has(tarefa.lead_id)) continue;
+    tarefaPorLead.set(tarefa.lead_id, {
+      id: tarefa.id,
+      kind: "task",
+      label: tarefa.title,
+      at: tarefa.due_date,
+    });
+  }
+
+  const leadPorCompromisso = new Map<string, string>();
+  for (const link of links.data ?? []) {
+    if (ids.has(link.lead_id)) leadPorCompromisso.set(link.target_id, link.lead_id);
+  }
+  const compromissoPorLead = new Map<string, NonNullable<Lead["next_operation"]>>();
+  for (const compromisso of compromissos.data ?? []) {
+    const leadId = leadPorCompromisso.get(compromisso.id);
+    if (!leadId || compromissoPorLead.has(leadId)) continue;
+    compromissoPorLead.set(leadId, {
+      id: compromisso.id,
+      kind: "appointment",
+      label: compromisso.title,
+      at: compromisso.starts_at,
+      meeting_url:
+        compromisso.meeting_state === "ready" ? compromisso.meeting_url : null,
+    });
+  }
+
+  return {
+    leads: leads.map((lead) => {
+      const tarefa = tarefaPorLead.get(lead.id);
+      const compromisso = compromissoPorLead.get(lead.id);
+      if (!tarefa && !compromisso) return lead;
+      const proxima =
+        !tarefa
+          ? compromisso!
+          : !compromisso
+            ? tarefa
+            : Date.parse(tarefa.at ?? "9999-12-31") <= Date.parse(compromisso.at ?? "9999-12-31")
+              ? tarefa
+              : compromisso;
+      return { ...lead, next_operation: proxima };
     }),
     error: null,
   };
@@ -504,10 +602,19 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return fail("internal_error", leadsComMarcadores.error, 500, { requestId });
   }
 
+  const leadsComOperacao = await withNextOperations(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    leadsComMarcadores.leads,
+  );
+  if (leadsComOperacao.error) {
+    return fail("internal_error", leadsComOperacao.error, 500, { requestId });
+  }
+
   const board: BoardData = {
     pipeline: pipeline as Pipeline,
     stages: (stages ?? []) as Stage[],
-    leads: leadsComMarcadores.leads,
+    leads: leadsComOperacao.leads,
   };
 
   return ok(board, { requestId });

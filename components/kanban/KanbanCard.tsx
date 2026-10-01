@@ -10,7 +10,8 @@ import { NextActionSlot } from "./NextActionSlot";
 import { ReactivationSlot } from "./ReactivationSlot";
 import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
-import { OwnerBadge } from "./OwnerBadge";
+import { OwnerBadge, ownerInitials } from "./OwnerBadge";
+import { CalendarClock, ListTodo } from "lucide-react";
 
 /** Os dois gestos de seleção que o card sabe relatar. */
 export type GestoDeSelecao = "alterna" | "intervalo";
@@ -43,6 +44,28 @@ interface KanbanCardProps {
   onSelect?: (leadId: string, gesto: GestoDeSelecao) => void;
   /** Abrir o dossiê. Separado de `onSelect`: são gestos e intenções diferentes. */
   onOpen?: (leadId: string) => void;
+}
+
+function rotuloDaOrigem(source: string): string {
+  const chave = source.trim().toLowerCase();
+  const conhecidas: Record<string, string> = {
+    manual: "Manual",
+    whatsapp: "WhatsApp",
+    meta: "Meta",
+    instagram: "Instagram",
+    webhook: "Integração",
+    import: "Importação",
+    importacao: "Importação",
+    site: "Site",
+  };
+  return conhecidas[chave] ?? source.replaceAll("_", " ");
+}
+
+function dataCurta(iso: string | null): string | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(ms);
 }
 
 function formatBRL(cents: number | null, currency: string | null): string | null {
@@ -241,15 +264,40 @@ export function KanbanCard({
             <KanbanCardActions lead={lead} pipelineId={pipelineId} />
           </div>
 
-          {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
-          <p
-            className={cn(
-              "mt-1 h-5 text-xs font-medium leading-5 tabular-nums",
-              value ? "text-text" : "text-text-muted",
+          <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] text-text-muted">
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground">
+              {rotuloDaOrigem(card.source)}
+            </span>
+            {card.contactPhone || card.contactEmail ? (
+              <span
+                className="min-w-0 truncate"
+                title={card.contactPhone ?? card.contactEmail ?? undefined}
+              >
+                {card.contactPhone ?? card.contactEmail}
+              </span>
+            ) : (
+              <span className="truncate italic">{t("Sem contato cadastrado")}</span>
             )}
-          >
-            {value ?? "—"}
-          </p>
+          </div>
+
+          <div className="mt-1 flex h-5 items-center justify-between gap-2 text-xs">
+            <span
+              className={cn(
+                "font-semibold tabular-nums",
+                value ? "text-text" : "text-text-muted",
+              )}
+            >
+              {value ?? t("Sem valor")}
+            </span>
+            {card.expectedCloseDate ? (
+              <span
+                className="shrink-0 text-[11px] text-text-muted"
+                title={t("Fechamento previsto")}
+              >
+                {t("Prev.")} {dataCurta(card.expectedCloseDate)}
+              </span>
+            ) : null}
+          </div>
 
           {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
           <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
@@ -295,13 +343,58 @@ export function KanbanCard({
               e some por inteiro quando não há conversa. */}
           <ConversaSlot conversa={lead.conversa} />
 
-          {/* ④ dono · ⑤ tempo no estágio */}
-          <div className="mt-1 flex h-6 items-center justify-between gap-2">
-            <OwnerBadge
-              ownerKind={card.owner.kind}
-              ownerName={card.owner.name}
-              agentVersion={card.owner.agentVersion}
-            />
+          {lead.next_operation ? (
+            <div
+              className="mt-1.5 flex min-w-0 items-center gap-1.5 rounded-md bg-muted/55 px-2 py-1.5 text-[11px] text-text-muted"
+              title={lead.next_operation.label}
+            >
+              {lead.next_operation.kind === "appointment" ? (
+                <CalendarClock className="h-3.5 w-3.5 shrink-0 text-primary" />
+              ) : (
+                <ListTodo className="h-3.5 w-3.5 shrink-0 text-primary" />
+              )}
+              <span className="min-w-0 flex-1 truncate">
+                {lead.next_operation.kind === "appointment" ? t("Reunião") : t("Tarefa")} ·{" "}
+                {lead.next_operation.label}
+              </span>
+              {lead.next_operation.at ? (
+                <span className="shrink-0 tabular-nums">
+                  {new Intl.DateTimeFormat("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(lead.next_operation.at))}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Responsável operacional · tempo no estágio */}
+          <div className="mt-1.5 flex h-7 items-center justify-between gap-2 border-t border-border/60 pt-1.5">
+            {card.responsibleProfileName ? (
+              <div
+                className="flex min-w-0 items-center gap-1.5"
+                title={`${t("Responsável operacional")}: ${card.responsibleProfileName}`}
+              >
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[9px] font-semibold text-primary"
+                  aria-hidden
+                >
+                  {ownerInitials(card.responsibleProfileName)}
+                </span>
+                <span className="max-w-[9rem] truncate text-[11px] font-medium text-foreground">
+                  {card.responsibleProfileName}
+                </span>
+              </div>
+            ) : (
+              <OwnerBadge
+                ownerKind={card.owner.kind}
+                ownerName={card.owner.name}
+                agentVersion={card.owner.agentVersion}
+                compacto
+              />
+            )}
             <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
               {state.showStageAge && age
                 ? `${age} ${t("em")} ${card.stageName}`

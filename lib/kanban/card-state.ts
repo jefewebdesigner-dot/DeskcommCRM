@@ -15,6 +15,12 @@ export interface CardInput {
   title: string;
   valueCents: number | null;
   currency: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  source: string;
+  expectedCloseDate: string | null;
+  responsibleProfileName: string | null;
   owner: OwnerDisplay;
   /** Nome do estágio atual — o "3d em Negociação" do rodapé. */
   stageName: string;
@@ -75,6 +81,10 @@ export function buildCardInput(
     | "currency"
     | "tags"
     | "last_activity_at"
+    | "expected_close_date"
+    | "source"
+    | "responsible_profile_id"
+    | "contact"
     | "created_at"
     | "owner_kind"
     | "owner_user_id"
@@ -86,6 +96,7 @@ export function buildCardInput(
   opts: {
     stageName: string;
     ownerNames: Map<string, string | null> | undefined;
+    responsibleProfileNames?: Map<string, string>;
     /** ids que o radar (fonte única) classificou como esfriando. */
     coolingIds?: Set<string>;
     /** Propostas de retomada VIVAS, por lead — só as `pending` chegam aqui. */
@@ -109,6 +120,14 @@ export function buildCardInput(
     title: lead.title,
     valueCents: lead.value_cents,
     currency: lead.currency,
+    contactName: lead.contact?.display_name ?? lead.contact?.name ?? null,
+    contactEmail: lead.contact?.email ?? null,
+    contactPhone: lead.contact?.phone_number ?? null,
+    source: lead.source,
+    expectedCloseDate: lead.expected_close_date,
+    responsibleProfileName: lead.responsible_profile_id
+      ? (opts.responsibleProfileNames?.get(lead.responsible_profile_id) ?? null)
+      : null,
     owner: resolveLeadOwner(lead, opts.ownerNames),
     stageName: opts.stageName,
     hoursInStage,

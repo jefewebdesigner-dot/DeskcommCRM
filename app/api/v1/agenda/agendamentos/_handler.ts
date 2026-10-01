@@ -40,6 +40,8 @@ import {
 } from "@/lib/agenda/tipos";
 import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
+import { readServiceBoundarySupabase } from "@/lib/atendimento/origem";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
@@ -185,11 +187,80 @@ export async function marcarAgendamentoHandler(
   });
 
   const booking = tipo.location_kind === "google_meet" ? ctx.meetingBooking : undefined;
-  if (booking && (booking.boundary.organization_id !== ctx.organization_id || booking.boundary.contact_id !== input.contact_id || ctx.actor.type !== "ai_agent")) {
-    throw new ApiError(403,"forbidden",undefined,ctx.requestId,"A conversa deste atendimento mudou.");
+  if (
+    booking &&
+    (booking.boundary.organization_id !== ctx.organization_id ||
+      booking.boundary.contact_id !== input.contact_id ||
+      ctx.actor.type !== "ai_agent")
+  ) {
+    throw new ApiError(
+      403,
+      "forbidden",
+      undefined,
+      ctx.requestId,
+      "A conversa deste atendimento mudou.",
+    );
   }
-  const delivery = booking ? { state:"waiting_for_link",generation:randomUUID(),service_boundary:booking.boundary,source_operation_id:booking.sourceJobId,
-    booking_claim:booking.claim,authorized_by:{kind:ctx.actor.type,id:ctx.actor.id} } : {state:"none"};
+
+  let delivery: Record<string, unknown> = { state: "none" };
+  if (booking) {
+    delivery = {
+      state: "waiting_for_link",
+      generation: randomUUID(),
+      service_boundary: booking.boundary,
+      source_operation_id: booking.sourceJobId,
+      booking_claim: booking.claim,
+      authorized_by: { kind: ctx.actor.type, id: ctx.actor.id },
+    };
+  } else if (
+    tipo.location_kind === "google_meet" &&
+    ctx.actor.type === "user" &&
+    input.contact_id &&
+    input.conversation_id &&
+    donoId === ctx.actor.id
+  ) {
+    // O clique humano no Funil/Agenda deve ter o mesmo desfecho útil do
+    // agendamento da IA: quando o Google devolver o link, o CRM o entrega na
+    // conversa que originou a reunião. A fronteira é capturada AGORA — nunca
+    // reconstruída depois do link chegar.
+    try {
+      const atual = await readServiceBoundarySupabase(
+        createAdminClient(),
+        ctx.organization_id,
+        input.conversation_id,
+      );
+      if (
+        atual &&
+        atual.contact_id === input.contact_id &&
+        atual.status !== "closed" &&
+        atual.status !== "resolved" &&
+        atual.status !== "archived" &&
+        atual.demanda_fechada_em == null
+      ) {
+        const {
+          status: _status,
+          demanda_fechada_em: _demandaFechada,
+          ...boundary
+        } = atual;
+        delivery = {
+          state: "waiting_for_link",
+          generation: randomUUID(),
+          service_boundary: boundary,
+          source_operation_id: randomUUID(),
+          authorized_by: { kind: "user", id: ctx.actor.id },
+        };
+      }
+    } catch (error) {
+      // A reunião continua válida mesmo se a conversa não puder autorizar o
+      // envio agora. A Agenda já oferece "entregar link" manualmente.
+      logger.warn("[agenda] Meet criado sem entrega automática", {
+        organization_id: ctx.organization_id,
+        contact_id: input.contact_id,
+        conversation_id: input.conversation_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
   const { data: criado, error: erroInsert } = await supabase
     .from("calendar_appointments")
     .insert({

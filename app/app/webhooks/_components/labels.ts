@@ -11,6 +11,8 @@ export type ActionType =
   | "send_ai_message"
   | "add_tag"
   | "assign_owner"
+  | "assign_operational_responsible"
+  | "create_task"
   | "call_webhook"
   | "start_message_flow";
 
@@ -40,6 +42,8 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   send_ai_message: "Mensagem escrita pela IA",
   add_tag: "Adicionar tag",
   assign_owner: "Atribuir a um atendente",
+  assign_operational_responsible: "Distribuir responsável operacional",
+  create_task: "Criar tarefa",
   call_webhook: "Avisar outro sistema (webhook)",
   start_message_flow: "Iniciar fluxo de mensagem",
 };

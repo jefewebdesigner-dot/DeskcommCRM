@@ -45,6 +45,8 @@ export interface Lead {
   value_cents: number | null;
   currency: string | null;
   owner_user_id: string | null;
+  /** Perfil operacional visível no CRM (ex.: Jeferson/Luan), separado do login. */
+  responsible_profile_id?: string | null;
   /** 0070: quem é dono do negócio — humano, agente de IA, ou ninguém. */
   owner_kind: OwnerKind;
   /** 0070: identidade do agente dono (ai_agents.id), nunca a versão. */
@@ -114,6 +116,23 @@ export interface Lead {
    * recente. Filtrar por ela é decisão do dono (doc 40, item 7, 19/09).
    */
   conversation_tags?: string[];
+  /** Resumo do contato anexado pela rota do board para o card/dossiê. */
+  contact?: {
+    id: string;
+    name: string | null;
+    display_name: string | null;
+    phone_number: string | null;
+    email: string | null;
+    last_activity_at: string | null;
+  } | null;
+  /** Próximo compromisso ou tarefa já resolvido pelo servidor do board. */
+  next_operation?: {
+    id: string;
+    kind: "task" | "appointment";
+    label: string;
+    at: string | null;
+    meeting_url?: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
   created_by_user_id: string | null;

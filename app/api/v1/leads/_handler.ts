@@ -25,10 +25,26 @@ import {
 } from "@/lib/leads/motivo-da-perda";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 import { ehCorrecaoDeMovimentoDaIa } from "@/lib/leads/correcao-humana";
+import { responsavelDaTarefaExiste } from "@/lib/tarefas/responsaveis";
 
 type SB = SupabaseClient;
 
 const LEAD_COLS = "*";
+
+async function validarResponsavelOperacional(
+  ctx: HandlerCtx,
+  responsibleProfileId: string | null | undefined,
+): Promise<void> {
+  if (!responsibleProfileId) return;
+  if (await responsavelDaTarefaExiste(ctx.organization_id, responsibleProfileId)) return;
+  throw new ApiError(
+    422,
+    "validation_failed",
+    undefined,
+    ctx.requestId,
+    traduzir("O responsável operacional não pertence a esta organização.", ctx.idioma ?? "pt-BR"),
+  );
+}
 
 /**
  * Aplica a regra de posse (0070) e valida a tenancy do agente.
@@ -260,6 +276,7 @@ export async function createLeadHandler(
     external_id?: string;
   },
 ): Promise<Record<string, unknown>> {
+  await validarResponsavelOperacional(ctx, input.responsible_profile_id);
   // Validate stage belongs to pipeline within active org.
   const { data: stage, error: stageErr } = await supabase
     .from("crm_stages")
@@ -335,6 +352,7 @@ export async function createLeadHandler(
       value_cents: input.value_cents ?? null,
       currency,
       ...ownerPatch,
+      responsible_profile_id: input.responsible_profile_id ?? null,
       assigned_at:
         ownerPatch.owner_kind === null ? null : new Date().toISOString(),
       expected_close_date: input.expected_close_date ?? null,
@@ -407,6 +425,7 @@ export async function updateLeadHandler(
   leadId: string,
   input: UpdateLeadInput,
 ): Promise<Record<string, unknown>> {
+  await validarResponsavelOperacional(ctx, input.responsible_profile_id);
   // `*` e nao lista explicita DE PROPOSITO: `camposAlterados` compara o patch
   // contra isto, e uma lista fixa faria todo campo NOVO do patch cair contra
   // `undefined` e ser marcado como alterado em toda edicao — o mesmo defeito
@@ -442,6 +461,9 @@ export async function updateLeadHandler(
   if (input.contact_id !== undefined) patch.contact_id = input.contact_id;
   if (input.value_cents !== undefined) patch.value_cents = input.value_cents;
   if (input.currency !== undefined) patch.currency = input.currency;
+  if (input.responsible_profile_id !== undefined) {
+    patch.responsible_profile_id = input.responsible_profile_id;
+  }
   // Dono do negócio (0070): regra em lib/leads/owner-patch.ts, compartilhada
   // com create, bulk e MCP. owner_kind é DERIVADO — nunca lido do body.
   const ownerPatch = await ownerPatchOrThrow(supabase, ctx, input);

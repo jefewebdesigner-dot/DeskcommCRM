@@ -49,3 +49,20 @@ export async function responsavelDaTarefaExiste(
   );
   return result.rows[0]?.existe === true;
 }
+
+/**
+ * Escolhe o perfil operacional com menos negócios abertos.
+ *
+ * A contagem vive no banco por SECURITY DEFINER: a role privada da aplicação
+ * não recebe SELECT direto nas tabelas multi-tenant. A função também serializa
+ * a escolha por organização com advisory lock.
+ */
+export async function proximoResponsavelOperacional(
+  organizationId: string,
+): Promise<PerfilResponsavelDaTarefa | null> {
+  const result = await banco().query<PerfilResponsavelDaTarefa>(
+    "select * from public.fn_task_responsible_next_for_org($1::uuid)",
+    [organizationId],
+  );
+  return result.rows[0] ?? null;
+}

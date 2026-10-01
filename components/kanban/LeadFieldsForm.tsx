@@ -9,7 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEditLead } from "@/hooks/kanban/useUpdateLead";
+import { useTaskResponsibles } from "@/hooks/tasks/useTaskResponsibles";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
 import { parseReaisToCents } from "@/lib/money";
@@ -51,7 +59,11 @@ function centsToReais(cents: number | null | undefined): string {
 export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCancel }: Props) {
   const t = useT();
   const edit = useEditLead(pipelineId);
+  const { data: responsaveis = [] } = useTaskResponsibles();
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(lead.custom_fields ?? {});
+  const [responsavelPerfilId, setResponsavelPerfilId] = useState(
+    lead.responsible_profile_id ?? "sem_responsavel",
+  );
 
   const form = useForm<FormShape>({
     defaultValues: {
@@ -72,6 +84,7 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
       expected_close_date: lead.expected_close_date ?? "",
     });
     setCustomFields(lead.custom_fields ?? {});
+    setResponsavelPerfilId(lead.responsible_profile_id ?? "sem_responsavel");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
 
@@ -97,6 +110,8 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
       value_cents: valueCents,
       tags,
       expected_close_date: values.expected_close_date || null,
+      responsible_profile_id:
+        responsavelPerfilId === "sem_responsavel" ? null : responsavelPerfilId,
       ...(fieldDefs.length > 0 ? { custom_fields: customFields } : {}),
     };
 
@@ -160,6 +175,25 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
             />
           </div>
         </div>
+
+        {responsaveis.length > 0 ? (
+          <div className="space-y-2">
+            <Label htmlFor="responsavel-operacional">{t("Responsável operacional")}</Label>
+            <Select value={responsavelPerfilId} onValueChange={setResponsavelPerfilId}>
+              <SelectTrigger id="responsavel-operacional">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sem_responsavel">{t("Sem responsável")}</SelectItem>
+                {responsaveis.map((perfil) => (
+                  <SelectItem key={perfil.id} value={perfil.id}>
+                    {perfil.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
