@@ -43,6 +43,8 @@ export function WhatsAppDoDossie({
   const [texto, setTexto] = useState("");
   const [modeloId, setModeloId] = useState<string | undefined>();
   const [enviando, setEnviando] = useState(false);
+  const [sugerindo, setSugerindo] = useState(false);
+  const [origemSugestao, setOrigemSugestao] = useState<"ia" | "crm" | null>(null);
   const [conversationIdCriado, setConversationIdCriado] = useState<string | null>(null);
   const sugestao = useQuickReplySuggestion(lead.contact_id);
 
@@ -66,22 +68,58 @@ export function WhatsAppDoDossie({
 
   function aplicarModelo(modelo: Modelo) {
     setModeloId(modelo.id);
+    setOrigemSugestao("crm");
     setTexto(interpolateTemplate(modelo.body, contextoTemplate));
   }
 
-  function sugerir() {
+  function aplicarSugestaoRapida() {
     const atalho = sugestao.data?.shortcut ?? "followup";
     const cadastrado = (modelos.data ?? []).find((m) => m.shortcut === atalho);
     if (cadastrado) {
       aplicarModelo(cadastrado);
-      return;
+      return true;
     }
     const padrao =
       RESPOSTAS_RAPIDAS_SUGERIDAS.find((m) => m.shortcut === atalho) ??
       RESPOSTAS_RAPIDAS_SUGERIDAS.find((m) => m.shortcut === "followup");
-    if (!padrao) return;
+    if (!padrao) return false;
     setModeloId(undefined);
+    setOrigemSugestao("crm");
     setTexto(interpolateTemplate(padrao.body, contextoTemplate));
+    return true;
+  }
+
+  async function sugerir() {
+    if (!lead.contact_id || sugerindo) return;
+    setSugerindo(true);
+    try {
+      // Só tenta IA quando já existe conversa: criar uma conversa vazia apenas
+      // para pedir rascunho não acrescenta histórico e suja a operação.
+      const conversationId = conversationIdCriado ?? lead.conversa?.id ?? null;
+      if (conversationId) {
+        const res = await fetch(`/api/v1/conversations/${conversationId}/draft-reply`, {
+          method: "POST",
+        });
+        const json = await res.json().catch(() => null);
+        if (res.ok) {
+          const data = corpoDaResposta<{ draft: string; draft_id: string; status: string }>(json);
+          if (data.draft?.trim()) {
+            setModeloId(undefined);
+            setOrigemSugestao("ia");
+            setTexto(data.draft.trim());
+            return;
+          }
+        }
+      }
+
+      // Agente ainda não publicado, IA indisponível ou conversa sem histórico:
+      // o botão continua útil com a mesma heurística que já existia.
+      aplicarSugestaoRapida();
+    } catch {
+      aplicarSugestaoRapida();
+    } finally {
+      setSugerindo(false);
+    }
   }
 
   async function resolverConversa(): Promise<string> {
@@ -129,6 +167,7 @@ export function WhatsAppDoDossie({
       }
       setTexto("");
       setModeloId(undefined);
+      setOrigemSugestao(null);
       toast.success("Mensagem enviada pelo WhatsApp do CRM.");
       await qc.invalidateQueries({ queryKey: ["board", pipelineId] });
     } catch (erro) {
@@ -151,12 +190,16 @@ export function WhatsAppDoDossie({
           type="button"
           size="sm"
           variant="outline"
-          onClick={sugerir}
-          disabled={!lead.contact_id || sugestao.isLoading}
+          onClick={() => void sugerir()}
+          disabled={!lead.contact_id || sugestao.isLoading || sugerindo}
           className="shrink-0"
         >
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-          Sugerir
+          {sugerindo ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          Sugerir resposta
         </Button>
       </div>
 
@@ -181,7 +224,11 @@ export function WhatsAppDoDossie({
         </Select>
       ) : null}
 
-      {sugestao.data?.motivo ? (
+      {origemSugestao === "ia" ? (
+        <p className="mb-2 text-[11px] text-text-muted">
+          Sugestão criada pela IA com base no histórico desta conversa.
+        </p>
+      ) : origemSugestao === "crm" && sugestao.data?.motivo ? (
         <p className="mb-2 text-[11px] text-text-muted">
           Sugestão do CRM: {sugestao.data.motivo}
         </p>
@@ -189,7 +236,10 @@ export function WhatsAppDoDossie({
 
       <Textarea
         value={texto}
-        onChange={(e) => setTexto(e.target.value)}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setOrigemSugestao(null);
+        }}}
         rows={4}
         placeholder="Mensagem para o cliente..."
       />
