@@ -239,7 +239,7 @@ export function WhatsAppDoDossie({
         onChange={(e) => {
           setTexto(e.target.value);
           setOrigemSugestao(null);
-        }}}
+        }}
         rows={4}
         placeholder="Mensagem para o cliente..."
       />
