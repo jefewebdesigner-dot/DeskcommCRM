@@ -131,7 +131,12 @@ export async function espelharCamposDaConversaNoCrm(input: {
 
   const ctx: HandlerCtx = {
     organization_id: input.organizationId,
-    actor: { type: "ai_agent", id: input.agentId },
+    actor: {
+      type: "ai_agent",
+      id: input.requestId,
+      role: "agent",
+      agent_id: input.agentId,
+    },
     requestId: input.requestId,
   };
 
