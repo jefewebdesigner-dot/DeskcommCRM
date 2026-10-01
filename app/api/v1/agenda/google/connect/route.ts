@@ -38,6 +38,7 @@ import { CAMINHO_DO_CALLBACK, configuracaoDoGoogle } from "@/lib/agenda/google/c
 import { emitirEstado } from "@/lib/agenda/google/estado";
 import { assinarVinculo, NOME_DO_VINCULO, VALIDADE_DO_VINCULO_S } from "@/lib/agenda/google/vinculo";
 import { cookieSecure } from "@/lib/supabase/cookie-secure";
+import { createClient } from "@/lib/supabase/server";
 import { montarUrlDeConsentimento } from "@/lib/agenda/google/oauth";
 import { env } from "@/lib/env";
 
@@ -91,9 +92,27 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return voltarComErro("segredo_indisponivel");
   }
 
-  // `contaSugerida` evita o erro mais comum do fluxo: autorizar com a conta
-  // pessoal que já estava logada no navegador e ver a agenda errada aparecer.
-  const url = montarUrlDeConsentimento(app, { state, contaSugerida: user.email });
+  // A conta operacional pode ser diferente do login do CRM. Isso acontece
+  // bastante quando duas pessoas usam o mesmo e-mail comercial/calendário da
+  // empresa. O tenant pode sugerir essa conta em organizations.settings sem
+  // hardcode; se não houver preferência, preservamos o comportamento antigo.
+  const db = await createClient();
+  const { data: orgConfig } = await db
+    .from("organizations")
+    .select("settings")
+    .eq("id", org.orgId)
+    .maybeSingle();
+  const settings =
+    orgConfig?.settings && typeof orgConfig.settings === "object" && !Array.isArray(orgConfig.settings)
+      ? (orgConfig.settings as Record<string, unknown>)
+      : {};
+  const hintConfigurado =
+    typeof settings.google_calendar_account_hint === "string"
+      ? settings.google_calendar_account_hint.trim()
+      : "";
+  const contaSugerida = hintConfigurado || user.email;
+
+  const url = montarUrlDeConsentimento(app, { state, contaSugerida });
 
   await audit({
     action: "agenda.google.conexao_iniciada",

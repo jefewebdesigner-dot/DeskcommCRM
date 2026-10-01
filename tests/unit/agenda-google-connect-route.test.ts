@@ -17,6 +17,29 @@ import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined), isServiceRoleConfigured: vi.fn(() => true) }));
 
+const googleApp = vi.hoisted(() => ({
+  value: null as
+    | { clientId: string; clientSecret: string; redirectUri: string }
+    | null,
+}));
+vi.mock("@/lib/agenda/google/config", () => ({
+  CAMINHO_DO_CALLBACK: "/api/v1/agenda/google/callback",
+  configuracaoDoGoogle: vi.fn(async () => googleApp.value),
+}));
+
+const tenantSettings = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(async () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: { settings: tenantSettings.value }, error: null }),
+        }),
+      }),
+    }),
+  })),
+}));
+
 const ORG = "22222222-2222-4222-8222-222222222222";
 const ANA = "11111111-1111-4111-8111-111111111111";
 
@@ -43,6 +66,16 @@ function pedido(): NextRequest {
 async function rotaComEnv(vars: Record<string, string>) {
   vi.resetModules();
   for (const [k, v] of Object.entries(vars)) process.env[k] = v;
+  const clientId = vars.GOOGLE_CALENDAR_CLIENT_ID?.trim();
+  const clientSecret = vars.GOOGLE_CALENDAR_CLIENT_SECRET?.trim();
+  googleApp.value =
+    clientId && clientSecret
+      ? {
+          clientId,
+          clientSecret,
+          redirectUri: `${vars.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/agenda/google/callback`,
+        }
+      : null;
   return import("@/app/api/v1/agenda/google/connect/route");
 }
 
@@ -54,6 +87,7 @@ const CONFIGURADO = {
 };
 
 beforeEach(() => {
+  tenantSettings.value = {};
   vi.mocked(requireRole).mockResolvedValue({ ok: true, user: usuario, org: orgAtiva });
   vi.mocked(audit).mockClear();
 });
@@ -78,6 +112,16 @@ describe("GET /api/v1/agenda/google/connect", () => {
     // porta: o seletor do Google continua sendo oferecido (assert acima), então
     // quem tem a agenda noutro e-mail escolhe a dele ali.
     expect(destino.searchParams.get("login_hint")).toBe("ana@clinica.com.br");
+  });
+
+  it("prefere a conta Google operacional configurada pela organização", async () => {
+    tenantSettings.value = { google_calendar_account_hint: "contato.peritoia@gmail.com" };
+    const { GET } = await rotaComEnv(CONFIGURADO);
+    const res = await GET(pedido());
+    const destino = new URL(res.headers.get("location") ?? "");
+
+    expect(destino.searchParams.get("login_hint")).toBe("contato.peritoia@gmail.com");
+    expect(destino.searchParams.get("prompt")?.split(" ").sort()).toEqual(["consent", "select_account"]);
   });
 
   it("o `state` carrega a PESSOA, não só a organização", async () => {
