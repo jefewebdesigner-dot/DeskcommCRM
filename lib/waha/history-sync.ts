@@ -388,3 +388,158 @@ export async function hidratarMidiaHistoricaWaha(
   resumo.next_message_offset = messageOffset;
   return resumo;
 }
+
+
+export interface ResumoDaMidiaHistoricaExataWaha {
+  linhas_vistas: number;
+  midias_enfileiradas: number;
+  midias_ja_persistidas: number;
+  midias_indisponiveis: number;
+  linhas_ignoradas: number;
+  next_message_id: string | null;
+  completed: boolean;
+}
+
+export interface OpcoesDaMidiaHistoricaExataWaha {
+  afterMessageId?: string | null;
+  batchSize?: number;
+}
+
+interface LinhaDeMidiaHistoricaExata {
+  id: string;
+  external_id: string | null;
+  media_url: string | null;
+  media_mime: string | null;
+  media_storage_path: string | null;
+  metadata: Record<string, unknown> | null;
+  type: string;
+}
+
+/**
+ * Hidratação determinística de mídia histórica.
+ *
+ * O banco já conhece exatamente quais mensagens são anexos e guarda o
+ * external_id do WAHA. Buscar pelo id em chats/all/messages/:id evita a
+ * paginação volátil de chats (@lid x @s.whatsapp.net) que fazia a varredura
+ * anterior deixar anexos para trás.
+ */
+export async function hidratarMidiaHistoricaExataWaha(
+  admin: Admin,
+  waha: WahaClient,
+  session: { id: string; organization_id: string; waha_session_name: string },
+  opts: OpcoesDaMidiaHistoricaExataWaha = {},
+): Promise<ResumoDaMidiaHistoricaExataWaha> {
+  const batchSize = Math.min(Math.max(opts.batchSize ?? 5, 1), 20);
+
+  let query = admin
+    .from("messages")
+    .select(
+      "id,external_id,media_url,media_mime,media_storage_path,metadata,type",
+    )
+    .eq("organization_id", session.organization_id)
+    .eq("channel_session_id", session.id)
+    .eq("metadata->>history_import", "true")
+    .in("type", [...TIPOS_COM_BINARIO])
+    .order("id", { ascending: true });
+
+  if (opts.afterMessageId) query = query.gt("id", opts.afterMessageId);
+
+  const { data: rawRows, error: rowsErr } = await query.limit(batchSize);
+  if (rowsErr) {
+    throw new Error(`waha_history_media_exact_read: ${rowsErr.message}`);
+  }
+
+  const rows = (rawRows ?? []) as LinhaDeMidiaHistoricaExata[];
+  const resumo: ResumoDaMidiaHistoricaExataWaha = {
+    linhas_vistas: rows.length,
+    midias_enfileiradas: 0,
+    midias_ja_persistidas: 0,
+    midias_indisponiveis: 0,
+    linhas_ignoradas: 0,
+    next_message_id: rows.at(-1)?.id ?? null,
+    completed: rows.length < batchSize,
+  };
+
+  for (const linha of rows) {
+    if (linha.media_storage_path) {
+      resumo.midias_ja_persistidas += 1;
+      continue;
+    }
+    if (!linha.external_id || !TIPOS_COM_BINARIO.has(linha.type)) {
+      resumo.linhas_ignoradas += 1;
+      continue;
+    }
+
+    let raw: unknown | null = null;
+    try {
+      raw = await waha.getChatMessage(
+        session.waha_session_name,
+        linha.external_id,
+        { downloadMedia: true },
+      );
+    } catch {
+      raw = null;
+    }
+
+    const payload = payloadHistoricoDoStore(raw);
+    const mediaUrl = payload ? mediaUrlOf(payload) : linha.media_url;
+    const mediaMime = (payload ? mediaMimeOf(payload) : null) ?? linha.media_mime;
+
+    if (!payload || payload.id !== linha.external_id || !mediaUrl) {
+      resumo.midias_indisponiveis += 1;
+      const metadata = {
+        ...(linha.metadata ?? {}),
+        history_media_status: "unavailable",
+        history_media_strategy: "exact-id-v1",
+        history_media_checked_at: new Date().toISOString(),
+      };
+      const { error: indisponivelErr } = await admin
+        .from("messages")
+        .update({ metadata })
+        .eq("organization_id", session.organization_id)
+        .eq("id", linha.id);
+      if (indisponivelErr) {
+        throw new Error(
+          `waha_history_media_exact_unavailable: ${indisponivelErr.message}`,
+        );
+      }
+      continue;
+    }
+
+    const metadata = {
+      ...(linha.metadata ?? {}),
+      history_media_status: "queued",
+      history_media_strategy: "exact-id-v1",
+      history_media_queued_at: new Date().toISOString(),
+    };
+    const { error: updateErr } = await admin
+      .from("messages")
+      .update({ media_url: mediaUrl, media_mime: mediaMime, metadata })
+      .eq("organization_id", session.organization_id)
+      .eq("id", linha.id);
+    if (updateErr) {
+      throw new Error(`waha_history_media_exact_update: ${updateErr.message}`);
+    }
+
+    const { error: emitErr } = await admin.rpc("emit_event" as never, {
+      p_event_type: "media.persist_requested",
+      p_entity_kind: "message",
+      p_entity_id: linha.id,
+      p_payload: { message_id: linha.id },
+      p_metadata: {
+        source: "waha_history_sync",
+        history_import: true,
+        strategy: "exact-id-v1",
+      },
+      p_organization_id: session.organization_id,
+    } as never);
+    if (emitErr) {
+      throw new Error(`waha_history_media_exact_emit: ${emitErr.message}`);
+    }
+
+    resumo.midias_enfileiradas += 1;
+  }
+
+  if (resumo.completed) resumo.next_message_id = null;
+  return resumo;
+}
