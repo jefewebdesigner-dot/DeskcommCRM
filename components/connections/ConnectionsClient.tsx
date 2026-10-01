@@ -162,10 +162,36 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     void runHealthCheck(sessions);
   }, [sessions, runHealthCheck]);
 
+  const recuperarConexaoPendente = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await apiClient.get<{ data: ChannelSession[] }>("/api/v1/channel-sessions");
+      const pendente = [...(res.data ?? [])]
+        .reverse()
+        .find(
+          (c) =>
+            dependeDoTransporte(c) &&
+            (c.status === "STARTING" || c.status === "SCAN_QR_CODE"),
+        );
+      if (!pendente) return false;
+
+      createKey.current = null;
+      setQr({ sessionId: pendente.id, title: t("Conectar novo WhatsApp") });
+      invalidate();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [invalidate, t]);
+
   const handleConnectNew = useCallback(async () => {
     setCreating(true);
     setConnectionDetail(null);
     try {
+      // Antes de criar outra identidade, retoma uma conexão que já chegou ao
+      // banco/transporte mas cuja requisição HTTP foi interrompida. Isso evita
+      // duplicar canal só porque o browser perdeu a resposta final.
+      if (await recuperarConexaoPendente()) return;
+
       const res = await apiClient.post<{ data: ChannelSession }>(
         "/api/v1/channel-sessions",
         {},
@@ -175,13 +201,22 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       createKey.current = null;
       setQr({ sessionId: res.data.id, title: t("Conectar novo WhatsApp") });
     } catch (err) {
+      // Se o servidor chegou a reservar/criar o canal mas o POST caiu antes de
+      // responder, recupera o card pendente e abre o mesmo QR em vez de mandar
+      // o operador clicar novamente e criar outra identidade.
+      if (await recuperarConexaoPendente()) return;
+
+      createKey.current = null;
       toast.error(errMsg(err, "Não foi possível iniciar a conexão.", t));
-      if (err instanceof ApiError) setConnectionDetail(JSON.stringify({ code: err.code, request_id: err.requestId, ...err.details }, null, 2));
+      if (err instanceof ApiError)
+        setConnectionDetail(
+          JSON.stringify({ code: err.code, request_id: err.requestId, ...err.details }, null, 2),
+        );
       invalidate();
     } finally {
       setCreating(false);
     }
-  }, [invalidate, t]);
+  }, [invalidate, recuperarConexaoPendente, t]);
 
   // Reconexão suave: a maioria das quedas é passageira (rede, container
   // reiniciado) e a credencial pareada continua boa, então o número volta sem
@@ -338,6 +373,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // não acontece. O canal oficial não passa pelo transporte e continua
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
+            const emPareamento = c.status === "STARTING" || c.status === "SCAN_QR_CODE";
             const podeExcluir = wahaConfigured || !vivaNoTransporte;
             return (
               <Card key={c.id} className="flex flex-col gap-3 p-4">
@@ -367,21 +403,41 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       indisponibilidade passageira (como o Excluir sem o serviço no
                       ar), é uma ação que não existe para esse canal — e o clique
                       ainda abriria o diálogo de QR, que ele nunca vai ter. */}
-                  {vivaNoTransporte && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busyId === c.id || !wahaConfigured}
-                      onClick={() => handleReconnect(c)}
-                    >
-                      {busyId === c.id ? (
-                        <CircleNotch size={14} className="animate-spin" aria-hidden />
-                      ) : (
-                        <ArrowsClockwise size={14} aria-hidden />
-                      )}
-                      {t("Reconectar")}
-                    </Button>
-                  )}
+                  {vivaNoTransporte &&
+                    (emPareamento ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!wahaConfigured}
+                        onClick={() =>
+                          setQr({
+                            sessionId: c.id,
+                            title: `${t("Conectar")} ${channelLabel(c, t)}`,
+                          })
+                        }
+                      >
+                        {c.status === "STARTING" ? (
+                          <CircleNotch size={14} className="animate-spin" aria-hidden />
+                        ) : (
+                          <Phone size={14} aria-hidden />
+                        )}
+                        {t(c.status === "SCAN_QR_CODE" ? "Escanear QR" : "Continuar conexão")}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busyId === c.id || !wahaConfigured}
+                        onClick={() => handleReconnect(c)}
+                      >
+                        {busyId === c.id ? (
+                          <CircleNotch size={14} className="animate-spin" aria-hidden />
+                        ) : (
+                          <ArrowsClockwise size={14} aria-hidden />
+                        )}
+                        {t("Reconectar")}
+                      </Button>
+                    ))}
                   <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
                     <ShieldCheck size={14} aria-hidden />
                     {t("Proteção de envio")}
