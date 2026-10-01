@@ -1,7 +1,7 @@
 import type pg from "pg";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emitAgentActivityForContact } from "@/lib/leads/agent-activity";
+import { buildLeadActivityRow } from "@/lib/leads/activity-emitter";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
 import {
   camposDeclaradosDoFunil,
@@ -112,6 +112,7 @@ export async function aplicarAutopreenchimentoDoCrm(
     contactId: string;
     fields: Record<string, unknown>;
     agentId?: string | null;
+    llmCallId?: string | null;
   },
 ): Promise<ResultadoDoAutopreenchimento> {
   if (Object.keys(input.fields).length === 0) {
@@ -148,21 +149,48 @@ export async function aplicarAutopreenchimentoDoCrm(
     return { updated: false, reason: "conflito_humano" };
   }
 
-  await emitAgentActivityForContact({
-    pool,
+  const atividade = buildLeadActivityRow({
     organizationId: input.organizationId,
+    leadId: lead.id,
     contactId: input.contactId,
     type: "lead_edited",
     sourceModule: "agent",
     sourceId: lead.id,
-    ...(input.agentId ? { agentId: input.agentId } : {}),
+    actor: {
+      type: "ai_agent",
+      id: input.agentId ?? "agent-engine",
+      role: "agent",
+      ...(input.agentId ? { agent_id: input.agentId } : {}),
+    },
     reason: "Preencheu automaticamente campos do negócio a partir da conversa",
+    ...(input.llmCallId ? { evidence: { llm_call_ids: [input.llmCallId] } } : {}),
     payload: {
       fields: ["custom_fields"],
       custom_field_keys: keys,
       automatic: true,
     },
   });
+
+  await pool.query(
+    `insert into crm_lead_activities
+       (organization_id, lead_id, contact_id, type, source_module, source_id,
+        actor_kind, actor_agent_id, performed_by_user_id, reason, evidence, payload)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [
+      atividade.organization_id,
+      atividade.lead_id,
+      atividade.contact_id,
+      atividade.type,
+      atividade.source_module,
+      atividade.source_id,
+      atividade.actor_kind,
+      atividade.actor_agent_id,
+      atividade.performed_by_user_id,
+      atividade.reason,
+      atividade.evidence ? JSON.stringify(atividade.evidence) : null,
+      JSON.stringify(atividade.payload),
+    ],
+  );
 
   const admin = createAdminClient();
   const { error } = await admin.rpc("emit_event", {
