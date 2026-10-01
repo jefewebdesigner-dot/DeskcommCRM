@@ -197,7 +197,14 @@ interface HistoryRow {
 export async function getLeadContext(
   db: Queryable,
   _cfg: CrmEdgeConfig,
-  input: { tenantId: string; leadId: string; conversationId?: string | null; fuso: string },
+  input: {
+    tenantId: string;
+    leadId: string;
+    conversationId?: string | null;
+    fuso: string;
+    /** Quando presente, até a LEITURA de campos fica restrita aos funis do agente. */
+    pipelineIds?: string[];
+  },
   knobs: LeadContextKnobs,
 ): Promise<LeadContextResult> {
   const { rows: contactRows } = await db.query<ContactRow>(
@@ -267,18 +274,30 @@ export async function getLeadContext(
   // Campos declarados do negócio ativo: o modelo precisa conhecer as CHAVES
   // antes de poder devolvê-las em update_lead_state.crm_fields. A seleção do
   // negócio usa o mesmo resolvedor conservador das outras pontes contato → CRM.
-  const { rows: negociosAbertos } = await db.query<CrmLeadContextRow>(
-    `select l.id,l.organization_id,l.pipeline_id,l.status,
-            l.last_activity_at::text as last_activity_at,
-            l.created_at::text as created_at,
-            l.custom_fields,
-            p.settings as pipeline_settings
-       from crm_leads l
-       join crm_pipelines p
-         on p.organization_id=l.organization_id and p.id=l.pipeline_id
-      where l.organization_id=$1 and l.contact_id=$2 and l.status='open'`,
-    [input.tenantId, input.leadId],
-  );
+  let negociosAbertos: CrmLeadContextRow[] = [];
+  // `undefined` preserva chamadores legados que não têm escopo de agente;
+  // `[]` significa explicitamente "nenhum funil liberado" e falha fechado.
+  if (input.pipelineIds === undefined || input.pipelineIds.length > 0) {
+    const filtroDeFunil =
+      input.pipelineIds === undefined ? "" : " and l.pipeline_id = any($3::uuid[])";
+    const params =
+      input.pipelineIds === undefined
+        ? [input.tenantId, input.leadId]
+        : [input.tenantId, input.leadId, input.pipelineIds];
+    const consulta = await db.query<CrmLeadContextRow>(
+      `select l.id,l.organization_id,l.pipeline_id,l.status,
+              l.last_activity_at::text as last_activity_at,
+              l.created_at::text as created_at,
+              l.custom_fields,
+              p.settings as pipeline_settings
+         from crm_leads l
+         join crm_pipelines p
+           on p.organization_id=l.organization_id and p.id=l.pipeline_id
+        where l.organization_id=$1 and l.contact_id=$2 and l.status='open'${filtroDeFunil}`,
+      params,
+    );
+    negociosAbertos = consulta.rows;
+  }
   let camposDoCrm: LeadContext["crm_fields"];
   const negocioResolvido = resolveActiveLeadForContact(negociosAbertos);
   if (negocioResolvido.routed) {
