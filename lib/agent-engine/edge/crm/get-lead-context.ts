@@ -17,7 +17,7 @@ import { deriveLgpdFromContact, type LgpdInput } from '../../guardrails/lgpd/leg
 import { isoLocalComOffset } from '@/lib/tempo/agora';
 import { nomeDoContato } from '@/lib/contacts/rotulo-do-contato';
 import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/active-lead';
-import { camposDeclaradosDoFunil } from '@/lib/leads/agent-field-sync';
+import { camposDeclaradosDoFunil } from '@/lib/leads/agent-field-policy';
 
 /**
  * Heurística conservadora de contagem: ~3,5 chars/token para pt-br (BPE real fica
