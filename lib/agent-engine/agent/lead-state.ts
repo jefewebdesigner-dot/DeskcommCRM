@@ -57,6 +57,17 @@ export const updateLeadStateInputSchema = z.strictObject({
       timeline: z.string().max(300).optional(),
     })
     .optional(),
+  /**
+   * Fatos que a própria conversa revelou e que correspondem a campos DECLARADOS
+   * no funil. A ponte para crm_leads valida novamente as chaves/tipos e protege
+   * qualquer valor que um humano tenha alterado.
+   */
+  crm_fields: z
+    .record(
+      z.string(),
+      z.union([z.string().max(2000), z.number().finite(), z.boolean()]),
+    )
+    .optional(),
   next_action: z.string().max(500).nullable().optional(),
   reason: z.string().max(500).optional(),
 });
@@ -80,6 +91,8 @@ export type LeadStateUpdateResult =
       state: LeadStateRow;
       /** null = update sem mudança de estágio (inclui o no-op idempotente). */
       transition: { from: LeadStage; to: LeadStage; reason?: string } | null;
+      /** Campos do CRM explicitamente extraídos neste turno; ainda não persistidos aqui. */
+      crmFields?: Record<string, string | number | boolean>;
       message: string;
     }
   | { ok: false; error: { code: 'invalid_payload' | 'invalid_transition'; message: string } };
@@ -102,7 +115,7 @@ function teachInvalidTransition(current: LeadStage, to: LeadStage): LeadStateUpd
 }
 
 const PAYLOAD_TEACHING =
-  'Campos aceitos: stage, qualification {budget, authority, need, timeline}, next_action, reason — ' +
+  'Campos aceitos: stage, qualification {budget, authority, need, timeline}, crm_fields, next_action, reason — ' +
   'nada além. Lead e organização vêm do runtime, nunca do payload da tool.';
 
 function teachInvalidPayload(issues: string): LeadStateUpdateResult {
@@ -253,5 +266,11 @@ export async function applyLeadStateUpdate(
     : noop
       ? `o lead já está em "${currentStage}" — nada a alterar no estágio.`
       : `estado atualizado (estágio permanece "${currentStage}").`;
-  return { ok: true, state, transition, message };
+  return {
+    ok: true,
+    state,
+    transition,
+    ...(input.crm_fields ? { crmFields: input.crm_fields } : {}),
+    message,
+  };
 }
