@@ -5,17 +5,22 @@ import type { Logger } from "@/lib/agent-engine/obs/logger";
 import { enqueueJob, type JobRow } from "@/lib/agent-engine/queue/queue";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getWahaClient } from "@/lib/waha/client";
-import { sincronizarHistoricoWaha } from "@/lib/waha/history-sync";
+import {
+  hidratarMidiaHistoricaWaha,
+  sincronizarHistoricoWaha,
+} from "@/lib/waha/history-sync";
 
 const CHATS_POR_JOB = 20;
+const MIDIAS_POR_JOB = 5;
+const MENSAGENS_VARREDURA_POR_JOB = 500;
 
 function inteiroNaoNegativo(v: unknown): number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : 0;
 }
 
-function uuidDeterministico(channelId: string, offset: number): string {
+function uuidDeterministico(channelId: string, cursor: string): string {
   const bytes = createHash("sha256")
-    .update(`waha-history:${channelId}:${offset}`)
+    .update(`waha-history:${channelId}:${cursor}`)
     .digest()
     .subarray(0, 16);
   bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x50;
@@ -30,11 +35,28 @@ function objeto(v: unknown): Record<string, unknown> {
     : {};
 }
 
+async function atualizarMetadata(
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  channelId: string,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await admin
+    .from("channel_sessions")
+    .update({ metadata })
+    .eq("id", channelId)
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(`waha_history_metadata: ${error.message}`);
+}
+
 /**
- * Backfill histórico do WhatsApp em lotes.
+ * Backfill histórico do WhatsApp em duas fases:
  *
- * O job não tem contact_id: ele é da sessão inteira. A persistência é
- * idempotente por external_id, então retry/reaper não duplica mensagens.
+ * 1. texto/estrutura: importa conversas e mensagens sem baixar anos de anexos;
+ * 2. mídia: revisita o store com cursor fino e hidrata poucos binários por job.
+ *
+ * Ambas são idempotentes. O mesmo kind é usado nas duas fases para não ampliar
+ * o vocabulário da fila nem exigir uma migration só para a segunda passagem.
  */
 export async function executarSincronizacaoHistoricaWaha(
   job: JobRow,
@@ -51,7 +73,6 @@ export async function executarSincronizacaoHistoricaWaha(
       : "";
   if (!channelId) throw new Error("waha_history_channel_id_ausente");
 
-  const offset = inteiroNaoNegativo(job.payload.chat_offset);
   const admin = createAdminClient();
   const { data: channel, error } = await admin
     .from("channel_sessions")
@@ -62,11 +83,101 @@ export async function executarSincronizacaoHistoricaWaha(
 
   if (error) throw new Error(`waha_history_channel_read: ${error.message}`);
   if (!channel || channel.archived_at) return;
-  if (channel.status !== "WORKING") throw new Error("waha_history_channel_not_working");
+  if (channel.status !== "WORKING") {
+    throw new Error("waha_history_channel_not_working");
+  }
 
   const waha = getWahaClient();
   if (!waha) throw new Error("waha_history_transport_not_configured");
 
+  const phase = job.payload.phase === "media" ? "media" : "messages";
+  const atual = objeto(channel.metadata);
+
+  if (phase === "media") {
+    const chatOffset = inteiroNaoNegativo(job.payload.chat_offset);
+    const messageOffset = inteiroNaoNegativo(job.payload.message_offset);
+
+    const resumo = await hidratarMidiaHistoricaWaha(
+      admin,
+      waha,
+      {
+        id: channel.id,
+        organization_id: channel.organization_id,
+        waha_session_name: channel.waha_session_name,
+      },
+      {
+        startChatOffset: chatOffset,
+        startMessageOffset: messageOffset,
+        maxMedia: MIDIAS_POR_JOB,
+        maxMessagesScanned: MENSAGENS_VARREDURA_POR_JOB,
+        scanPageSize: 100,
+      },
+    );
+
+    if (
+      !resumo.completed &&
+      resumo.next_chat_offset !== null &&
+      resumo.next_message_offset !== null
+    ) {
+      await enqueueJob(pool, job.organization_id, {
+        kind: "waha_history_sync",
+        sourceEventId: uuidDeterministico(
+          channelId,
+          `media:${resumo.next_chat_offset}:${resumo.next_message_offset}`,
+        ),
+        payload: {
+          phase: "media",
+          channel_session_id: channelId,
+          chat_offset: resumo.next_chat_offset,
+          message_offset: resumo.next_message_offset,
+        },
+        priority: 190,
+        runAfter: new Date(Date.now() + 1_000),
+        maxAttempts: 8,
+      });
+    }
+
+    const historicoMidia = objeto(atual.whatsapp_history_media_sync);
+    const metadata = {
+      ...atual,
+      whatsapp_history_media_sync: {
+        ...historicoMidia,
+        state: resumo.completed ? "completed" : "running",
+        last_batch_at: new Date().toISOString(),
+        next_chat_offset: resumo.completed ? null : resumo.next_chat_offset,
+        next_message_offset: resumo.completed
+          ? null
+          : resumo.next_message_offset,
+        ...(resumo.completed
+          ? { completed_at: new Date().toISOString() }
+          : {}),
+      },
+    };
+    await atualizarMetadata(
+      admin,
+      job.organization_id,
+      channelId,
+      metadata,
+    );
+
+    log.info("waha history media: lote concluído", {
+      job_id: job.id,
+      channel_session_id: channelId,
+      chat_offset: chatOffset,
+      message_offset: messageOffset,
+      chats_vistos: resumo.chats_vistos,
+      mensagens_vistas: resumo.mensagens_vistas,
+      midias_encontradas: resumo.midias_encontradas,
+      midias_enfileiradas: resumo.midias_enfileiradas,
+      midias_ja_persistidas: resumo.midias_ja_persistidas,
+      midias_indisponiveis: resumo.midias_indisponiveis,
+      mensagens_sem_linha: resumo.mensagens_sem_linha,
+      final: resumo.completed,
+    });
+    return;
+  }
+
+  const offset = inteiroNaoNegativo(job.payload.chat_offset);
   const resumo = await sincronizarHistoricoWaha(
     admin,
     waha,
@@ -90,10 +201,12 @@ export async function executarSincronizacaoHistoricaWaha(
   }
 
   const proximoOffset = offset + resumo.chats_vistos;
-  if (resumo.chats_vistos >= CHATS_POR_JOB) {
+  const final = resumo.chats_vistos < CHATS_POR_JOB;
+
+  if (!final) {
     await enqueueJob(pool, job.organization_id, {
       kind: "waha_history_sync",
-      sourceEventId: uuidDeterministico(channelId, proximoOffset),
+      sourceEventId: uuidDeterministico(channelId, `messages:${proximoOffset}`),
       payload: {
         channel_session_id: channelId,
         chat_offset: proximoOffset,
@@ -102,11 +215,25 @@ export async function executarSincronizacaoHistoricaWaha(
       runAfter: new Date(Date.now() + 1_000),
       maxAttempts: 8,
     });
+  } else {
+    // Só começa a hidratar mídia depois que a estrutura textual inteira está no
+    // Inbox. Assim um anexo grande nunca impede conversas posteriores de aparecer.
+    await enqueueJob(pool, job.organization_id, {
+      kind: "waha_history_sync",
+      sourceEventId: uuidDeterministico(channelId, "media:0:0"),
+      payload: {
+        phase: "media",
+        channel_session_id: channelId,
+        chat_offset: 0,
+        message_offset: 0,
+      },
+      priority: 190,
+      runAfter: new Date(Date.now() + 2_000),
+      maxAttempts: 8,
+    });
   }
 
-  const atual = objeto(channel.metadata);
   const historico = objeto(atual.whatsapp_history_sync);
-  const final = resumo.chats_vistos < CHATS_POR_JOB;
   const metadata = {
     ...atual,
     whatsapp_history_sync: {
@@ -118,15 +245,7 @@ export async function executarSincronizacaoHistoricaWaha(
       ...(final ? { completed_at: new Date().toISOString() } : {}),
     },
   };
-
-  const { error: metadataErr } = await admin
-    .from("channel_sessions")
-    .update({ metadata })
-    .eq("id", channelId)
-    .eq("organization_id", job.organization_id);
-  if (metadataErr) {
-    throw new Error(`waha_history_metadata: ${metadataErr.message}`);
-  }
+  await atualizarMetadata(admin, job.organization_id, channelId, metadata);
 
   log.info("waha history sync: lote concluído", {
     job_id: job.id,

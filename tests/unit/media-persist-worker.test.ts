@@ -10,7 +10,7 @@ const messageRow = {
   media_url: "http://localhost:3030/api/files/abc.jpg",
   media_mime: "image/jpeg",
   media_storage_path: null as string | null,
-  metadata: { raw_type: "image" },
+  metadata: { raw_type: "image" } as Record<string, unknown>,
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -78,6 +78,7 @@ describe("persistMessageMedia", () => {
     updateEqMock.mockReset();
     rpcMock.mockReset().mockResolvedValue({ error: null });
     messageRow.media_storage_path = null;
+    messageRow.metadata = { raw_type: "image" };
     vi.mocked(fetchWahaMedia).mockResolvedValue({
       buffer: Buffer.from([1, 2, 3]),
       mime: "image/jpeg",
@@ -102,6 +103,17 @@ describe("persistMessageMedia", () => {
     expect(rpcMock).toHaveBeenCalledWith(
       "emit_event",
       expect.objectContaining({ p_event_type: "media.derive_requested", p_entity_id: "msg1" }),
+    );
+  });
+
+  it("histórico persiste o arquivo sem disparar derivação de IA em massa", async () => {
+    messageRow.metadata = { raw_type: "ptt", history_import: true };
+    const result = await persistMessageMedia(eventRow());
+    expect(result.status).toBe("ok");
+    expect(uploadMock).toHaveBeenCalledTimes(1);
+    expect(rpcMock).not.toHaveBeenCalledWith(
+      "emit_event",
+      expect.objectContaining({ p_event_type: "media.derive_requested" }),
     );
   });
 
