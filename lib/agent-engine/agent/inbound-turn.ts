@@ -2201,7 +2201,13 @@ async function executarTurnoDoAgente(
     : await getLeadContext(
         pool,
         deps.crmCfg,
-        { tenantId, leadId, conversationId: input.conversationId, fuso: fusoDaOrg },
+        {
+          tenantId,
+          leadId,
+          conversationId: input.conversationId,
+          fuso: fusoDaOrg,
+          pipelineIds: agentConfig?.pipelineIds ?? [],
+        },
         turnContextKnobs,
       );
   if (!openingContext.ok) {
@@ -2662,7 +2668,13 @@ async function executarTurnoDoAgente(
             : await getLeadContext(
                 pool,
                 deps.crmCfg,
-                { tenantId, leadId, conversationId: input.conversationId, fuso: fusoDaOrg },
+                {
+          tenantId,
+          leadId,
+          conversationId: input.conversationId,
+          fuso: fusoDaOrg,
+          pipelineIds: agentConfig?.pipelineIds ?? [],
+        },
                 turnContextKnobs,
               );
           // Sem esta linha a projeção da abertura seria decorativa: bastaria o
