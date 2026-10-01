@@ -70,6 +70,12 @@ export interface ContextoProjetado {
     marcadores: string[];
   };
   ultima_decisao_humana: { sobre: string; decisao: 'aprovada' | 'recusada'; quando: string } | null;
+  campos_do_crm?: Array<{
+    chave: string;
+    rotulo: string;
+    tipo: string;
+    valor_atual: string | number | boolean | null;
+  }>;
   mensagens: MensagemProjetada[];
 }
 
@@ -97,6 +103,16 @@ export function projetarContexto(ctx: LeadContext): ContextoProjetado {
             decisao: ctx.last_human_decision.decision === 'approved' ? 'aprovada' : 'recusada',
             quando: ctx.last_human_decision.at,
           },
+    ...(ctx.crm_fields?.length
+      ? {
+          campos_do_crm: ctx.crm_fields.map((field) => ({
+            chave: field.key,
+            rotulo: field.label,
+            tipo: field.type,
+            valor_atual: field.current,
+          })),
+        }
+      : {}),
     mensagens: ctx.messages.map((m) => {
       const base: MensagemProjetada = {
         // 'inbound'/'outbound' é vocabulário de sistema e já apareceu parafraseado
