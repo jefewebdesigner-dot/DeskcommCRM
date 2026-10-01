@@ -4054,6 +4054,7 @@ async function executarTurnoDoAgente(
         contactId: leadId,
         fields: content.crm_fields ?? {},
         agentId: agentConfig?.agentId ?? null,
+        llmCallId: closing.callId ?? null,
       });
       if (autofill.updated) {
         runLog.info('campos do CRM autopreenchidos a partir da conversa', {
