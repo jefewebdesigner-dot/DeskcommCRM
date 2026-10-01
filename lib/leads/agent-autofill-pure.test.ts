@@ -39,11 +39,12 @@ describe("prepararPatchDeAutopreenchimento", () => {
     expect(patch).toEqual({ volume_mensal: 20.5 });
   });
 
-  it("recusa valor complexo e data fora do formato canônico", () => {
+  it("recusa valor complexo, tipo incompatível e data fora do formato canônico", () => {
     const patch = prepararPatchDeAutopreenchimento({
       settings,
       atuais: {},
       propostos: {
+        especialidade_area: 123,
         cidade_uf: { cidade: "Chapecó", uf: "SC" },
         data_demo: "01/10/2026",
       },
