@@ -92,7 +92,7 @@ export type LeadStateUpdateResult =
       /** null = update sem mudança de estágio (inclui o no-op idempotente). */
       transition: { from: LeadStage; to: LeadStage; reason?: string } | null;
       /** Campos do CRM explicitamente extraídos neste turno; ainda não persistidos aqui. */
-      crmFields: Record<string, string | number | boolean> | null;
+      crmFields?: Record<string, string | number | boolean>;
       message: string;
     }
   | { ok: false; error: { code: 'invalid_payload' | 'invalid_transition'; message: string } };
@@ -270,7 +270,7 @@ export async function applyLeadStateUpdate(
     ok: true,
     state,
     transition,
-    crmFields: input.crm_fields ?? null,
+    ...(input.crm_fields ? { crmFields: input.crm_fields } : {}),
     message,
   };
 }
