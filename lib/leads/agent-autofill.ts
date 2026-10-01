@@ -142,6 +142,29 @@ export type ResultadoDoAutopreenchimento =
   | { updated: false; reason: "sem_negocio" | "sem_campos_validos" | "conflito_humano" };
 
 /**
+ * Regra pura do que PODE subir para custom_fields. Exportada para teste e para
+ * deixar explícito que configuração do funil + vazio atual vencem o payload da IA.
+ */
+export function prepararPatchDeAutopreenchimento(input: {
+  settings: unknown;
+  atuais: unknown;
+  propostos: Record<string, unknown>;
+}): Record<string, string | number | boolean> {
+  const atuais = objeto(input.atuais);
+  const declarados = new Map(camposDeclarados(input.settings).map((f) => [f.key, f]));
+  const patch: Record<string, string | number | boolean> = {};
+
+  for (const [key, value] of Object.entries(input.propostos)) {
+    const field = declarados.get(key);
+    if (!field || !vazio(atuais[key])) continue;
+    const normalizado = normalizarValor(field.type, value);
+    if (normalizado !== undefined) patch[key] = normalizado;
+  }
+
+  return patch;
+}
+
+/**
  * Espelha os fatos extraídos no card do CRM.
  *
  * Guarda principal: só escreve campo que ainda está vazio. A escrita também usa
@@ -167,16 +190,11 @@ export async function aplicarAutopreenchimentoDoCrm(
   const lead = await linhaDoNegocio(pool, input.organizationId, alvo.leadId);
   if (!lead) return { updated: false, reason: "sem_negocio" };
 
-  const atuais = objeto(lead.custom_fields);
-  const declarados = new Map(camposDeclarados(lead.settings).map((f) => [f.key, f]));
-  const patch: Record<string, string | number | boolean> = {};
-
-  for (const [key, value] of Object.entries(input.fields)) {
-    const field = declarados.get(key);
-    if (!field || !vazio(atuais[key])) continue;
-    const normalizado = normalizarValor(field.type, value);
-    if (normalizado !== undefined) patch[key] = normalizado;
-  }
+  const patch = prepararPatchDeAutopreenchimento({
+    settings: lead.settings,
+    atuais: lead.custom_fields,
+    propostos: input.fields,
+  });
 
   const keys = Object.keys(patch);
   if (keys.length === 0) return { updated: false, reason: "sem_campos_validos" };
