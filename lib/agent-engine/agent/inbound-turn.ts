@@ -539,8 +539,8 @@ export const checkpointContentSchema = z.object({
    */
   crm_fields: z
     .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-    .default({})
-    .refine((fields) => Object.keys(fields).length <= 30, 'crm_fields: máximo de 30 campos'),
+    .refine((fields) => Object.keys(fields).length <= 30, 'crm_fields: máximo de 30 campos')
+    .optional(),
   /**
    * A declaração do turno (spec 16 §5) — a fronteira entre FALAR e OPERAR.
    *
@@ -4052,7 +4052,7 @@ async function executarTurnoDoAgente(
       const autofill = await aplicarAutopreenchimentoDoCrm(pool, {
         organizationId: tenantId,
         contactId: leadId,
-        fields: content.crm_fields,
+        fields: content.crm_fields ?? {},
         agentId: agentConfig?.agentId ?? null,
       });
       if (autofill.updated) {
