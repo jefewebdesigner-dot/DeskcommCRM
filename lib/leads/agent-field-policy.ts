@@ -17,6 +17,7 @@ interface MarcaDaIa {
 type MapaDaIa = Record<string, MarcaDaIa>;
 
 export const CHAVE_DE_PROVENIENCIA_DA_IA = "__ia_autofill";
+const CHAVES_PROIBIDAS = new Set(["__proto__", "constructor", "prototype"]);
 
 function objeto(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -32,7 +33,7 @@ export function camposDeclaradosDoFunil(settings: unknown): CampoDeclaradoDoFuni
     const key = typeof row.key === "string" ? row.key.trim() : "";
     const label = typeof row.label === "string" ? row.label.trim() : key;
     const type = typeof row.type === "string" ? row.type.trim() : "text";
-    if (!key || key === CHAVE_DE_PROVENIENCIA_DA_IA) return [];
+    if (!key || key === CHAVE_DE_PROVENIENCIA_DA_IA || CHAVES_PROIBIDAS.has(key)) return [];
     return [{ key, label: label || key, type, options: row.options }];
   });
 }
