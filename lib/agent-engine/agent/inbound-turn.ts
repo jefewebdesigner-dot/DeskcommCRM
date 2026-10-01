@@ -168,6 +168,7 @@ import { diffCheckpoint } from '@/lib/leads/checkpoint-diff';
 import { emitAgentActivityForContact } from '@/lib/leads/agent-activity';
 import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/active-lead';
 import { recalculaScoreDoLead } from '@/lib/leads/score-writer';
+import { espelharCamposDaConversaNoCrm } from '@/lib/leads/agent-field-sync';
 import {
   JAILBREAK_ESCALATION_LEVEL,
   classifyJailbreak,
@@ -203,8 +204,9 @@ export const AGENT_TOOL_DEFS = {
     description:
       'Marca um avanço REAL no funil deste lead: stage (new → contacted → qualifying → qualified → ' +
       'negotiating → won | lost; só o PRÓXIMO estágio válido — regressão é rejeitada), qualification ' +
-      '(budget/authority/need/timeline), next_action e reason (evidência curta do avanço). ' +
-      'Nunca invente avanço sem evidência na conversa.',
+      '(budget/authority/need/timeline), crm_fields (campos visíveis do CRM), next_action e reason. ' +
+      'Em crm_fields use SOMENTE chaves listadas no Contexto do lead e apenas quando o próprio cliente ' +
+      'der evidência explícita na conversa; nunca complete por inferência ou chute.',
     // Schema LARGO só para o SDK (o modelo vê os campos); a validação REAL é a
     // whitelist .strict() dentro de applyLeadStateUpdate — campo extra/forjado
     // vira erro de ENSINO ao modelo, nunca exceção do SDK nem strip silencioso.
@@ -216,6 +218,12 @@ export const AGENT_TOOL_DEFS = {
           .passthrough()
           .optional()
           .describe('qualificação: budget, authority, need, timeline'),
+        crm_fields: z
+          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+          .optional()
+          .describe(
+            'campos do CRM comprovados pela conversa; use somente as chaves listadas em crm_fields no Contexto do lead',
+          ),
         next_action: z
           .string()
           .nullable()
@@ -3242,6 +3250,34 @@ async function executarTurnoDoAgente(
               });
             }
           }
+          if (
+            update.crmFields &&
+            Object.keys(update.crmFields).length > 0 &&
+            agentConfig
+          ) {
+            // O MESMO turno que entendeu a conversa atualiza o card. Não há
+            // segunda chamada de modelo: aqui só validamos chaves/tipos, escopo
+            // de funil e a proteção contra sobrescrever edição humana.
+            const sync = await espelharCamposDaConversaNoCrm({
+              organizationId: tenantId,
+              contactId: leadId,
+              agentId: agentConfig.agentId,
+              pipelineIds: agentConfig.pipelineIds,
+              requestId: `agent-autofill:${liveJob().id}`,
+              fields: update.crmFields,
+            });
+            if (!sync.ok) {
+              runLog.warn('auto-preenchimento do card falhou — turno segue', {
+                motivo: sync.motivo,
+              });
+            } else if (sync.atualizados.length > 0 || sync.protegidos.length > 0) {
+              runLog.info('campos do CRM conciliados com a conversa', {
+                atualizados: sync.atualizados,
+                protegidos: sync.protegidos,
+              });
+            }
+          }
+
           // F3-11: o estágio que o modelo confirmou (a máquina F2-10 gravou) — base da
           // comparação com a sugestão do classificador no fechamento do run.
           confirmedStage = update.state.stage;
