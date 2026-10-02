@@ -547,7 +547,6 @@ continue igual quando o motor de IA muda (Claude Code ↔ GPT Codex).
 
 ## O que já foi feito
 
-- Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24
@@ -567,6 +566,7 @@ continue igual quando o motor de IA muda (Claude Code ↔ GPT Codex).
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-25
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-27
 - Motor trocado de codex para claude. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-27
+- Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-10-02
 
 ## Imagens — use de verdade, não deixe espaço vazio
 
@@ -591,6 +591,6 @@ substitua por foto de banco nem regere "para padronizar". Se alguma não
 servir, regere só aquela, dizendo o que mudar. E se a medida atrapalhar o
 layout, ajuste o CSS (`object-fit: cover`) em vez de trocar a imagem.
 
-_Motor atual: claude._
+_Motor atual: codex._
 
 <!-- ZHEUS:MEMORIA:FIM -->

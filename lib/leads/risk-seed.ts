@@ -121,7 +121,10 @@ async function coletaEClassifica(
       .select("id, expected_duration_hours")
       .eq("organization_id", organizationId)
       .in("id", stageIds);
-    for (const s of (stages ?? []) as Array<{ id: string; expected_duration_hours: number | null }>) {
+    for (const s of (stages ?? []) as Array<{
+      id: string;
+      expected_duration_hours: number | null;
+    }>) {
       janelaPorEstagio.set(s.id, resolveStageWindow(s));
     }
   }
@@ -131,22 +134,26 @@ async function coletaEClassifica(
   // que ele é. A fonte é a mesma que o radar usa.
   const contactIds = [...new Set(leads.map((l) => l.contact_id).filter((c): c is string => !!c))];
   const followupPorContato = new Set<string>();
-  if (contactIds.length > 0) {
-    const { data: jobs } = await admin
+  for (let offset = 0; offset < contactIds.length; offset += 100) {
+    const lote = contactIds.slice(offset, offset + 100);
+    const { data: jobs, error: jobsError } = await admin
       .from("cron_jobs")
       .select("contact_id")
       .eq("organization_id", organizationId)
       .eq("kind", "at")
       .eq("enabled", true)
       .gt("next_run_at", now.toISOString())
-      .in("contact_id", contactIds);
+      .in("contact_id", lote);
+    // Falha de leitura não prova ausência de retorno agendado.
+    if (jobsError) throw new Error("risk_followup_indisponivel");
     for (const j of (jobs ?? []) as Array<{ contact_id: string }>) {
       followupPorContato.add(j.contact_id);
     }
   }
 
   const agenda = await protecaoAgendaSupabase(admin, organizationId, contactIds, now);
-  if ([...agenda.values()].some(p => p.motivo === "leitura_indisponivel")) throw new Error("risk_agenda_indisponivel");
+  if ([...agenda.values()].some((p) => p.motivo === "leitura_indisponivel"))
+    throw new Error("risk_agenda_indisponivel");
   const estados: EstadoCalculado[] = [];
   let semRelogio = 0;
 

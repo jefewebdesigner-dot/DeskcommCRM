@@ -4724,7 +4724,7 @@ GRANT ALL ON TABLE "public"."crm_stages" TO "service_role";
 
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE ON TABLE "public"."event_log" TO "anon";
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE ON TABLE "public"."event_log" TO "authenticated";
+GRANT SELECT,UPDATE,REFERENCES,TRIGGER,TRUNCATE ON TABLE "public"."event_log" TO "authenticated";
 GRANT ALL ON TABLE "public"."event_log" TO "service_role";
 
 
