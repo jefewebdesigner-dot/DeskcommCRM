@@ -42,6 +42,9 @@ vi.mock("@/lib/logger", () => ({ logger: logado }));
 let estados: EstadoCalculado[] = [];
 vi.mock("@/lib/leads/risk-seed", () => ({
   calculaBucketsAtuais: async () => estados,
+  semeiaEstadosDeRisco: async () => {
+    throw new Error("este teste exercita organização já semeada");
+  },
 }));
 
 // `em_voo` vindo de "sem estado gravado" é travessia SILENCIOSA (ver `narra`):
@@ -72,7 +75,19 @@ function adminDuble() {
       }
       if (tabela === "crm_lead_risk_states") {
         return {
-          select: () => ({ eq: async () => ({ data: [], error: null }) }),
+          select: (colunas?: string) => {
+            // A rota primeiro pergunta só se a org JÁ FOI semeada. O observador
+            // depois lê "lead_id, bucket". Mantemos as duas leituras distintas
+            // para este teste continuar medindo travessias, não a estreia.
+            if (colunas === "lead_id") {
+              return {
+                eq: () => ({
+                  limit: async () => ({ data: [{ lead_id: "estado-existente" }], error: null }),
+                }),
+              };
+            }
+            return { eq: async () => ({ data: [], error: null }) };
+          },
           upsert: async (linha: { lead_id: string }) => {
             if (linha.lead_id === recusarLead) return { error: { message: RECUSA } };
             gravados.push(linha.lead_id);

@@ -38,6 +38,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { venceReativacoes } from "@/lib/leads/reactivation";
+import { semeiaEstadosDeRisco } from "@/lib/leads/risk-seed";
 import { observaTravessias } from "@/lib/leads/risk-worker";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -82,19 +83,38 @@ async function handle(req: NextRequest): Promise<Response> {
   let gravacoesFalhas = 0;
   let propostas = 0;
   let vencidas = 0;
+  let organizacoesSemeadas = 0;
+  let estadosSemeados = 0;
   const comErro: string[] = [];
 
   for (const org of orgs) {
     try {
-      const r = await observaTravessias(admin, org);
-      travessias += r.travessias;
-      esfriaram += r.esfriaram;
-      reativaram += r.reativaram;
-      falhas += r.falhasDeAtividade;
-      gravacoesFalhas += r.falhasDeGravacao;
-      propostas += r.propostas;
+      // ESTREIA SEGURA: organização sem nenhum estado materializado ainda não
+      // "esfriou agora". O backlog já estava naquele estado antes de o Radar
+      // começar a observar. Semeá-lo evita fabricar centenas de eventos
+      // lead_cooled/propostas com timestamp de hoje para fatos históricos.
+      const { data: estadoExistente, error: estadoErr } = await admin
+        .from("crm_lead_risk_states")
+        .select("lead_id")
+        .eq("organization_id", org)
+        .limit(1);
+      if (estadoErr) throw new Error(`risk_state_probe: ${estadoErr.message}`);
 
-      // O VENCIMENTO RODA NO MESMO TICK, depois da travessia. Se morasse num
+      if ((estadoExistente ?? []).length === 0) {
+        const seed = await semeiaEstadosDeRisco(admin, org);
+        organizacoesSemeadas += 1;
+        estadosSemeados += seed.gravados;
+      } else {
+        const r = await observaTravessias(admin, org);
+        travessias += r.travessias;
+        esfriaram += r.esfriaram;
+        reativaram += r.reativaram;
+        falhas += r.falhasDeAtividade;
+        gravacoesFalhas += r.falhasDeGravacao;
+        propostas += r.propostas;
+      }
+
+      // O VENCIMENTO RODA NO MESMO TICK, depois da travessia/estreia. Se morasse num
       // cron separado, a proposta poderia vencer em silêncio até o outro rodar
       // — e o buraco entre os dois seria exatamente onde a demanda morre.
       const v = await venceReativacoes(admin, org, new Date());
@@ -128,6 +148,8 @@ async function handle(req: NextRequest): Promise<Response> {
       reativaram,
       propostas_criadas: propostas,
       propostas_vencidas: vencidas,
+      organizacoes_semeadas: organizacoesSemeadas,
+      estados_semeados: estadosSemeados,
       atividades_falhas: falhas,
       gravacoes_falhas: gravacoesFalhas,
       organizations_com_erro: comErro.length,
