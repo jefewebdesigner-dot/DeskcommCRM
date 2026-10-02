@@ -135,3 +135,26 @@ describe("MessageBubble — rótulo de origem", () => {
     expect(screen.queryByText("IA")).not.toBeInTheDocument();
   });
 });
+
+
+describe("MessageBubble — mídia histórica indisponível", () => {
+  it("mostra fallback em vez de bolha vazia quando o binário antigo não existe mais", () => {
+    render(
+      <MessageBubble
+        message={msg({
+          type: "audio",
+          direction: "inbound",
+          body: null,
+          media_url: null,
+          media_storage_path: null,
+          metadata: {
+            history_import: true,
+            history_media_status: "unavailable",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Mídia indisponível")).toBeInTheDocument();
+  });
+});

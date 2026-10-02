@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Message } from "@/lib/types/messaging";
 import { CitationButton } from "@/components/ai/CitationButton";
 import { MediaRenderer } from "@/components/inbox/media/MediaRenderer";
+import { MediaUnavailable } from "@/components/inbox/media/MediaUnavailable";
 import { ContactCard } from "@/components/inbox/media/ContactCard";
 import {
   extractCitations,
@@ -62,6 +63,14 @@ export function MessageBubble({
   const isFailed = message.status === "failed";
   const hasMedia = Boolean(message.media_url || message.media_storage_path);
   const isContact = message.type === "contact";
+  const metadata =
+    message.metadata && typeof message.metadata === "object"
+      ? (message.metadata as Record<string, unknown>)
+      : {};
+  const isHistoricalMediaUnavailable =
+    !hasMedia &&
+    ["image", "audio", "video", "document", "sticker"].includes(message.type) &&
+    metadata.history_media_status === "unavailable";
   // Figurinha sem caption: sem moldura de bolha (padrão WhatsApp).
   const isBareSticker = hasMedia && message.type === "sticker" && !message.body;
   // Apagada pelo autor ("apagar para todos"). A linha continua no histórico —
@@ -222,6 +231,12 @@ export function MessageBubble({
             {hasMedia && (
               <div className={cn(message.body && "mb-1")}>
                 <MediaRenderer message={message} />
+              </div>
+            )}
+
+            {isHistoricalMediaUnavailable && (
+              <div className={cn(message.body && "mb-1")}>
+                <MediaUnavailable kind={message.type} />
               </div>
             )}
 
