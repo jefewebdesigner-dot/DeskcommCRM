@@ -147,22 +147,26 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     if (key.toLowerCase() === "cookie") return;
     headersJson[key] = value;
   });
-  const { error: erroDoArquivo } = await admin.from("webhook_events_log").insert({
-    organization_id: session.organization_id,
-    channel_session_id: session.id,
-    provider: "waha",
-    webhook_path_token: token,
-    http_method: "POST",
-    headers: headersJson,
-    raw_body: rawBody,
-    payload_parsed: roteado as unknown as Record<string, unknown>,
-    signature_header: sigHeader ?? null,
-    valid_signature: validSignature,
-    event_type: eventType,
-    external_id: externalId,
-    status: "received",
-    attempts: 0,
-  });
+  const { data: eventoArquivado, error: erroDoArquivo } = await admin
+    .from("webhook_events_log")
+    .insert({
+      organization_id: session.organization_id,
+      channel_session_id: session.id,
+      provider: "waha",
+      webhook_path_token: token,
+      http_method: "POST",
+      headers: headersJson,
+      raw_body: rawBody,
+      payload_parsed: roteado as unknown as Record<string, unknown>,
+      signature_header: sigHeader ?? null,
+      valid_signature: validSignature,
+      event_type: eventType,
+      external_id: externalId,
+      status: "received",
+      attempts: 0,
+    })
+    .select("id")
+    .maybeSingle();
   if (erroDoArquivo) {
     logger.error("[waha.webhook] não foi possível arquivar o evento bruto", {
       request_id: requestId,
@@ -189,8 +193,28 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
 
   try {
     await dispatchWahaEvent(admin, session, contrato.envelope, requestId);
+    if (eventoArquivado?.id) {
+      await admin
+        .from("webhook_events_log")
+        .update({ status: "processed", processed_at: new Date().toISOString() })
+        .eq("id", eventoArquivado.id);
+    }
   } catch (err) {
-    console.error("[waha.webhook] handler failed", err);
+    // ⚠️ Este catch engolia o erro inteiro (só console.error, que não
+    // persiste em lugar nenhum fora do log efêmero do contêiner/função).
+    // Nenhuma linha em webhook_events_log, ai_agent_runs ou agent_inbox_items
+    // registrava a causa — um inbound real podia silenciosamente nunca virar
+    // mensagem e ninguém teria como saber por quê. Medido em produção
+    // (PeríciaIA): webhook respondendo 200 accepted:true para um inbound real,
+    // zero linha em messages, zero rastro do motivo.
+    const mensagem = err instanceof Error ? err.message : String(err);
+    logger.error("[waha.webhook] handler failed", { request_id: requestId, error: mensagem });
+    if (eventoArquivado?.id) {
+      await admin
+        .from("webhook_events_log")
+        .update({ status: "error", error_message: mensagem.slice(0, 2000), attempts: 1 })
+        .eq("id", eventoArquivado.id);
+    }
   }
 
   return ok({ accepted: true }, { requestId });
