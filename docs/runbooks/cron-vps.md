@@ -26,13 +26,14 @@ caminho direto `worker → transporte` que contorne guarda. O worker usa a role 
 | `webhook-log-retention` | M | **ativo** (5/5 min) |
 | `storage-redaction` | M | **ativo** (5/5 min) |
 | `handoff-devolucao` | C | **ativo** (5/5 min) — devolve conversa ao agente após silêncio; não envia por si |
+| `risk-watcher` | C | **ativo** (15/15 min) — atualiza o Radar, registra travessias e cria propostas internas; não envia mensagem ao cliente |
 | `agent-dispatcher` | — | no-op aposentado (o worker é o consumidor) — **não agendar** |
 | `followup-flow-worker`, `followup-sem-agente` | **E** | **retido** — follow-up comercial |
 | `contact-birthdays` | **E** | **retido** — parabéns automático |
 | `lead-date-field-due` | **E** | **retido** — automação por data do funil |
 | `agenda-reminder` | **E** | **retido** — lembrete ao cliente |
 | `contact-avatars`, `contact-phones` | X | retido até haver canal (chamam o transporte) |
-| `contact-proposals-watcher`, `risk-watcher`, `case-stale-watcher`, `canal-mudo-watcher`, `agenda-expira-pendentes` | C | retido (avisos internos; ligar com a operação real) |
+| `contact-proposals-watcher`, `case-stale-watcher`, `canal-mudo-watcher`, `agenda-expira-pendentes` | C | retido (avisos internos; ligar com a operação real) |
 | `lgpd-sla-watcher`, `data-retention`, `kb-conversations-batch`, `sync-model-catalog` | M/X | retido (diários; custo de IA/HTTP externo) |
 | `agenda-google-push/refresh/sync` | X | já na crontab existente — **não duplicar** |
 | `agenda-operational-watcher`, `periciaia-billing-sync` | C/X | já no `vercel.json` — **não duplicar** |

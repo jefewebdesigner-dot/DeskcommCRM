@@ -17,7 +17,7 @@ JOB="${1:-}"
 case "$JOB" in
   # manutenção/operação — não enviam mensagem ao cliente
   event-log-drain|routing-worker|recover-stuck-messages|channel-health|snooze-watcher|\
-  webhook-log-retention|storage-redaction|handoff-devolucao) ;;
+  webhook-log-retention|storage-redaction|handoff-devolucao|risk-watcher) ;;
   *)
     echo "Job não autorizado: $JOB" >&2
     exit 2
