@@ -676,8 +676,22 @@ async function handleInbound(
 
   // Idempotência: 23505 = unique (organization_id, external_id) já ingerido.
   if (insertErr && insertErr.code !== "23505") {
-    console.error("[waha.ingest] message insert failed", insertErr.message);
-    return;
+    // ⚠️ Isto era `console.error(...); return;` — a função terminava
+    // normalmente, `dispatchWahaEvent` nunca via o erro, e o catch da rota
+    // (que grava em `webhook_events_log.error_message`) também não via nada:
+    // o webhook respondia 200 accepted:true, nenhuma linha nascia em
+    // `messages`, e nenhum rastro da causa sobrevivia além do stdout efêmero
+    // da função. Medido em produção (PeríciaIA): inbound real do cliente,
+    // contato e conversa resolvidos corretamente, INSERT em messages falhando
+    // em silêncio. Agora propaga — o catch da rota arquiva a causa real.
+    logger.error("[waha.ingest] message insert failed", {
+      organization_id: session.organization_id,
+      conversation_id: conversationId,
+      external_id: p.id,
+      code: insertErr.code,
+      error: insertErr.message,
+    });
+    throw new Error(`waha_ingest_message_insert_failed: ${insertErr.code ?? "sem_codigo"}: ${insertErr.message}`);
   }
   if (insertErr?.code === "23505") {
     // O `return` está certo — reingerir duplicaria a mensagem do cliente. Mas

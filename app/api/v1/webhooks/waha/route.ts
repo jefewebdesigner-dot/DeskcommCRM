@@ -150,22 +150,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (key.toLowerCase() === "cookie") return;
     headersJson[key] = value;
   });
-  const { error: erroDoArquivo } = await admin.from("webhook_events_log").insert({
-    organization_id: session.organization_id,
-    channel_session_id: session.id,
-    provider: "waha",
-    webhook_path_token: null,
-    http_method: "POST",
-    headers: headersJson,
-    raw_body: rawBody,
-    payload_parsed: roteado as unknown as Record<string, unknown>,
-    signature_header: sigHeader ?? null,
-    valid_signature: validSignature,
-    event_type: eventType,
-    external_id: externalId,
-    status: "received",
-    attempts: 0,
-  });
+  const { data: eventoArquivado, error: erroDoArquivo } = await admin
+    .from("webhook_events_log")
+    .insert({
+      organization_id: session.organization_id,
+      channel_session_id: session.id,
+      provider: "waha",
+      webhook_path_token: null,
+      http_method: "POST",
+      headers: headersJson,
+      raw_body: rawBody,
+      payload_parsed: roteado as unknown as Record<string, unknown>,
+      signature_header: sigHeader ?? null,
+      valid_signature: validSignature,
+      event_type: eventType,
+      external_id: externalId,
+      status: "received",
+      attempts: 0,
+    })
+    .select("id")
+    .maybeSingle();
   if (erroDoArquivo) {
     logger.error("[waha.webhook] não foi possível arquivar o evento bruto", {
       request_id: requestId,
@@ -192,8 +196,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     await dispatchWahaEvent(admin, session, contrato.envelope, requestId);
+    if (eventoArquivado?.id) {
+      await admin
+        .from("webhook_events_log")
+        .update({ status: "processed", processed_at: new Date().toISOString() })
+        .eq("id", eventoArquivado.id);
+    }
   } catch (err) {
-    console.error("[waha.webhook] handler failed", err);
+    // Mesmo conserto da rota per-tenant (app/api/v1/webhooks/waha/[token]/route.ts):
+    // catch vazio escondia falha real de ingestão atrás de um 200 mudo.
+    const mensagem = err instanceof Error ? err.message : String(err);
+    logger.error("[waha.webhook] handler failed", { request_id: requestId, error: mensagem });
+    if (eventoArquivado?.id) {
+      await admin
+        .from("webhook_events_log")
+        .update({ status: "error", error_message: mensagem.slice(0, 2000), attempts: 1 })
+        .eq("id", eventoArquivado.id);
+    }
   }
 
   return ok({ accepted: true }, { requestId });
