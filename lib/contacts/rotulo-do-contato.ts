@@ -32,6 +32,8 @@ export interface ContatoNomeavel {
   display_name?: string | null;
   name?: string | null;
   phone_number?: string | null;
+  /** Só para distinguir linhas na lista quando não sobra nada melhor — nunca um nome (ver rotuloDoContato). */
+  wa_lid?: string | null;
 }
 
 /** Quando não há nada apresentável. Um literal, não quatro. */
@@ -99,11 +101,23 @@ export function nomeDoContato(c: ContatoNomeavel | null | undefined): string | n
 }
 
 /**
- * O rótulo. O nome de gente (`nomeDoContato`), depois o número — e só então a
- * admissão de que não se sabe o nome.
+ * O rótulo. O nome de gente (`nomeDoContato`), depois o número, depois um
+ * identificador curto (quando só sobra um `wa_lid` — contato importado do
+ * histórico do WhatsApp sem telefone nem perfil resolvido) — e só então a
+ * admissão de que não se sabe nada.
  *
  * Celular BR aparece COM o nono dígito: `+553284793302` e `+5532984793302` são
  * a mesma pessoa, e o 9 é o que o atendente espera copiar.
+ *
+ * ─── Por que o `wa_lid` entra AQUI e não em `nomeDoContato` ─────────────────
+ *
+ * `nomeDoContato` alimenta prompt de IA, card de kanban e lembrete — lugares
+ * onde "Contato final 8320" seria lido como se fosse informação, a mesma
+ * doença que `ehIdentificadorTecnico` existe para barrar. Aqui é diferente:
+ * é SÓ para quem lê a LISTA conseguir diferenciar uma linha da outra. Medido
+ * na PeríciaIA: 363 contatos importados do histórico sem nome, display_name
+ * NEM telefone — todos empilhados como "Sem nome" idêntico, sem jeito de
+ * saber qual conversa é qual sem abrir uma por uma.
  */
 export function rotuloDoContato(
   c: ContatoNomeavel | null | undefined,
@@ -116,6 +130,9 @@ export function rotuloDoContato(
 
   const tel = (c.phone_number ?? "").trim();
   if (tel !== "") return phoneForDisplay(tel);
+
+  const lid = (c.wa_lid ?? "").trim();
+  if (lid !== "") return `${t("Contato")} ‧‧${lid.slice(-4)}`;
 
   return t(SEM_NOME);
 }

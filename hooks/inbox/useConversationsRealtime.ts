@@ -13,6 +13,8 @@ export interface ContactSummary {
   display_name: string | null;
   name: string | null;
   phone_number: string | null;
+  /** Só para a lista diferenciar linhas sem nome nem telefone — ver rotuloDoContato. */
+  wa_lid?: string | null;
   tags: string[];
   is_blocked: boolean;
   is_anonymized: boolean;
