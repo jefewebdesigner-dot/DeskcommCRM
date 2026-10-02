@@ -20,6 +20,7 @@ import {
 import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
 import { AntiBanSheet } from "./AntiBanSheet";
 import { PairingOptions } from "./PairingOptions";
+import { modoDeRecuperacaoDoWhatsapp } from "./estado-da-recuperacao";
 import { ChannelAiAccess } from "./ChannelAiAccess";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,11 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const [busyId, setBusyId] = useState<string | null>(null);
   const createKey = useRef<string | null>(null);
   const [connectionDetail, setConnectionDetail] = useState<string | null>(null);
-  const routing = useQuery({ queryKey: ["channel-routing-settings"], queryFn: () => apiClient.get<{ data: ChannelRoutingSettings }>("/api/v1/settings/routing/channels") });
+  const routing = useQuery({
+    queryKey: ["channel-routing-settings"],
+    queryFn: () =>
+      apiClient.get<{ data: ChannelRoutingSettings }>("/api/v1/settings/routing/channels"),
+  });
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [qr, setQr] = useState<{ sessionId: string; title: string } | null>(null);
@@ -168,9 +173,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       const pendente = [...(res.data ?? [])]
         .reverse()
         .find(
-          (c) =>
-            dependeDoTransporte(c) &&
-            (c.status === "STARTING" || c.status === "SCAN_QR_CODE"),
+          (c) => dependeDoTransporte(c) && (c.status === "STARTING" || c.status === "SCAN_QR_CODE"),
         );
       if (!pendente) return false;
 
@@ -195,7 +198,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       const res = await apiClient.post<{ data: ChannelSession }>(
         "/api/v1/channel-sessions",
         {},
-        { idempotencyKey: createKey.current ??= randomId(), timeoutMs: 120_000 },
+        { idempotencyKey: (createKey.current ??= randomId()), timeoutMs: 120_000 },
       );
       invalidate();
       createKey.current = null;
@@ -219,16 +222,29 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   }, [invalidate, recuperarConexaoPendente, t]);
 
   // Reconexão suave: a maioria das quedas é passageira (rede, container
-  // reiniciado) e a credencial pareada continua boa, então o número volta sem
-  // ninguém pegar o celular. O modo que DESCARTA a credencial custa um
-  // reescaneamento e por isso não é oferecido aqui — ele mora em `forcePair`, na
-  // tela do QR, que só aparece depois que o modo suave falhou.
+  // reiniciado) e a credencial pareada continua boa. Este caminho NUNCA faz
+  // logout: ele é também usado dentro do diálogo quando o WAHA reporta STOPPED.
+  const softReconnect = useCallback(
+    async (sessionId: string): Promise<string> => {
+      const res = await apiClient.post<{ data: { status?: string } }>(
+        `/api/v1/channel-sessions/${sessionId}/reconnect`,
+        {},
+      );
+      invalidate();
+      return res.data?.status ?? "STARTING";
+    },
+    [invalidate],
+  );
+
   const handleReconnect = useCallback(
     async (c: ChannelSession) => {
       setBusyId(c.id);
       try {
-        await apiClient.post(`/api/v1/channel-sessions/${c.id}/reconnect`, {});
-        invalidate();
+        const nextStatus = await softReconnect(c.id);
+        if (nextStatus === "WORKING") {
+          toast.success(t("WhatsApp reconectado sem novo QR."));
+          return;
+        }
         setQr({ sessionId: c.id, title: `${t("Reconectar")} ${channelLabel(c, t)}` });
       } catch (err) {
         toast.error(errMsg(err, "Não foi possível reconectar.", t));
@@ -236,7 +252,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
         setBusyId(null);
       }
     },
-    [invalidate, t],
+    [softReconnect, t],
   );
 
   const forcePair = useCallback(
@@ -298,13 +314,29 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {t("Novos canais começam em modo de teste, sem respostas automáticas até você autorizar números ou liberar o público.")}
+        {t(
+          "Novos canais começam em modo de teste, sem respostas automáticas até você autorizar números ou liberar o público.",
+        )}
       </p>
-      {connectionDetail && <details className="rounded-md border p-3 text-sm"><summary>{t("Detalhes para suporte")}</summary><pre className="mt-2 whitespace-pre-wrap break-words">{connectionDetail}</pre><Button variant="outline" size="sm" onClick={async () => {
-        if (await copyToClipboard(connectionDetail)) toast.success(t("Copiado!"));
-        else toast.error(t("Não foi possível copiar. Selecione e copie manualmente."));
-      }}>{t("Copiar detalhes")}</Button></details>}
-      <Link href="/app/settings/atendimento" className="text-sm underline">{t("Configurar responsáveis por número")}</Link>
+      {connectionDetail && (
+        <details className="rounded-md border p-3 text-sm">
+          <summary>{t("Detalhes para suporte")}</summary>
+          <pre className="mt-2 break-words whitespace-pre-wrap">{connectionDetail}</pre>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (await copyToClipboard(connectionDetail)) toast.success(t("Copiado!"));
+              else toast.error(t("Não foi possível copiar. Selecione e copie manualmente."));
+            }}
+          >
+            {t("Copiar detalhes")}
+          </Button>
+        </details>
+      )}
+      <Link href="/app/settings/atendimento" className="text-sm underline">
+        {t("Configurar responsáveis por número")}
+      </Link>
       {!wahaConfigured && (
         <div className="rounded-md border border-warning bg-warning-bg p-4 text-sm text-warning-fg">
           <p className="font-medium">{t("O serviço do WhatsApp não está configurado.")}</p>
@@ -374,6 +406,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
             // podendo ser excluído.
             const vivaNoTransporte = dependeDoTransporte(c);
             const emPareamento = c.status === "STARTING" || c.status === "SCAN_QR_CODE";
+            const precisaReconectar = c.status === "STOPPED" || c.status === "FAILED";
             const podeExcluir = wahaConfigured || !vivaNoTransporte;
             return (
               <Card key={c.id} className="flex flex-col gap-3 p-4">
@@ -397,7 +430,17 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     : t("Ainda não verificado")}
                 </p>
                 <ChannelAiAccess channelId={c.id} />
-                <p className="text-xs text-muted-foreground">{t(!policy ? "Consulte os responsáveis em Atendimento." : policy.mode === "legacy_unconfigured" ? "Usa todos os atendentes elegíveis da organização." : policy.mode === "restricted_empty" ? "Ninguém configurado — as conversas ficarão na fila." : "Somente as pessoas selecionadas recebem este número.")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    !policy
+                      ? "Consulte os responsáveis em Atendimento."
+                      : policy.mode === "legacy_unconfigured"
+                        ? "Usa todos os atendentes elegíveis da organização."
+                        : policy.mode === "restricted_empty"
+                          ? "Ninguém configurado — as conversas ficarão na fila."
+                          : "Somente as pessoas selecionadas recebem este número.",
+                  )}
+                </p>
                 <div className="mt-auto flex flex-wrap gap-2">
                   {/* Some no canal oficial em vez de aparecer desabilitado: não é
                       indisponibilidade passageira (como o Excluir sem o serviço no
@@ -423,7 +466,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                         )}
                         {t(c.status === "SCAN_QR_CODE" ? "Escanear QR" : "Continuar conexão")}
                       </Button>
-                    ) : (
+                    ) : precisaReconectar ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -437,7 +480,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                         )}
                         {t("Reconectar")}
                       </Button>
-                    ))}
+                    ) : null)}
                   <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
                     <ShieldCheck size={14} aria-hidden />
                     {t("Proteção de envio")}
@@ -488,6 +531,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
           wahaConfigured={wahaConfigured}
           onClose={() => setQr(null)}
           onConnected={handleConnected}
+          onSoftReconnect={softReconnect}
           onForcePair={forcePair}
         />
       )}
@@ -540,8 +584,7 @@ export function frasesDoImpacto(
 
   const frases: string[] = [];
   if (noInbox) frases.push(`${t("Continua no inbox:")} ${noInbox}.`);
-  if (semNumero)
-    frases.push(`${t("Fica salvo, mas sem número — para de atender:")} ${semNumero}.`);
+  if (semNumero) frases.push(`${t("Fica salvo, mas sem número — para de atender:")} ${semNumero}.`);
   // Sobra o caso em que só há registro interno (auditoria de envio): nada a
   // listar, mas o canal continua sendo arquivado, e prometer "não tem nada
   // ligado" seria falso.
@@ -670,6 +713,7 @@ function QrDialog({
   wahaConfigured,
   onClose,
   onConnected,
+  onSoftReconnect,
   onForcePair,
 }: {
   sessionId: string;
@@ -677,13 +721,16 @@ function QrDialog({
   wahaConfigured: boolean;
   onClose: () => void;
   onConnected: () => void;
+  onSoftReconnect: (sessionId: string) => Promise<string>;
   onForcePair: (sessionId: string) => Promise<void>;
 }) {
   const t = useT();
   const [status, setStatus] = useState<string>("STARTING");
   const [tick, setTick] = useState(0);
   const [pairing, setPairing] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const done = useRef(false);
+  const modoRecuperacao = modoDeRecuperacaoDoWhatsapp(status);
 
   useEffect(() => {
     if (!wahaConfigured) return;
@@ -732,40 +779,74 @@ function QrDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {t(
-              "Escolha QR Code ou código de pareamento e confirme no WhatsApp do celular.",
-            )}
+            {t("Escolha QR Code ou código de pareamento e confirme no WhatsApp do celular.")}
           </DialogDescription>
         </DialogHeader>
         <div className="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-2">
           {status === "SCAN_QR_CODE" ? (
-            <PairingOptions key={sessionId} sessionId={sessionId} qr={
-            // Sem `key={tick}`: trocar só o src reaproveita o mesmo <img>, e o
-            // browser segura o frame anterior até decodificar o novo. Remontar o
-            // elemento a cada refresh é o que causaria o flash branco.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`/api/v1/channel-sessions/${sessionId}/qr?t=${tick}`}
-              alt={t("QR Code para conectar WhatsApp")}
-              className="h-64 w-64 rounded-md border bg-white p-2"
+            <PairingOptions
+              key={sessionId}
+              sessionId={sessionId}
+              qr={
+                // Sem `key={tick}`: trocar só o src reaproveita o mesmo <img>, e o
+                // browser segura o frame anterior até decodificar o novo. Remontar o
+                // elemento a cada refresh é o que causaria o flash branco.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/v1/channel-sessions/${sessionId}/qr?t=${tick}`}
+                  alt={t("QR Code para conectar WhatsApp")}
+                  className="h-64 w-64 rounded-md border bg-white p-2"
+                />
+              }
             />
-            } />
           ) : status === "WORKING" ? (
             <div className="flex flex-col items-center gap-2 text-sm font-medium text-success-fg">
               <CheckCircle size={28} weight="fill" aria-hidden />
               {t("Conectado!")}
             </div>
-          ) : status === "FAILED" || status === "STOPPED" ? (
-            // Chegar aqui quase sempre significa credencial revogada: o número
-            // foi desvinculado pelo celular e o engine não tem como voltar
-            // sozinho. Antes esta tela era um beco sem saída ("tente
-            // Reconectar" levava de volta ao mesmo FAILED); agora ela oferece a
-            // única ação que de fato resolve.
+          ) : modoRecuperacao === "retomar" ? (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <p className="text-sm font-medium text-warning-fg">
+                {t("A sessão pausou, mas o aparelho continua pareado.")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "O sistema tenta retomar sem desconectar o WhatsApp. Não gere outro QR para uma queda temporária.",
+                )}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={recovering}
+                onClick={async () => {
+                  setRecovering(true);
+                  try {
+                    const nextStatus = await onSoftReconnect(sessionId);
+                    setStatus(nextStatus);
+                  } catch (err) {
+                    toast.error(errMsg(err, "Não foi possível retomar a sessão agora.", t));
+                  } finally {
+                    setRecovering(false);
+                  }
+                }}
+              >
+                {recovering ? (
+                  <CircleNotch size={14} className="animate-spin" aria-hidden />
+                ) : (
+                  <ArrowsClockwise size={14} aria-hidden />
+                )}
+                {t("Retomar sem novo QR")}
+              </Button>
+            </div>
+          ) : modoRecuperacao === "reparear" ? (
             <div className="flex flex-col items-center gap-3 text-center">
               <p className="text-sm text-error-fg">
                 {t(
-                  "Este número foi desvinculado do WhatsApp. Para usá-lo de novo é preciso parear outra vez.",
+                  "A retomada da sessão falhou. Gere um novo QR somente se o WhatsApp realmente exigir novo pareamento.",
                 )}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("Esta ação descarta a credencial atual e exige confirmação no celular.")}
               </p>
               <Button
                 size="sm"
