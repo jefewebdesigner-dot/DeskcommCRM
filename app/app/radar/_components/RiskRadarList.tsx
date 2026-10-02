@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -17,6 +18,10 @@ import {
   PaperPlaneTilt,
   Warning,
 } from "@/lib/ui/icons";
+
+const PAGE_SIZE = 50;
+type RiskFilter = "all" | Exclude<RiskBucket, "em_dia">;
+type OwnershipFilter = "all" | "unassigned" | "owned";
 
 const RISK_META: Record<
   Exclude<RiskBucket, "em_dia">,
@@ -42,7 +47,15 @@ function followupWhen(iso: string, t: (texto: string) => string): string {
 
 export function RiskRadarList() {
   const t = useT();
-  const { data, isLoading } = useAtRiskLeads();
+  const [page, setPage] = useState(0);
+  const [risk, setRisk] = useState<RiskFilter>("all");
+  const [ownership, setOwnership] = useState<OwnershipFilter>("all");
+  const { data, isLoading } = useAtRiskLeads({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    risk: risk === "all" ? undefined : risk,
+    ownership,
+  });
 
   if (isLoading) {
     return (
@@ -59,7 +72,10 @@ export function RiskRadarList() {
   // "Nenhuma demanda em risco" — escondendo exatamente o vazamento que o
   // invariante 4 existe para denunciar.
   const semPasso = data?.sem_proximo_passo ?? [];
-  if (!data || (data.total === 0 && semPasso.length === 0)) {
+  const totalGlobal = data
+    ? data.counts.critico + data.counts.em_risco + data.counts.em_voo
+    : 0;
+  if (!data || (totalGlobal === 0 && semPasso.length === 0)) {
     return (
       <div
         className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center"
@@ -74,12 +90,26 @@ export function RiskRadarList() {
     );
   }
 
+  const firstVisible = data.total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const lastVisible = page * PAGE_SIZE + data.items.length;
+  const hasPrevious = page > 0;
+  const hasNext = lastVisible < data.total;
+
+  const trocarRisco = (next: RiskFilter) => {
+    setRisk(next);
+    setPage(0);
+  };
+  const trocarResponsavel = (next: OwnershipFilter) => {
+    setOwnership(next);
+    setPage(0);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* INVARIANTE 4 em forma acionável: o índice de atrito publica a CONTAGEM
           ("N demandas abertas sem próximo passo"); contagem sem lugar para agir
           viola o invariante 5. Esta é a lista que responde "e daí?". */}
-      {semPasso.length > 0 ? (
+      {page === 0 && semPasso.length > 0 ? (
         <section
           className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
           data-testid="radar-sem-proximo-passo"
@@ -133,11 +163,89 @@ export function RiskRadarList() {
         </Badge>
       </div>
 
-      <ul className="divide-y divide-border rounded-lg border border-border">
-        {data.items.map((lead) => (
-          <RadarRow key={lead.id} lead={lead} />
-        ))}
-      </ul>
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3"
+        data-testid="radar-filtros"
+      >
+        <div className="flex flex-wrap gap-2">
+          {([
+            ["all", "Todos"],
+            ["critico", "Críticos"],
+            ["em_risco", "Em risco"],
+            ["em_voo", "Em voo"],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={risk === value ? "default" : "outline"}
+              onClick={() => trocarRisco(value)}
+              aria-pressed={risk === value}
+            >
+              {t(label)}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {([
+            ["all", "Todos os responsáveis"],
+            ["unassigned", "Sem dono"],
+            ["owned", "Com responsável"],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={ownership === value ? "default" : "outline"}
+              onClick={() => trocarResponsavel(value)}
+              aria-pressed={ownership === value}
+            >
+              {t(label)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {data.items.length > 0 ? (
+        <ul className="divide-y divide-border rounded-lg border border-border">
+          {data.items.map((lead) => (
+            <RadarRow key={lead.id} lead={lead} />
+          ))}
+        </ul>
+      ) : (
+        <div
+          className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground"
+          data-testid="radar-filter-empty"
+        >
+          {t("Nenhum negócio corresponde a este filtro.")}
+        </div>
+      )}
+
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"
+        data-testid="radar-pagination"
+      >
+        <span>
+          {t("Mostrando")} {firstVisible}–{lastVisible} {t("de")} {data.total}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!hasPrevious}
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+          >
+            {t("Anterior")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!hasNext}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            {t("Próxima")}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

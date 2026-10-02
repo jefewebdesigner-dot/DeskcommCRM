@@ -25,7 +25,10 @@ export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).max(499).default(0),
   min_hours: z.coerce.number().int().min(0).max(2000).default(RADAR_MIN_HOURS_PADRAO),
+  risk: z.enum(["critico", "em_risco", "em_voo"]).optional(),
+  ownership: z.enum(["all", "unassigned", "owned"]).default("all"),
 });
 
 export type { AtRiskLead } from "@/lib/leads/radar-de-risco";
@@ -46,14 +49,17 @@ export async function GET(req: NextRequest): Promise<Response> {
       details: parsed.error.flatten(),
     });
   }
-  const { limit, min_hours } = parsed.data;
+  const { limit, offset, min_hours, risk, ownership } = parsed.data;
 
   try {
     const radar = await carregaRadarDeRisco(await createClient(), {
       organizationId: org.orgId,
       humanRole: org.role,
       limit,
+      offset,
       minHours: min_hours,
+      risks: risk ? [risk] : undefined,
+      ownership,
     });
     return ok(radar, { requestId });
   } catch {

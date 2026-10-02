@@ -97,7 +97,13 @@ export interface RadarDeRisco {
 export interface OpcoesDoRadar {
   organizationId: string;
   limit?: number;
+  /** Deslocamento aplicado DEPOIS da classificação/ordenação do radar. */
+  offset?: number;
   minHours?: number;
+  /** Filtro opcional dos buckets visíveis. Sem filtro, preserva o contrato antigo. */
+  risks?: RiskBucket[];
+  /** Filtro de responsabilidade usando exatamente o dono exibido na tela. */
+  ownership?: "all" | "unassigned" | "owned";
   now?: Date;
   /** Apenas a rota humana passa o papel efetivo; as consultas usam seu client RLS. */
   humanRole?: Role;
@@ -396,10 +402,27 @@ export async function carregaRadarDeRisco(
     };
   });
 
+  const riskSet = opts.risks?.length ? new Set(opts.risks) : null;
+  const ownership = opts.ownership ?? "all";
+  const radarFiltrado = radar.filter((item) => {
+    if (riskSet && !riskSet.has(item.risk)) return false;
+
+    const temResponsavel = Boolean(
+      item.owner_user_id ||
+        item.owner_kind ||
+        item.owner_agent_id ||
+        item.assignee_kind,
+    );
+    if (ownership === "unassigned" && temResponsavel) return false;
+    if (ownership === "owned" && !temResponsavel) return false;
+    return true;
+  });
+  const offset = Math.max(0, opts.offset ?? 0);
+
   return {
-    items: radar.slice(0, limit),
+    items: radarFiltrado.slice(offset, offset + limit),
     counts: { critico: counts.critico, em_risco: counts.em_risco, em_voo: counts.em_voo },
-    total: radar.length,
+    total: radarFiltrado.length,
     sem_proximo_passo: semProximoPasso.slice(0, limit),
     total_sem_proximo_passo: semProximoPasso.length,
   };
