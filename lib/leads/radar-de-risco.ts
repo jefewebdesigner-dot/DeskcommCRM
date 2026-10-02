@@ -407,12 +407,14 @@ export async function carregaRadarDeRisco(
   const radarFiltrado = radar.filter((item) => {
     if (riskSet && !riskSet.has(item.risk)) return false;
 
-    const temResponsavel = Boolean(
-      item.owner_user_id ||
-        item.owner_kind ||
-        item.owner_agent_id ||
-        item.assignee_kind,
-    );
+    // A mesma regra que a linha do Radar usa para exibir "Sem dono":
+    // owner_kind='user' sem owner_user_id é dado incompleto, não responsável.
+    // Dono IA continua reconhecido pelo kind, mesmo se o agente histórico sumiu.
+    const temResponsavel =
+      item.owner_kind === "ai" ||
+      Boolean(item.owner_user_id) ||
+      item.assignee_kind === "user" ||
+      item.assignee_kind === "ai";
     if (ownership === "unassigned" && temResponsavel) return false;
     if (ownership === "owned" && !temResponsavel) return false;
     return true;

@@ -64,7 +64,7 @@ function lead(
   };
 }
 
-function banco(): SupabaseClient {
+function banco(extras: Linha[] = []): SupabaseClient {
   return bancoFalso({
     crm_pipelines: [{ id: "p1", organization_id: ORG, is_archived: false }],
     crm_leads: [
@@ -75,6 +75,7 @@ function banco(): SupabaseClient {
       }),
       lead("em-risco", "2026-09-30T12:00:00.000Z"),
       lead("em-voo", "2026-09-30T12:00:00.000Z", { contact_id: "c4" }),
+      ...extras,
     ],
     crm_stages: [],
     ai_agents: [],
@@ -128,18 +129,24 @@ describe("Radar operacional: paginação e filtros", () => {
   });
 
   it("separa sem dono e com responsável pela mesma regra exibida na tela", async () => {
-    const semDono = await carregaRadarDeRisco(banco(), {
+    const incompleto = lead(
+      "owner-kind-user-sem-id",
+      "2026-09-29T12:00:00.000Z",
+      { owner_kind: "user" },
+    );
+    const semDono = await carregaRadarDeRisco(banco([incompleto]), {
       organizationId: ORG,
       now: AGORA,
       ownership: "unassigned",
     });
-    const comDono = await carregaRadarDeRisco(banco(), {
+    const comDono = await carregaRadarDeRisco(banco([incompleto]), {
       organizationId: ORG,
       now: AGORA,
       ownership: "owned",
     });
 
-    expect(semDono.total).toBe(3);
+    expect(semDono.total).toBe(4);
+    expect(semDono.items.map((x) => x.id)).toContain("owner-kind-user-sem-id");
     expect(semDono.items.map((x) => x.id)).not.toContain("critico-com-dono");
     expect(comDono.total).toBe(1);
     expect(comDono.items.map((x) => x.id)).toEqual(["critico-com-dono"]);
