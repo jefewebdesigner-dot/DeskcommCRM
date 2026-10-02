@@ -37,6 +37,7 @@ import { z } from "zod";
 
 import { reconnectEvolutionChannel } from "@/lib/channels/connect-evolution";
 import { CHANNEL_PROVIDER_EVOLUTION } from "@/lib/channels/capabilities";
+import { podeForcarNovoPareamento } from "@/lib/channels/reconnect-policy";
 import { EvolutionError, getEvolutionClient } from "@/lib/channels/evolution/client";
 import { assertWahaConnectionIdle, ChannelConnectionError, renomearSessaoParaOTeto } from "@/lib/channels/connect-waha";
 import { nomeDaSessaoCabeNoWaha, podeRenomearSessaoDoWaha } from "@/lib/channels/nome-da-sessao";
@@ -160,6 +161,19 @@ export async function POST(
       "channel_without_session",
       t("Este canal é o oficial (API da plataforma): ele não tem sessão de WhatsApp para reiniciar. Se parou de entregar, atualize a credencial na tela do canal oficial."),
       422,
+      { requestId },
+    );
+  }
+
+  // Defesa em profundidade: STOPPED é queda recuperável e ainda carrega a
+  // credencial pareada. Mesmo que algum cliente antigo envie force=true, o
+  // servidor não transforma uma pausa transitória em logout real. O QR
+  // destrutivo só é aceito depois que a sessão já foi classificada FAILED.
+  if (force && !podeForcarNovoPareamento(session.status ?? "")) {
+    return fail(
+      "soft_reconnect_required",
+      t("Esta sessão ainda pode ser retomada sem novo QR. Tente Reconectar primeiro."),
+      409,
       { requestId },
     );
   }

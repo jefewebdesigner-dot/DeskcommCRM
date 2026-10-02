@@ -10,3 +10,7 @@ export function modoDeRecuperacaoDoWhatsapp(status: string): ModoDeRecuperacao {
   if (normalizado === "FAILED") return "reparear";
   return null;
 }
+
+export function podeForcarNovoPareamento(status: string): boolean {
+  return modoDeRecuperacaoDoWhatsapp(status) === "reparear";
+}

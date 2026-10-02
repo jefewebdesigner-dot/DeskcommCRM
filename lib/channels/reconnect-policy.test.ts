@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { modoDeRecuperacaoDoWhatsapp } from "./estado-da-recuperacao";
+import { modoDeRecuperacaoDoWhatsapp, podeForcarNovoPareamento } from "./reconnect-policy";
 
 describe("recuperação da sessão WhatsApp", () => {
   it("nunca transforma STOPPED em logout/novo QR", () => {
@@ -8,6 +8,9 @@ describe("recuperação da sessão WhatsApp", () => {
 
   it("reserva novo pareamento para FAILED", () => {
     expect(modoDeRecuperacaoDoWhatsapp("FAILED")).toBe("reparear");
+    expect(podeForcarNovoPareamento("FAILED")).toBe(true);
+    expect(podeForcarNovoPareamento("STOPPED")).toBe(false);
+    expect(podeForcarNovoPareamento("WORKING")).toBe(false);
   });
 
   it("não oferece reparo destrutivo para estados vivos", () => {
