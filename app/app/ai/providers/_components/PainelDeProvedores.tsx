@@ -157,11 +157,11 @@ export function PainelDeProvedores() {
 
   if (erro) {
     return (
-      <div className="p-6">
-        <Card className="border-destructive/40 p-6">
+      <div className="p-4 sm:p-6">
+        <Card className="rounded-[24px] border-destructive/30 p-6 shadow-sm">
           <h2 className="font-medium">{t("Não consegui carregar a configuração de IA")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{erro}</p>
-          <Button className="mt-4" variant="outline" onClick={() => void carregar()}>
+          <Button className="mt-4 rounded-xl" variant="outline" onClick={() => void carregar()}>
             {t("Tentar de novo")}
           </Button>
         </Card>
@@ -170,23 +170,46 @@ export function PainelDeProvedores() {
   }
 
   if (!dados) {
-    return <div className="p-6 text-sm text-muted-foreground">{t("Carregando…")}</div>;
+    return (
+      <div className="p-4 sm:p-6">
+        <div
+          className="h-32 animate-pulse rounded-[24px] border border-border/60 bg-muted/20"
+          aria-label={t("Carregando…")}
+        />
+      </div>
+    );
   }
 
   const semChave = dados.credenciais.length === 0;
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-6" data-testid="painel-de-provedores">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Provedores de IA")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          {t("Seu sistema usa inteligência artificial em")} {dados.pontos.length}{" "}
-          {t("lugares diferentes. Aqui você vê qual está atendendo cada um — e troca, se quiser.")}
-        </p>
+    <div className="mx-auto w-full max-w-6xl p-4 sm:p-6" data-testid="painel-de-provedores">
+      <header className="relative mb-5 overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Orquestração de IA")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Provedores de IA")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t("Seu sistema usa inteligência artificial em")} {dados.pontos.length}{" "}
+            {t(
+              "lugares diferentes. Aqui você vê qual está atendendo cada um — e troca, se quiser.",
+            )}
+          </p>
+        </div>
       </header>
 
       {semChave && (
-        <Card className="mb-6 border-amber-500/40 bg-amber-500/5 p-4" data-testid="aviso-sem-chave">
+        <Card
+          className="mb-5 rounded-2xl border-amber-500/30 bg-amber-500/[0.04] p-4 shadow-sm"
+          data-testid="aviso-sem-chave"
+        >
           <p className="text-sm">
             {t(
               "Você ainda não cadastrou nenhuma chave de provedor. Enquanto isso, tudo usa a chave que veio na instalação.",
@@ -200,11 +223,15 @@ export function PainelDeProvedores() {
 
       <CartaoDoPadrao dados={dados} aoSalvar={carregar} />
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {porPapel.map(({ papel, info, pontos }) => (
-          <section key={papel} data-testid={`papel-${papel}`}>
+          <section
+            key={papel}
+            data-testid={`papel-${papel}`}
+            className="rounded-[24px] border border-border/60 bg-card p-4 shadow-sm sm:p-5"
+          >
             <div className="mb-3">
-              <h2 className="text-lg font-medium">{t(info.rotulo)}</h2>
+              <h2 className="text-base font-semibold tracking-tight">{t(info.rotulo)}</h2>
               <p className="text-sm text-muted-foreground">{t(info.explicacao)}</p>
             </div>
 
@@ -214,6 +241,7 @@ export function PainelDeProvedores() {
               <Button
                 variant="ghost"
                 size="sm"
+                className="rounded-xl"
                 data-testid={`avancado-${papel}`}
                 onClick={() => setAvancado((a) => ({ ...a, [papel]: !a[papel] }))}
               >
@@ -225,12 +253,7 @@ export function PainelDeProvedores() {
             {avancado[papel] && (
               <div className="mt-3 space-y-3">
                 {pontos.map((ponto) => (
-                  <CartaoDoPonto
-                    key={ponto.id}
-                    ponto={ponto}
-                    dados={dados}
-                    aoSalvar={carregar}
-                  />
+                  <CartaoDoPonto key={ponto.id} ponto={ponto} dados={dados} aoSalvar={carregar} />
                 ))}
               </div>
             )}
@@ -293,8 +316,14 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
   }
 
   return (
-    <Card className="mb-6 p-4" data-testid="cartao-do-padrao">
-      <h2 className="text-base font-semibold">{t("Modelo padrão")}</h2>
+    <Card
+      className="mb-5 rounded-[24px] border-border/60 p-5 shadow-sm"
+      data-testid="cartao-do-padrao"
+    >
+      <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        {t("Padrão da organização")}
+      </p>
+      <h2 className="mt-1 text-base font-semibold tracking-tight">{t("Modelo padrão")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {t("Vale em todo ponto que você não configurou individualmente — hoje,")} {herdam.length}{" "}
         {t("de")} {dados.pontos.length}. {t("Trocar aqui muda todos eles de uma vez.")}
@@ -313,7 +342,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
               setModelId("");
             }}
           >
-            <SelectTrigger data-testid="padrao-provider">
+            <SelectTrigger className="rounded-xl" data-testid="padrao-provider">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -344,6 +373,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 placeholder="ex.: meta-llama/llama-3.3-70b-instruct"
+                className="rounded-xl"
                 data-testid="padrao-modelo"
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -354,7 +384,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
             </>
           ) : (
             <Select value={modelId} onValueChange={setModelId}>
-              <SelectTrigger data-testid="padrao-modelo">
+              <SelectTrigger className="rounded-xl" data-testid="padrao-modelo">
                 <SelectValue placeholder={t("escolha")} />
               </SelectTrigger>
               <SelectContent>
@@ -371,6 +401,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
         {dados.podeEditar && (
           <Button
             size="sm"
+            className="rounded-xl"
             disabled={salvando || !mudou || modelId === ""}
             onClick={() => void salvar()}
             data-testid="salvar-padrao"
@@ -399,7 +430,7 @@ function ResumoDoGrupo({ pontos }: { pontos: Ponto[] }) {
   const comAviso = pontos.filter((p) => p.avisos.length > 0).length;
 
   return (
-    <Card className="p-4">
+    <Card className="rounded-2xl border-border/60 bg-muted/[0.08] p-4 shadow-none">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">{t("Usando:")}</span>
         {modelos.map((m) => (
@@ -409,7 +440,10 @@ function ResumoDoGrupo({ pontos }: { pontos: Ponto[] }) {
         ))}
       </div>
       {comAviso > 0 && (
-        <p className="mt-2 text-sm text-amber-600 dark:text-amber-500" data-testid="grupo-com-aviso">
+        <p
+          className="mt-2 text-sm text-amber-600 dark:text-amber-500"
+          data-testid="grupo-com-aviso"
+        >
           {comAviso === 1
             ? t("1 ponto deste grupo precisa da sua atenção.")
             : `${comAviso} ${t("pontos deste grupo precisam da sua atenção.")}`}
@@ -482,7 +516,10 @@ function CartaoDoPonto({
   }
 
   return (
-    <Card className="p-4" data-testid={`ponto-${ponto.id}`}>
+    <Card
+      className="rounded-2xl border-border/60 bg-background p-4 shadow-sm"
+      data-testid={`ponto-${ponto.id}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -507,14 +544,14 @@ function CartaoDoPonto({
       </div>
 
       {/* O que a pessoa VÊ quando este ponto falha. É a razão de a tela existir. */}
-      <p className="mt-3 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+      <p className="mt-3 rounded-xl bg-muted/40 p-2.5 text-xs text-muted-foreground">
         <span className="font-medium">{t("Se falhar:")}</span> {t(ponto.sintomaDeFalha)}
       </p>
 
       {ponto.avisos.map((a) => (
         <p
           key={a}
-          className="mt-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-500"
+          className="mt-2 rounded-xl bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-500"
           data-testid={`aviso-${ponto.id}`}
         >
           {t(a)}
@@ -548,7 +585,7 @@ function CartaoDoPonto({
                 setCredentialId("");
               }}
             >
-              <SelectTrigger data-testid={`provider-${ponto.id}`}>
+              <SelectTrigger className="rounded-xl" data-testid={`provider-${ponto.id}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -579,6 +616,7 @@ function CartaoDoPonto({
                   value={modelId}
                   onChange={(e) => setModelId(e.target.value)}
                   placeholder="ex.: meta-llama/llama-3.3-70b-instruct"
+                  className="rounded-xl"
                   data-testid={`modelo-${ponto.id}`}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -589,7 +627,7 @@ function CartaoDoPonto({
               </>
             ) : (
               <Select value={modelId} onValueChange={setModelId}>
-                <SelectTrigger data-testid={`modelo-${ponto.id}`}>
+                <SelectTrigger className="rounded-xl" data-testid={`modelo-${ponto.id}`}>
                   <SelectValue placeholder={t("escolha")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -607,7 +645,7 @@ function CartaoDoPonto({
           <div>
             <Label className="text-xs">{t("Chave")}</Label>
             <Select value={credentialId} onValueChange={setCredentialId}>
-              <SelectTrigger data-testid={`chave-${ponto.id}`}>
+              <SelectTrigger className="rounded-xl" data-testid={`chave-${ponto.id}`}>
                 <SelectValue placeholder={t("da instalação")} />
               </SelectTrigger>
               <SelectContent>
@@ -627,6 +665,7 @@ function CartaoDoPonto({
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="https://mi-gateway.ejemplo.com/v1"
+                className="rounded-xl"
                 data-testid={`base-url-${ponto.id}`}
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -640,6 +679,7 @@ function CartaoDoPonto({
           <div className="sm:col-span-3">
             <Button
               size="sm"
+              className="rounded-xl"
               disabled={salvando || !modelId}
               onClick={() => void salvar()}
               data-testid={`salvar-${ponto.id}`}

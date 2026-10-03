@@ -41,26 +41,36 @@ export default async function CredentialsPage() {
       .from("ai_agent_versions")
       .select("id, credential_id, version_number, status")
       .eq("organization_id", activeOrg.orgId)
-      .in("credential_id", credentials.map((c) => c.id));
+      .in(
+        "credential_id",
+        credentials.map((c) => c.id),
+      );
     usageMap = contarUsoQueBloqueia((linked ?? []) as unknown as VersaoVinculada[]);
   }
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Chaves de acesso à IA", idioma)}</h1>
-        <p className="text-sm text-muted-foreground">
-          {traduzir(
-            "A conta de inteligência artificial é sua: você contrata direto na Anthropic, OpenAI ou Google e cola a chave aqui. Ela é guardada criptografada e nunca mais aparece na tela depois de salva — nem para você.",
-            idioma,
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {traduzir("Acesso aos provedores", idioma)}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {traduzir("Chaves de acesso à IA", idioma)}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {traduzir(
+              "Conecte suas contas de IA com segurança. A chave é criptografada e nunca volta a aparecer depois de salva.",
+              idioma,
+            )}
+          </p>
+        </div>
       </header>
-      <CredentialsList
-        initialData={credentials}
-        canWrite={canWrite}
-        usageMap={usageMap}
-      />
+      <CredentialsList initialData={credentials} canWrite={canWrite} usageMap={usageMap} />
     </div>
   );
 }

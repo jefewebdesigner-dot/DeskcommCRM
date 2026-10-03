@@ -90,10 +90,7 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
     setSubmitting(true);
     const validatingToast = toast.loading(t("Credencial salva. Validando…"));
     try {
-      const res = await apiClient.post<CreateResponse>(
-        "/api/v1/ai/credentials",
-        parsed.data,
-      );
+      const res = await apiClient.post<CreateResponse>("/api/v1/ai/credentials", parsed.data);
       toast.dismiss(validatingToast);
       toast.success(t("Credencial salva. Validação em segundo plano."));
       reset();
@@ -136,7 +133,7 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChangeWrapped}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle>{t("Adicionar credencial")}</DialogTitle>
           <DialogDescription>
@@ -147,7 +144,7 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
           <div className="space-y-2">
             <Label htmlFor="cred-provider">{t("Provedor")}</Label>
             <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
-              <SelectTrigger id="cred-provider">
+              <SelectTrigger id="cred-provider" className="rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -159,9 +156,7 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">{t(provedor.quandoUsar)}</p>
-            {errors.provider && (
-              <p className="text-xs text-destructive">{errors.provider}</p>
-            )}
+            {errors.provider && <p className="text-xs text-destructive">{errors.provider}</p>}
           </div>
 
           <div className="space-y-2">
@@ -172,6 +167,7 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
               onChange={(e) => setLabel(e.target.value)}
               placeholder={t("Ex: Produção")}
               maxLength={80}
+              className="rounded-xl"
               required
             />
             {errors.label && <p className="text-xs text-destructive">{errors.label}</p>}
@@ -196,23 +192,23 @@ export function AddCredentialDialog({ open, onOpenChange }: Props) {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={provedor.prefixoDaChave}
               autoComplete="off"
+              className="rounded-xl"
               required
             />
-            {errors.api_key && (
-              <p className="text-xs text-destructive">{errors.api_key}</p>
-            )}
+            {errors.api_key && <p className="text-xs text-destructive">{errors.api_key}</p>}
           </div>
 
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
+              className="rounded-xl"
               onClick={() => onOpenChangeWrapped(false)}
               disabled={submitting}
             >
               {t("Cancelar")}
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" className="rounded-xl" disabled={submitting}>
               {submitting ? t("Salvando…") : t("Salvar e validar")}
             </Button>
           </DialogFooter>

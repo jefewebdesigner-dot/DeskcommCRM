@@ -19,12 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowsClockwise, PencilSimple, Trash } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -53,7 +48,10 @@ const STATUS_LABEL: Record<CredentialStatus, string> = {
   inactive: "Inativa",
 };
 
-const STATUS_VARIANT: Record<CredentialStatus, "default" | "secondary" | "destructive" | "outline"> = {
+const STATUS_VARIANT: Record<
+  CredentialStatus,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   validated: "default",
   validating: "secondary",
   unvalidated: "outline",
@@ -115,15 +113,16 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
   );
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
+    <Card className="group flex h-full flex-col gap-3 rounded-2xl border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-medium" title={credential.label}>
+          <h3
+            className="truncate text-sm font-semibold tracking-[-0.015em]"
+            title={credential.label}
+          >
             {credential.label}
           </h3>
-          <p className="font-mono text-xs text-muted-foreground">
-            …{last4}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">…{last4}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Badge variant={STATUS_VARIANT[status]} className="text-xs">
@@ -159,19 +158,21 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
         </p>
       )}
 
-      <dl className="grid grid-cols-2 gap-2 text-xs">
+      <dl className="grid grid-cols-2 gap-2 rounded-xl bg-muted/[0.16] p-3 text-xs">
         <div>
           <dt className="text-muted-foreground">{t("Modelos")}</dt>
-          <dd className="font-mono">{credential.models_available?.length ?? "—"}</dd>
+          <dd className="mt-0.5 font-semibold tabular-nums">
+            {credential.models_available?.length ?? "—"}
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">{t("Em uso por")}</dt>
-          <dd className="font-mono">{usageCount}</dd>
+          <dd className="mt-0.5 font-semibold tabular-nums">{usageCount}</dd>
         </div>
       </dl>
 
       {canWrite && (
-        <div className="flex items-center justify-end gap-1 pt-1">
+        <div className="mt-auto flex items-center justify-end gap-1 border-t border-border/60 pt-2">
           {/* Rotacionar é o caminho que NÃO passa pela exclusão — e por isso
               fica habilitado mesmo com a chave em uso. É por aqui que o
               operador de um agente publicado troca a chave. */}
@@ -203,7 +204,10 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
                     frase, de 267 caracteres, vira UMA linha de ~1467px e o fim dela sai
                     da tela em 1280, 1366 e 1440. Mesmo padrão de PlatformAdminsTable. */}
                 <TooltipContent className="max-w-xs break-words">
-                  {t("Em uso por")} {usageCount} {t("versão(ões) de agente")}. {t("Para trocar a chave, use editar. Para excluir, nenhuma versão pode estar usando a chave — e versão já publicada ou substituída não aceita mais apontar para outra chave, então a exclusão fica travada enquanto esse histórico existir.")}
+                  {t("Em uso por")} {usageCount} {t("versão(ões) de agente")}.{" "}
+                  {t(
+                    "Para trocar a chave, use editar. Para excluir, nenhuma versão pode estar usando a chave — e versão já publicada ou substituída não aceita mais apontar para outra chave, então a exclusão fica travada enquanto esse histórico existir.",
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -213,11 +217,7 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
         </div>
       )}
 
-      <RotateCredentialDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        credential={credential}
-      />
+      <RotateCredentialDialog open={editOpen} onOpenChange={setEditOpen} credential={credential} />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

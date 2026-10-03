@@ -44,7 +44,7 @@ export function CredentialsList({ initialData, canWrite, usageMap }: Props) {
   if (credentials.length === 0) {
     return (
       <>
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
+        <Card className="flex flex-col items-center gap-3 rounded-[24px] border-dashed border-border/60 bg-muted/[0.06] p-10 text-center shadow-sm">
           <h2 className="font-medium">{t("Nenhuma chave cadastrada ainda")}</h2>
           <p className="max-w-md text-sm text-muted-foreground">
             {t(
@@ -52,7 +52,7 @@ export function CredentialsList({ initialData, canWrite, usageMap }: Props) {
             )}
           </p>
           {canWrite && (
-            <Button className="mt-1" onClick={() => setAddOpen(true)}>
+            <Button className="mt-1 rounded-xl" onClick={() => setAddOpen(true)}>
               <Plus size={14} aria-hidden className="mr-2" /> {t("Adicionar credencial")}
             </Button>
           )}
@@ -66,7 +66,7 @@ export function CredentialsList({ initialData, canWrite, usageMap }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex sm:justify-end">
         {canWrite && (
-          <Button onClick={() => setAddOpen(true)} className="w-full sm:w-auto">
+          <Button onClick={() => setAddOpen(true)} className="w-full rounded-xl sm:w-auto">
             <Plus size={14} aria-hidden className="mr-2" /> {t("Adicionar credencial")}
           </Button>
         )}
@@ -78,10 +78,13 @@ export function CredentialsList({ initialData, canWrite, usageMap }: Props) {
         const rows = grouped[p] ?? [];
         if (rows.length === 0) return null;
         return (
-          <section key={p} className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              {PROVIDER_LABELS[p]}
-            </h2>
+          <section key={p} className="space-y-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {PROVIDER_LABELS[p]}
+              </h2>
+              <span className="h-px flex-1 bg-border/60" aria-hidden="true" />
+            </div>
             <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {rows.map((row) => (
                 <li key={row.id}>
