@@ -18,10 +18,7 @@ import {
 } from "@/hooks/ai/useKnowledgeSources";
 import { KnowledgeSourceCard } from "@/components/ai/KnowledgeSourceCard";
 import { NovoMaterialDialog } from "@/components/ai/NovoMaterialDialog";
-import {
-  ChaveDeConhecimento,
-  type EstadoDaChave,
-} from "@/components/ai/ChaveDeConhecimento";
+import { ChaveDeConhecimento, type EstadoDaChave } from "@/components/ai/ChaveDeConhecimento";
 
 export interface AgenteQueUsa {
   id: string;
@@ -72,17 +69,26 @@ export function AcervoClient({ initialSources, initialChave, agentes }: Props) {
     <div className="space-y-5">
       <ChaveDeConhecimento estado={estado} onChaveCadastrada={recarregar} />
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-text-muted">
-          {lista.length === 0
-            ? t("Nenhum material ainda.")
-            : `${lista.length} ${lista.length === 1 ? t("material") : t("materiais")} ${t("no acervo.")}`}
-        </p>
-        <Button onClick={() => setNovoAberto(true)} data-testid="acervo-adicionar">
+      <section className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            {t("Acervo ativo")}
+          </p>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {lista.length === 0
+              ? t("Nenhum material ainda.")
+              : `${lista.length} ${lista.length === 1 ? t("material") : t("materiais")} ${t("no acervo.")}`}
+          </p>
+        </div>
+        <Button
+          className="rounded-xl"
+          onClick={() => setNovoAberto(true)}
+          data-testid="acervo-adicionar"
+        >
           <Plus className="mr-2 h-4 w-4" aria-hidden />
           {t("Adicionar material")}
         </Button>
-      </div>
+      </section>
 
       <NovoMaterialDialog
         aberto={novoAberto}
@@ -93,7 +99,7 @@ export function AcervoClient({ initialSources, initialChave, agentes }: Props) {
 
       {lista.length === 0 ? (
         <div
-          className="rounded-lg border border-dashed border-border p-8 text-center"
+          className="rounded-[24px] border border-dashed border-border/60 bg-muted/[0.06] px-6 py-14 text-center shadow-sm"
           data-testid="acervo-vazio"
         >
           <p className="text-sm font-medium">{t("O agente ainda não conhece o seu negócio")}</p>
@@ -120,19 +126,24 @@ export function AcervoClient({ initialSources, initialChave, agentes }: Props) {
       )}
 
       {arquivados.length > 0 ? (
-        <details className="rounded-lg border border-border p-4" data-testid="acervo-arquivados">
-          <summary className="cursor-pointer text-sm font-medium">
-            {arquivados.length}{" "}
-            {arquivados.length === 1 ? t("arquivado") : t("arquivados")}
+        <details
+          className="group rounded-2xl border border-border/60 bg-muted/[0.06] p-4"
+          data-testid="acervo-arquivados"
+        >
+          <summary className="cursor-pointer text-sm font-semibold tracking-tight">
+            {arquivados.length} {arquivados.length === 1 ? t("arquivado") : t("arquivados")}
           </summary>
           <p className="mt-2 text-xs text-text-muted">
             {t(
               "Material arquivado não é consultado por nenhum assistente, e não é apagado — o histórico do que o agente já soube continua existindo.",
             )}
           </p>
-          <ul className="mt-3 space-y-1 text-sm">
+          <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             {arquivados.map((s) => (
-              <li key={s.id} className="text-text-muted">
+              <li
+                key={s.id}
+                className="rounded-xl border border-border/50 bg-background/70 px-3 py-2 text-text-muted"
+              >
                 {s.name}
               </li>
             ))}

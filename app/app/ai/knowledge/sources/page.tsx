@@ -4,10 +4,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
-import {
-  EXPLICACAO_DA_ORIGEM,
-  resolverChaveDeEmbedding,
-} from "@/lib/ai/embeddings/chave";
+import { EXPLICACAO_DA_ORIGEM, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
 import type { EstadoDaChave } from "@/components/ai/ChaveDeConhecimento";
 import type { SourceRow } from "@/hooks/ai/useKnowledgeSources";
 import { AcervoClient, type AgenteQueUsa } from "./_client";
@@ -43,7 +40,6 @@ export default async function AcervoPage() {
     redirect("/403");
   }
 
-
   const supabase = await createClient();
 
   const [{ data: sourcesRaw }, { data: agentesRaw }, chave, { data: credenciais }] =
@@ -72,12 +68,14 @@ export default async function AcervoPage() {
 
   const initialSources = (sourcesRaw ?? []) as unknown as SourceRow[];
 
-  const agentes: AgenteQueUsa[] = ((agentesRaw ?? []) as unknown as Array<{
-    id: string;
-    name: string;
-    published_version_id: string | null;
-    ai_agent_versions: Array<{ id: string; knowledge_source_ids: string[] | null }>;
-  }>)
+  const agentes: AgenteQueUsa[] = (
+    (agentesRaw ?? []) as unknown as Array<{
+      id: string;
+      name: string;
+      published_version_id: string | null;
+      ai_agent_versions: Array<{ id: string; knowledge_source_ids: string[] | null }>;
+    }>
+  )
     .map((a) => {
       const publicada = a.ai_agent_versions.find((v) => v.id === a.published_version_id);
       return {
@@ -98,14 +96,25 @@ export default async function AcervoPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("O que o agente sabe")}</h1>
-        <p className="text-sm text-text-muted">
-          {t(
-            "O material do seu negócio que os assistentes consultam antes de responder. Cada assistente escolhe, na tela dele, o que pode ler daqui.",
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Biblioteca de conhecimento")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("O que o agente sabe")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-muted">
+            {t(
+              "Centralize documentos, perguntas frequentes e materiais do negócio que seus assistentes consultam antes de responder.",
+            )}
+          </p>
+        </div>
       </header>
 
       <AcervoClient

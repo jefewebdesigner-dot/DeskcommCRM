@@ -101,7 +101,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
     return (
       <div
         data-testid="conhecimento-chave-conferindo"
-        className="flex items-center gap-2 text-xs text-text-muted"
+        className="flex items-center gap-2 rounded-2xl border border-border/60 bg-muted/[0.08] px-3.5 py-3 text-xs text-text-muted"
       >
         <KeyRound className="h-3.5 w-3.5 animate-pulse" aria-hidden />
         <span>{t("Conferindo a chave com a OpenAI — leva alguns segundos.")}</span>
@@ -113,7 +113,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
     return (
       <div
         data-testid="conhecimento-chave-ok"
-        className="flex flex-wrap items-center gap-2 text-xs text-text-muted"
+        className="flex flex-wrap items-center gap-2 rounded-2xl border border-success-fg/15 bg-success-bg/20 px-3.5 py-3 text-xs text-text-muted shadow-sm"
       >
         <CheckCircle2 className="h-3.5 w-3.5 text-success-fg" aria-hidden />
         <span>
@@ -123,13 +123,13 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
               {t("Usando a chave")}{" "}
               <span className="font-medium text-foreground">{estado.chave_em_uso}</span>.
             </>
-          ) : (
-            // `explicacao` e `avisos` vêm do servidor, de catálogos fechados
-            // (`EXPLICACAO_DA_ORIGEM` em `lib/ai/embeddings/chave.ts`). Passar
-            // por um route handler não os tira do alcance do dicionário: a
-            // correspondência é por igualdade de string, venha de onde vier.
-            estado.explicacao ? t(estado.explicacao) : null
-          )}
+          ) : // `explicacao` e `avisos` vêm do servidor, de catálogos fechados
+          // (`EXPLICACAO_DA_ORIGEM` em `lib/ai/embeddings/chave.ts`). Passar
+          // por um route handler não os tira do alcance do dicionário: a
+          // correspondência é por igualdade de string, venha de onde vier.
+          estado.explicacao ? (
+            t(estado.explicacao)
+          ) : null}
         </span>
         {estado.avisos.map((a) => (
           <span key={a} className="w-full text-warning-fg">
@@ -143,7 +143,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
   return (
     <Card
       data-testid="conhecimento-sem-chave"
-      className="space-y-3 border-warning-bg bg-warning-bg/20 p-4"
+      className="space-y-3 rounded-2xl border-warning-bg/70 bg-warning-bg/20 p-4 shadow-sm"
     >
       <div className="flex items-start gap-2">
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" aria-hidden />
@@ -168,6 +168,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
               value={rotulo}
               onChange={(e) => setRotulo(e.target.value)}
               disabled={enviando}
+              className="rounded-xl"
             />
           </div>
           <div className="space-y-1">
@@ -181,6 +182,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
               onChange={(e) => setChave(e.target.value)}
               disabled={enviando}
               autoComplete="off"
+              className="rounded-xl"
             />
             <p className="text-xs text-text-muted">
               {t("Você pega em")}{" "}
@@ -198,13 +200,20 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
           <div className="flex gap-2">
             <Button
               size="sm"
+              className="rounded-xl"
               onClick={cadastrar}
               disabled={enviando}
               data-testid="conhecimento-chave-salvar"
             >
               {enviando ? t("Salvando…") : t("Salvar chave")}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setAbrindo(false)} disabled={enviando}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => setAbrindo(false)}
+              disabled={enviando}
+            >
               {t("Cancelar")}
             </Button>
           </div>
@@ -214,6 +223,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
           <Button
             size="sm"
             variant="secondary"
+            className="rounded-xl"
             onClick={() => setAbrindo(true)}
             data-testid="conhecimento-cadastrar-chave"
           >

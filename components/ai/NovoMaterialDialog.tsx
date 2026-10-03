@@ -113,7 +113,9 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
         });
         const json = (await res.json()) as { error?: { message?: string } };
         if (!res.ok) {
-          toast.error(json.error?.message ? t(json.error.message) : t("Não consegui guardar o arquivo."));
+          toast.error(
+            json.error?.message ? t(json.error.message) : t("Não consegui guardar o arquivo."),
+          );
           return;
         }
       } else {
@@ -147,7 +149,7 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
           inalcançável — medido pelo e2e, que não conseguiu clicar nele. Um
           formulário cujo botão de enviar não cabe na tela é um formulário que
           não se envia. */}
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
+      <DialogContent className="flex max-h-[85vh] flex-col rounded-2xl sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("Ensinar algo novo ao agente")}</DialogTitle>
           <DialogDescription>
@@ -171,7 +173,7 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
                     onClick={() => setTipo(tf.id)}
                     data-testid={`material-tipo-${tf.id}`}
                     className={[
-                      "rounded-lg border p-3 text-left text-sm transition",
+                      "rounded-xl border p-3 text-left text-sm transition-[background,border-color,box-shadow]",
                       marcado ? "border-accent bg-accent/10" : "border-border hover:bg-surface",
                       rotina ? "cursor-not-allowed opacity-50" : "",
                     ].join(" ")}
@@ -192,10 +194,13 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
             <Input
               id="material-nome"
               data-testid="material-nome"
-              placeholder={tipo === "faq" ? t("Perguntas frequentes da loja") : t("Política de troca")}
+              placeholder={
+                tipo === "faq" ? t("Perguntas frequentes da loja") : t("Política de troca")
+              }
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               disabled={enviando || porRotina}
+              className="rounded-xl"
             />
           </div>
 
@@ -210,6 +215,7 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
                 accept=".pdf,.md,.txt,.csv"
                 onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
                 disabled={enviando}
+                className="rounded-xl"
               />
               <p className="text-xs text-text-muted">
                 {t(
@@ -232,11 +238,12 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
                 value={conteudo}
                 onChange={(e) => setConteudo(e.target.value)}
                 disabled={enviando}
+                className="rounded-xl"
               />
               {ePerguntaEResposta(tipo) ? (
                 <p className="text-xs text-text-muted">
-                  {t("Uma linha")} <code>## Pergunta:</code> {t("e uma")}{" "}
-                  <code>## Resposta:</code> {t("por item, separados por uma linha em branco.")}
+                  {t("Uma linha")} <code>## Pergunta:</code> {t("e uma")} <code>## Resposta:</code>{" "}
+                  {t("por item, separados por uma linha em branco.")}
                 </p>
               ) : null}
             </div>
@@ -252,10 +259,15 @@ export function NovoMaterialDialog({ aberto, onFechar, onCriado, podeIndexar }: 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onFechar} disabled={enviando}>
+          <Button variant="outline" className="rounded-xl" onClick={onFechar} disabled={enviando}>
             {t("Cancelar")}
           </Button>
-          <Button onClick={criar} disabled={enviando || porRotina} data-testid="material-criar">
+          <Button
+            className="rounded-xl"
+            onClick={criar}
+            disabled={enviando || porRotina}
+            data-testid="material-criar"
+          >
             {enviando ? t("Guardando…") : t("Adicionar ao acervo")}
           </Button>
         </DialogFooter>

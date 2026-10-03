@@ -106,12 +106,25 @@ export function KnowledgeSourceCard({
   const temTrechos = (source.chunks_count ?? 0) > 0;
 
   return (
-    <Card className="flex h-full flex-col" data-testid={`material-${source.id}`}>
-      <CardHeader>
+    <Card
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border-border/60 bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
+      data-testid={`material-${source.id}`}
+    >
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 shrink-0 text-accent" aria-hidden />
-            <CardTitle className="text-base">{source.name}</CardTitle>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"
+              aria-hidden="true"
+            >
+              <Icon className="h-4.5 w-4.5" />
+            </span>
+            <CardTitle
+              className="min-w-0 truncate text-sm font-semibold tracking-[-0.015em]"
+              title={source.name}
+            >
+              {source.name}
+            </CardTitle>
           </div>
           <SourceStatusBadge source={source} />
         </div>
@@ -120,19 +133,19 @@ export function KnowledgeSourceCard({
         </p>
       </CardHeader>
 
-      <CardContent className="flex-1 space-y-2 text-sm">
-        <div className="flex items-baseline justify-between">
+      <CardContent className="flex-1 space-y-2.5 text-sm">
+        <div className="flex items-baseline justify-between rounded-xl bg-muted/[0.12] px-3 py-2">
           <span className="text-text-muted">{t("Preparado")}</span>
           <span>{formatRelative(source.last_indexed_at, tagDoIdioma, t)}</span>
         </div>
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between rounded-xl bg-muted/[0.12] px-3 py-2">
           <span className="text-text-muted">{t("Trechos que o agente encontra")}</span>
           <span data-testid={`material-trechos-${source.id}`}>{source.chunks_count ?? 0}</span>
         </div>
 
         {/* Quem usa este material. Sem isto, arquivar é um tiro no escuro: não dá
             para saber quantos assistentes param de saber daquilo. */}
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-start justify-between gap-3 rounded-xl bg-muted/[0.12] px-3 py-2">
           <span className="text-text-muted">{t("Consultado por")}</span>
           <span className="text-right">
             {usadoPor.length === 0 ? (
@@ -146,17 +159,18 @@ export function KnowledgeSourceCard({
         </div>
 
         {mostraErro ? (
-          <details className="rounded-md border border-error-bg bg-error-bg/30 p-2 text-xs text-error-fg">
+          <details className="rounded-xl border border-error-bg bg-error-bg/30 p-2.5 text-xs text-error-fg">
             <summary className="cursor-pointer font-medium">{t("Por que não entrou")}</summary>
-            <p className="mt-1 whitespace-pre-wrap break-words">{source.last_index_error}</p>
+            <p className="mt-1 break-words whitespace-pre-wrap">{source.last_index_error}</p>
           </details>
         ) : null}
       </CardContent>
 
-      <CardFooter className="flex flex-wrap gap-2">
+      <CardFooter className="mt-auto flex flex-wrap gap-2 border-t border-border/60 bg-muted/[0.04] pt-3">
         <Button
           variant="secondary"
           size="sm"
+          className="rounded-xl"
           disabled={arquivado || isReindexing}
           onClick={onReindex}
           data-testid={`material-reindexar-${source.id}`}
@@ -173,6 +187,7 @@ export function KnowledgeSourceCard({
             <Button
               variant="ghost"
               size="sm"
+              className="rounded-xl"
               onClick={() => setVendoTrechos(true)}
               data-testid={`material-ver-${source.id}`}
             >
@@ -199,6 +214,7 @@ export function KnowledgeSourceCard({
             <Button
               variant="ghost"
               size="sm"
+              className="rounded-xl"
               onClick={() => setEditando(true)}
               data-testid={`material-editar-${source.id}`}
             >
@@ -220,6 +236,7 @@ export function KnowledgeSourceCard({
           <Button
             variant="ghost"
             size="sm"
+            className="rounded-xl"
             onClick={onArquivar}
             data-testid={`material-arquivar-${source.id}`}
           >
