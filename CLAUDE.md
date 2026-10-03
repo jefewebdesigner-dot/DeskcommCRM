@@ -684,8 +684,8 @@ Um staff engineer aprovaria? Se não, itera.
 <!-- ZHEUS:MEMORIA:INICIO -->
 # Memória do projeto (mantida pelo Zheus)
 
-Este arquivo é escrito automaticamente. Ele existe para que o trabalho
-continue igual quando o motor de IA muda (Claude Code ↔ GPT Codex).
+Este arquivo é escrito automaticamente pelo Project Brain do Gravity.
+Ele preserva decisões e estado do projeto sem reenviar conversas inteiras.
 **Leia antes de agir e não recomece o que já está feito.**
 
 ## O que já foi feito
