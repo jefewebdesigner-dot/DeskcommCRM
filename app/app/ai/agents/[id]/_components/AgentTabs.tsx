@@ -51,18 +51,30 @@ export function AgentTabs(props: Props) {
     <Tabs
       value={tab}
       onValueChange={(v) => setTab(v as typeof tab)}
-      className="flex flex-col gap-4"
+      className="flex min-h-0 flex-col gap-4"
     >
-      <TabsList>
-        <TabsTrigger value="configuration">{t("Configuração")}</TabsTrigger>
-        <TabsTrigger value="test" disabled={!hasVersion}>
-          {t("Teste")}
-        </TabsTrigger>
-        <TabsTrigger value="capacidades">{t("Capacidades")}</TabsTrigger>
-        <TabsTrigger value="runs">{t("Execuções")}</TabsTrigger>
-        <TabsTrigger value="history">{t("Histórico")}</TabsTrigger>
-        <TabsTrigger value="proposals">{t("Propostas")}</TabsTrigger>
-      </TabsList>
+      <div className="[scrollbar-width:none] overflow-x-auto pb-1">
+        <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-2xl border border-border/60 bg-card p-1.5 shadow-sm">
+          <TabsTrigger value="configuration" className="rounded-xl px-3 py-2 text-xs">
+            {t("Configuração")}
+          </TabsTrigger>
+          <TabsTrigger value="test" disabled={!hasVersion} className="rounded-xl px-3 py-2 text-xs">
+            {t("Teste")}
+          </TabsTrigger>
+          <TabsTrigger value="capacidades" className="rounded-xl px-3 py-2 text-xs">
+            {t("Capacidades")}
+          </TabsTrigger>
+          <TabsTrigger value="runs" className="rounded-xl px-3 py-2 text-xs">
+            {t("Execuções")}
+          </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-xl px-3 py-2 text-xs">
+            {t("Histórico")}
+          </TabsTrigger>
+          <TabsTrigger value="proposals" className="rounded-xl px-3 py-2 text-xs">
+            {t("Propostas")}
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="configuration" className="m-0">
         <AgentForm

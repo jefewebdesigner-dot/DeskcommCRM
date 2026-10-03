@@ -39,27 +39,25 @@ import { TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { PROVEDORES } from "@/lib/ai/pontos/provedores";
 
 import { ModelPicker, useModelMeta } from "./ModelPicker";
-import { CHAVE_DA_INSTALACAO, CredentialPicker, STATUS_LABEL, findCredential } from "./CredentialPicker";
+import {
+  CHAVE_DA_INSTALACAO,
+  CredentialPicker,
+  STATUS_LABEL,
+  findCredential,
+} from "./CredentialPicker";
 import { rotuloDoEstadoDoCanal } from "@/lib/channels/estado";
 import { bloqueioDePublicacao } from "@/lib/ai/agents/bloqueio-de-publicacao";
 import { ToolPicker } from "./ToolPicker";
 import { TriggerEditor, type TriggerValue } from "./TriggerEditor";
 import { HandoffKeywordsInput } from "./HandoffKeywordsInput";
 import { FollowupFlowPicker } from "./FollowupFlowPicker";
-import {
-  FollowupWindowEditor,
-  type FollowupWindowValue,
-} from "./FollowupWindowEditor";
+import { FollowupWindowEditor, type FollowupWindowValue } from "./FollowupWindowEditor";
 import { PainelDoOperador } from "./PainelDoOperador";
 import { PainelDeSeguranca } from "./PainelDeSeguranca";
 import { BasesDoAgente, type MaterialDoAcervo } from "./BasesDoAgente";
 import { FunisDoAgente, type CoberturaPorFunil } from "./FunisDoAgente";
 import { PublishConfirmDialog } from "./PublishConfirmDialog";
-import {
-  saveAgentDraftAction,
-  publishAgentAction,
-  createMcpAgentAction,
-} from "../_actions";
+import { saveAgentDraftAction, publishAgentAction, createMcpAgentAction } from "../_actions";
 
 import {
   versionCreateSchema,
@@ -232,11 +230,7 @@ function buildState(args: {
     cost_budget_cents: version?.cost_budget_cents ?? 50,
     history_message_window: version?.history_message_window ?? 20,
     history_token_window: version?.history_token_window ?? 8_000,
-    handoff_keywords: version?.handoff_keywords ?? [
-      "falar com humano",
-      "atendente",
-      "pessoa real",
-    ],
+    handoff_keywords: version?.handoff_keywords ?? ["falar com humano", "atendente", "pessoa real"],
     handoff_tool_enabled: version?.handoff_tool_enabled ?? true,
     cases_enabled: version?.cases_enabled ?? false,
     split_messages: version?.split_messages ?? false,
@@ -438,9 +432,7 @@ export function AgentForm(props: Props) {
       provedor: form.provider,
       chave: {
         daInstalacao: form.credential_id === CHAVE_DA_INSTALACAO,
-        instalacaoTemChaveDoProvedor: (props.provedoresDaInstalacao ?? []).includes(
-          form.provider,
-        ),
+        instalacaoTemChaveDoProvedor: (props.provedoresDaInstalacao ?? []).includes(form.provider),
         estadoDaCredencialDaOrg: credSt,
       },
       numero: { estado: channelSession?.status ?? null },
@@ -578,14 +570,20 @@ export function AgentForm(props: Props) {
         </Badge>
       );
     }
-    if (draftN) return <Badge variant="outline">{t("Rascunho")} v{draftN}</Badge>;
+    if (draftN)
+      return (
+        <Badge variant="outline">
+          {t("Rascunho")} v{draftN}
+        </Badge>
+      );
     // Sem rascunho e sem publicada: o formulário abriu da última versão que
     // existiu (props.base), e não do texto padrão. Dizer isso é o que impede o
     // autor de achar que o prompt sumiu — e de salvar por cima achando que não.
     if (props.base) {
       return (
         <Badge variant="outline">
-          {t("Pausado")} {t("· editando a v")}{props.base.version_number}
+          {t("Pausado")} {t("· editando a v")}
+          {props.base.version_number}
         </Badge>
       );
     }
@@ -595,48 +593,60 @@ export function AgentForm(props: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold tracking-tight">
-              {isEdit ? props.agent.name : t("Novo agente")}
-            </h2>
-            {statusBadge}
+      <div className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-4 shadow-sm sm:p-5">
+        <div
+          className="pointer-events-none absolute -top-16 -right-14 h-40 w-40 rounded-full bg-primary/[0.04] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold tracking-[-0.035em] sm:text-2xl">
+                {isEdit ? props.agent.name : t("Novo agente")}
+              </h2>
+              {statusBadge}
+            </div>
+            {isEdit && props.agent.description ? (
+              <p className="text-xs text-muted-foreground">{props.agent.description}</p>
+            ) : null}
           </div>
-          {isEdit && props.agent.description ? (
-            <p className="text-xs text-muted-foreground">{props.agent.description}</p>
-          ) : null}
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {isEdit ? (
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              disabled={!dirty || disabled}
-            >
-              {t("Descartar alterações")}
-            </Button>
-          ) : null}
-          <Button onClick={handleSave} disabled={(!dirty && isEdit) || disabled || !isValid}>
-            {saving ? t("Salvando…") : isEdit ? t("Salvar rascunho") : t("Criar agente")}
-          </Button>
-          {isEdit ? (
-            <span title={publishBlockReason ?? undefined}>
+          <div className="flex flex-wrap items-center gap-2">
+            {isEdit ? (
               <Button
-                variant="default"
-                onClick={() => setConfirmOpen(true)}
-                disabled={disabled || publishBlockReason !== null}
-                aria-describedby={publishBlockReason ? ID_DO_MOTIVO_DO_PUBLICAR : undefined}
+                variant="outline"
+                className="rounded-xl"
+                onClick={handleReset}
+                disabled={!dirty || disabled}
               >
-                {publishing
-                  ? t("Publicando…")
-                  : props.draft
-                    ? `${t("Publicar v")}${props.draft.version_number}`
-                    : t("Publicar")}
+                {t("Descartar alterações")}
               </Button>
-            </span>
-          ) : null}
+            ) : null}
+            <Button
+              className="rounded-xl"
+              onClick={handleSave}
+              disabled={(!dirty && isEdit) || disabled || !isValid}
+            >
+              {saving ? t("Salvando…") : isEdit ? t("Salvar rascunho") : t("Criar agente")}
+            </Button>
+            {isEdit ? (
+              <span title={publishBlockReason ?? undefined}>
+                <Button
+                  variant="default"
+                  className="rounded-xl"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={disabled || publishBlockReason !== null}
+                  aria-describedby={publishBlockReason ? ID_DO_MOTIVO_DO_PUBLICAR : undefined}
+                >
+                  {publishing
+                    ? t("Publicando…")
+                    : props.draft
+                      ? `${t("Publicar v")}${props.draft.version_number}`
+                      : t("Publicar")}
+                </Button>
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -655,7 +665,7 @@ export function AgentForm(props: Props) {
           data-testid={ID_DO_MOTIVO_DO_PUBLICAR}
           role="status"
           aria-live="polite"
-          className="-mt-2 text-xs text-muted-foreground"
+          className="rounded-xl border border-border/50 bg-muted/[0.16] px-3 py-2 text-xs leading-relaxed text-muted-foreground"
         >
           {publishBlockReason}
         </p>
@@ -671,7 +681,11 @@ export function AgentForm(props: Props) {
         vocabulário interno; quem configura pensa em "quem fala com meu cliente" e
         "quem organiza minha casa".
       */}
-      <div className="flex flex-wrap gap-1 border-b" role="tablist" aria-label={t("Papéis do agente")}>
+      <div
+        className="flex w-fit max-w-full flex-wrap gap-1 rounded-2xl border border-border/60 bg-muted/25 p-1.5"
+        role="tablist"
+        aria-label={t("Papéis do agente")}
+      >
         {(
           [
             ["conversa", t("Conversa com o cliente")],
@@ -691,8 +705,8 @@ export function AgentForm(props: Props) {
             onClick={() => setPapel(id)}
             className={
               papel === id
-                ? "border-b-2 border-foreground px-3 py-2 text-sm font-medium"
-                : "border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                ? "rounded-xl bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm"
+                : "rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground"
             }
           >
             {t(rotulo)}
@@ -734,8 +748,8 @@ export function AgentForm(props: Props) {
         {/* COLUMN 1 */}
         <div className="space-y-4">
           {/* Identification */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Quem é este agente")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">{t("Quem é este agente")}</h3>
             <div className="space-y-1">
               <Label htmlFor="name">{t("Nome")}</Label>
               <Input
@@ -786,8 +800,10 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Provider + credential + model */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("A inteligência que ele usa")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">
+              {t("A inteligência que ele usa")}
+            </h3>
             <div className="space-y-1">
               <Label htmlFor="provider">{t("Empresa de inteligência artificial")}</Label>
               <Select
@@ -848,8 +864,10 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* WhatsApp session */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Por qual número ele atende")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">
+              {t("Por qual número ele atende")}
+            </h3>
             {props.routerMembership && (
               <div className="flex items-start gap-2 rounded-md bg-accent-soft p-3 text-xs text-text-muted">
                 <Info className="mt-0.5 shrink-0" aria-hidden />
@@ -917,7 +935,9 @@ export function AgentForm(props: Props) {
                       {t("para poder publicar.")}
                     </>
                   ) : (
-                    t("Escolha o número para poder publicar. Sem ele, o rascunho salva mas não atende.")
+                    t(
+                      "Escolha o número para poder publicar. Sem ele, o rascunho salva mas não atende.",
+                    )
                   )}
                 </p>
               ) : null}
@@ -925,8 +945,8 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Limits */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Freios de segurança")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">{t("Freios de segurança")}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="max_steps">{t("Ações por atendimento (1 a 25)")}</Label>
@@ -954,7 +974,9 @@ export function AgentForm(props: Props) {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="cost_budget_cents">{t("Custo máximo por atendimento (centavos)")}</Label>
+                <Label htmlFor="cost_budget_cents">
+                  {t("Custo máximo por atendimento (centavos)")}
+                </Label>
                 <Input
                   id="cost_budget_cents"
                   type="number"
@@ -966,16 +988,16 @@ export function AgentForm(props: Props) {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="history_message_window">{t("Mensagens anteriores que ele lê")}</Label>
+                <Label htmlFor="history_message_window">
+                  {t("Mensagens anteriores que ele lê")}
+                </Label>
                 <Input
                   id="history_message_window"
                   type="number"
                   min={0}
                   max={200}
                   value={form.history_message_window}
-                  onChange={(e) =>
-                    patch({ history_message_window: Number(e.target.value) })
-                  }
+                  onChange={(e) => patch({ history_message_window: Number(e.target.value) })}
                   disabled={disabled}
                 />
               </div>
@@ -988,9 +1010,7 @@ export function AgentForm(props: Props) {
                   max={50000}
                   step={500}
                   value={form.history_token_window}
-                  onChange={(e) =>
-                    patch({ history_token_window: Number(e.target.value) })
-                  }
+                  onChange={(e) => patch({ history_token_window: Number(e.target.value) })}
                   disabled={disabled}
                 />
               </div>
@@ -1001,9 +1021,9 @@ export function AgentForm(props: Props) {
         {/* COLUMN 2 */}
         <div className="space-y-4">
           {/* Prompt */}
-          <Card className="space-y-2 p-4">
+          <Card className="space-y-2 rounded-2xl border-border/60 p-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">{t("As instruções dele")}</h3>
+              <h3 className="text-sm font-semibold tracking-tight">{t("As instruções dele")}</h3>
               <div className="flex items-center gap-2">
                 {/* O contador é o aviso que chega ANTES do erro: quem cola um
                     texto grande vê na hora que ele não vai caber, em vez de
@@ -1054,8 +1074,8 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Estilo de resposta (split de mensagens — Onda 4) */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Estilo de resposta")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">{t("Estilo de resposta")}</h3>
             <div className="flex items-center gap-2">
               <Switch
                 id="split_messages"
@@ -1094,8 +1114,10 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Capacidades */}
-          <Card className="space-y-2 p-4">
-            <h3 className="text-sm font-medium">{t("O que o agente pode fazer")}</h3>
+          <Card className="space-y-2 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">
+              {t("O que o agente pode fazer")}
+            </h3>
             <p className="text-xs text-muted-foreground">
               {t(
                 "Ligue por jornada de trabalho. O agente só consegue fazer o que estiver ligado aqui — e o que estiver ligado, ele fará sozinho durante o atendimento.",
@@ -1120,8 +1142,10 @@ export function AgentForm(props: Props) {
           />
 
           {/* Triggers */}
-          <Card className="space-y-2 p-4">
-            <h3 className="text-sm font-medium">{t("Quando ele entra em ação")}</h3>
+          <Card className="space-y-2 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">
+              {t("Quando ele entra em ação")}
+            </h3>
             <TriggerEditor
               value={form.trigger_config}
               onChange={(v) => patch({ trigger_config: v })}
@@ -1130,8 +1154,8 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Handoff */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Passar para uma pessoa")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">{t("Passar para uma pessoa")}</h3>
             <div className="flex items-center gap-2">
               <Switch
                 id="handoff_tool_enabled"
@@ -1151,8 +1175,10 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Casos humanos */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Pedir ajuda sem sair da conversa")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">
+              {t("Pedir ajuda sem sair da conversa")}
+            </h3>
             <div className="flex items-center gap-2">
               <Switch
                 id="cases_enabled"
@@ -1172,8 +1198,8 @@ export function AgentForm(props: Props) {
           </Card>
 
           {/* Follow-up */}
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Follow-up")}</h3>
+          <Card className="space-y-3 rounded-2xl border-border/60 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold tracking-tight">{t("Follow-up")}</h3>
             <p className="text-xs text-muted-foreground">
               {t(
                 "Retomar sozinho quem parou de responder, para o interessado não sumir sem ninguém perceber.",
@@ -1183,9 +1209,7 @@ export function AgentForm(props: Props) {
               <Switch
                 id="followup_enabled"
                 checked={form.followup.enabled}
-                onCheckedChange={(v) =>
-                  patch({ followup: { ...form.followup, enabled: v } })
-                }
+                onCheckedChange={(v) => patch({ followup: { ...form.followup, enabled: v } })}
                 disabled={disabled}
               />
               <Label htmlFor="followup_enabled">
@@ -1199,16 +1223,12 @@ export function AgentForm(props: Props) {
             </p>
             <FollowupWindowEditor
               value={form.followup.send_window ?? null}
-              onChange={(send_window) =>
-                patch({ followup: { ...form.followup, send_window } })
-              }
+              onChange={(send_window) => patch({ followup: { ...form.followup, send_window } })}
               disabled={disabled || !form.followup.enabled}
             />
             <FollowupFlowPicker
               value={form.followup.flow_pointer_ids}
-              onChange={(ids) =>
-                patch({ followup: { ...form.followup, flow_pointer_ids: ids } })
-              }
+              onChange={(ids) => patch({ followup: { ...form.followup, flow_pointer_ids: ids } })}
               disabled={disabled}
             />
           </Card>
