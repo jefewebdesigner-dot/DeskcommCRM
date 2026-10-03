@@ -71,7 +71,11 @@ export function mergeThreadItems(
   return items;
 }
 
-function dayLabel(d: Date, t: (texto: string) => string = (texto) => texto, locale: Locale): string {
+function dayLabel(
+  d: Date,
+  t: (texto: string) => string = (texto) => texto,
+  locale: Locale,
+): string {
   if (isToday(d)) return t("Hoje");
   if (isYesterday(d)) return t("Ontem");
   return format(d, "dd/MM/yyyy", { locale: locale });
@@ -101,10 +105,7 @@ export function ChatThread({ conversationId, onResponder, dono, contatoId }: Pro
   const canManage = activeOrg != null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
   const { enabled: debugCitations } = useDebugToggle(activeOrg?.role ?? null);
 
-  const messages: Message[] = useMemo(
-    () => q.data?.pages.flatMap((p) => p.data) ?? [],
-    [q.data],
-  );
+  const messages: Message[] = useMemo(() => q.data?.pages.flatMap((p) => p.data) ?? [], [q.data]);
 
   /**
    * As mensagens por id, para resolver a CITADA sem ir ao servidor.
@@ -276,8 +277,11 @@ export function ChatThread({ conversationId, onResponder, dono, contatoId }: Pro
   }
 
   return (
-    <div {...sinalDoCanal} className="flex h-full flex-col">
-      <div ref={scrollerRef} className="flex-1 overflow-y-auto py-2">
+    <div
+      {...sinalDoCanal}
+      className="flex h-full flex-col bg-gradient-to-b from-muted/[0.10] via-background to-background"
+    >
+      <div ref={scrollerRef} className="flex-1 overflow-y-auto px-1 py-3 sm:px-2">
         {q.hasNextPage && (
           <div className="flex justify-center py-2">
             <Button
@@ -294,7 +298,7 @@ export function ChatThread({ conversationId, onResponder, dono, contatoId }: Pro
         {groups.map((g) => (
           <div key={g.key} className="space-y-1">
             <div className="sticky top-0 z-10 flex justify-center py-1">
-              <span className="rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground backdrop-blur">
+              <span className="rounded-full border border-border/50 bg-background/90 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
                 {dayLabel(g.date, t, localeDaData)}
               </span>
             </div>

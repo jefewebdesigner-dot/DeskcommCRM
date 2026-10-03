@@ -239,7 +239,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     <>
       <div
         className={cn(
-          "relative border-t border-border/70 bg-card px-3 py-3",
+          "relative border-t border-border/60 bg-card/95 px-3 py-3 shadow-[0_-10px_28px_rgba(0,0,0,0.035)] backdrop-blur-sm",
           mode === "note" && "border-warning/30 bg-warning-bg/60",
         )}
       >
@@ -282,7 +282,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onPick={applyTemplate}
           onClose={() => setMenuDismissed(true)}
         />
-        <div className="mb-2 inline-flex gap-0.5 rounded-lg bg-muted/65 p-1">
+        <div className="mb-2 inline-flex gap-0.5 rounded-xl border border-border/50 bg-muted/45 p-1">
           <button
             type="button"
             onClick={() => setMode("reply")}
@@ -397,7 +397,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 : t("Enter envia · Shift+Enter quebra linha")
             }
             className={cn(
-              "max-h-40 min-h-10 flex-1 resize-none rounded-xl border border-border/70 bg-muted/25 px-3 py-2.5 text-sm shadow-none transition-colors",
+              "max-h-40 min-h-10 flex-1 resize-none rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-sm shadow-inner transition-[background,border-color,box-shadow]",
               "placeholder:text-muted-foreground focus:border-border-strong focus:bg-background focus:ring-2 focus:ring-ring/20 focus:outline-hidden",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}

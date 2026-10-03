@@ -202,9 +202,11 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-transparent px-2.5 py-3 text-left transition-all hover:border-border/60 hover:bg-background",
+        "group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-transparent px-2.5 py-3 text-left transition-[background,border-color,box-shadow,transform] duration-150 hover:border-border/60 hover:bg-background hover:shadow-sm",
         "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-hidden",
-        isSelected && "border-accent/20 bg-accent-soft shadow-sm hover:bg-accent-soft",
+        unread > 0 && !isSelected && "bg-background/55",
+        isSelected &&
+          "border-accent/25 bg-accent-soft shadow-sm ring-1 ring-accent/10 hover:bg-accent-soft",
       )}
       aria-current={isSelected ? "true" : undefined}
     >
@@ -212,7 +214,7 @@ export function ConversationListItem({
         <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-accent" aria-hidden />
       )}
       <div className="relative shrink-0">
-        <Avatar className="h-11 w-11 border border-border/50 shadow-sm">
+        <Avatar className="h-11 w-11 border border-border/50 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {/* Só monta a <img> quando existe arquivo: sem isso o browser pediria
               a rota para TODO contato da lista e levaria 404 em cada um sem
               foto — que é a maioria. O AvatarFallback do Radix já cobre o caso
@@ -250,7 +252,7 @@ export function ConversationListItem({
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "truncate text-[13px]",
+              "truncate text-[13px] tracking-[-0.01em]",
               unread > 0 ? "font-semibold text-text" : "font-medium text-text",
               c?.is_anonymized && "font-normal text-text-muted italic",
             )}
@@ -272,7 +274,7 @@ export function ConversationListItem({
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p
             className={cn(
-              "min-w-0 truncate text-[13px]",
+              "min-w-0 truncate text-[12px] leading-relaxed",
               unread > 0 ? "text-text" : "text-text-muted",
             )}
           >

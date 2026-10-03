@@ -161,9 +161,9 @@ export function ConversationHeader({ conversation }: Props) {
     // de antes (uma linha), e quando aperta a barra desce para a linha de baixo.
     // Nenhuma ação some — um menu "mais" esconderia o "Lembrar" que a spec
     // `canais-baseline` clica, e, pior, esconderia ação de quem atende.
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-gradient-to-r from-card via-card to-muted/25 px-4 py-3.5">
       <div className="flex min-w-0 items-center gap-3">
-        <Avatar className="h-10 w-10 shrink-0 border border-border/60 shadow-sm">
+        <Avatar className="h-11 w-11 shrink-0 border border-border/60 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {c?.avatar_storage_path && !c?.is_anonymized ? (
             <AvatarImage src={`/api/v1/contacts/${c.id}/avatar`} alt="" className="object-cover" />
           ) : null}
@@ -173,8 +173,8 @@ export function ConversationHeader({ conversation }: Props) {
         </Avatar>
 
         <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <h2 className="max-w-[16rem] truncate text-[15px] font-semibold tracking-tight">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-xl bg-background/35 p-1">
+            <h2 className="max-w-[16rem] truncate text-[15px] font-semibold tracking-[-0.02em]">
               {displayName}
             </h2>
             <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium">

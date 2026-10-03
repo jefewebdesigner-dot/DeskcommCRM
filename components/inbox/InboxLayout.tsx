@@ -376,7 +376,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   return (
     <OpenConversationProvider conversationId={selectedId}>
       <div
-        className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]"
+        className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 overflow-hidden rounded-[24px] border border-border/60 bg-background shadow-[0_12px_40px_rgba(0,0,0,0.055)] md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]"
         /*
          * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
          * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
@@ -415,27 +415,29 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       */}
         <div
           className={cn(
-            "h-full min-h-0 flex-col border-r border-border/70 bg-muted/[0.12] md:flex",
+            "h-full min-h-0 flex-col border-r border-border/60 bg-muted/[0.16] md:flex",
             colunas.lista,
           )}
         >
-          <div className="flex items-center justify-between border-b border-border/70 bg-background px-3.5 py-3">
+          <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-br from-background via-background to-muted/35 px-3.5 py-3.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/10 bg-accent-soft text-accent shadow-sm"
                 aria-hidden
               >
                 <ChatCircle size={16} weight="duotone" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold tracking-tight">{t("Inbox")}</p>
+                <p className="truncate text-[15px] font-semibold tracking-[-0.02em]">
+                  {t("Inbox")}
+                </p>
                 <p className="truncate text-[11px] text-muted-foreground">
                   {t("Conversas e atendimento")}
                 </p>
               </div>
             </div>
             <span
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground shadow-sm"
               title={t("Saúde das conexões do WhatsApp")}
             >
               <ConnectionHealthDot />
@@ -467,7 +469,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         escondido — deixando o dono numa tela vazia, sem sequer o botão de
         voltar, porque ele morava dentro do ramo da conversa carregada.
       */}
-        <div className={cn("h-full min-h-0 flex-col bg-background md:flex", colunas.conversa)}>
+        <div className={cn("h-full min-h-0 flex-col bg-background/95 md:flex", colunas.conversa)}>
           {/*
           A barra do celular vive FORA do ramo da conversa carregada: o caminho
           de volta tem de existir inclusive quando não há o que mostrar — é aí
@@ -577,7 +579,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           )}
         </div>
 
-        <div className="hidden h-full min-h-0 border-l border-border/70 bg-muted/[0.08] xl:block">
+        <div className="hidden h-full min-h-0 border-l border-border/60 bg-muted/[0.08] xl:block">
           <CRMSidePanel conversation={selectedConversation} />
         </div>
 

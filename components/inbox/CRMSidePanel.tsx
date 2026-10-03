@@ -687,8 +687,8 @@ export function CRMSidePanel({ conversation }: Props) {
   }
 
   return (
-    <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border/70 bg-background/80 p-3.5">
-      <section>
+    <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border/60 bg-muted/[0.06] p-3.5">
+      <section className="rounded-2xl border border-border/60 bg-background p-3.5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -702,7 +702,7 @@ export function CRMSidePanel({ conversation }: Props) {
             {t("Contato")}
           </Badge>
         </div>
-        <Card className="mt-2.5 space-y-2.5 rounded-2xl border-border/70 p-3.5 text-sm shadow-sm">
+        <Card className="mt-2.5 space-y-2.5 rounded-xl border-border/60 bg-muted/[0.12] p-3 text-sm shadow-none">
           <div className="font-medium">{displayName}</div>
           {contact?.phone_number && (
             <div className="text-xs text-muted-foreground">
