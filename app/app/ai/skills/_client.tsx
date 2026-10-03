@@ -51,7 +51,9 @@ export function SkillsClient({ initialState }: Props) {
     setPendingName(name);
     install.mutate(name, {
       onSuccess: () => {
-        toast.success(`Skill "${name}" ${t("instalada — já vale para os agentes desta organização.")}`);
+        toast.success(
+          `Skill "${name}" ${t("instalada — já vale para os agentes desta organização.")}`,
+        );
         setPendingName(null);
       },
       onError: (err) => {
@@ -89,11 +91,14 @@ export function SkillsClient({ initialState }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
+      <Card className="rounded-[24px] border-border/60 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-muted/[0.08]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle>{t("Skills instaladas")}</CardTitle>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("Em uso agora")}
+              </p>
+              <CardTitle className="mt-1 tracking-[-0.02em]">{t("Skills instaladas")}</CardTitle>
               <CardDescription>
                 {t(
                   "O que seus agentes já sabem fazer além da conversa comum — cada skill só entra em ação quando o assunto pede.",
@@ -112,31 +117,43 @@ export function SkillsClient({ initialState }: Props) {
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="rounded-xl"
                   disabled={importSkill.isPending}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <UploadSimple /> {importSkill.isPending ? t("Enviando…") : t("Enviar skill (.zip)")}
+                  <UploadSimple />{" "}
+                  {importSkill.isPending ? t("Enviando…") : t("Enviar skill (.zip)")}
                 </Button>
               </>
             )}
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-4 p-5 sm:p-6">
           {installed.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-              {t('Nenhuma skill instalada ainda. Instale uma pronta do catálogo abaixo ou envie a sua em "Enviar skill (.zip)".')}
+            <p className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.05] px-4 py-8 text-center text-sm text-muted-foreground">
+              {t(
+                'Nenhuma skill instalada ainda. Instale uma pronta do catálogo abaixo ou envie a sua em "Enviar skill (.zip)".',
+              )}
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="grid gap-3 lg:grid-cols-2">
               {installed.map((skill) => (
                 <li
                   key={skill.name}
-                  className="flex flex-col gap-1.5 rounded-md border border-border/60 p-3 text-sm"
+                  className="group flex h-full flex-col gap-2 rounded-2xl border border-border/60 bg-background p-4 text-sm shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <PuzzlePiece className="text-accent" aria-hidden />
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent-soft text-accent"
+                      aria-hidden="true"
+                    >
+                      <PuzzlePiece />
+                    </span>
                     <span className="font-medium">{skill.name}</span>
-                    <Badge variant={skill.source === "catalog" ? "info" : "neutral"} className="text-[10px]">
+                    <Badge
+                      variant={skill.source === "catalog" ? "info" : "neutral"}
+                      className="text-[10px]"
+                    >
                       {skill.source === "catalog" ? t("do catálogo") : t("manual")}
                     </Badge>
                     <span className="ml-auto text-xs text-muted-foreground">
@@ -151,7 +168,7 @@ export function SkillsClient({ initialState }: Props) {
                         size="sm"
                         disabled={uninstall.isPending && pendingName === skill.name}
                         onClick={() => handleUninstall(skill.name)}
-                        className="w-full sm:w-auto"
+                        className="w-full rounded-xl sm:w-auto"
                       >
                         <Trash /> {t("Desinstalar")}
                       </Button>
@@ -162,7 +179,7 @@ export function SkillsClient({ initialState }: Props) {
             </ul>
           )}
 
-          <div className="flex items-start gap-2 rounded-md bg-accent-soft p-3 text-xs text-text-muted">
+          <div className="flex items-start gap-2 rounded-2xl border border-accent/10 bg-accent-soft/70 p-3.5 text-xs text-text-muted">
             <Info className="mt-0.5 shrink-0" aria-hidden />
             <p>
               {t(
@@ -173,27 +190,39 @@ export function SkillsClient({ initialState }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("Catálogo")}</CardTitle>
+      <Card className="rounded-[24px] border-border/60 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-muted/[0.06]">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            {t("Disponíveis")}
+          </p>
+          <CardTitle className="mt-1 tracking-[-0.02em]">{t("Catálogo")}</CardTitle>
           <CardDescription>
-            {t("Skills prontas, mantidas pela plataforma, disponíveis para instalar com um clique.")}
+            {t(
+              "Skills prontas, mantidas pela plataforma, disponíveis para instalar com um clique.",
+            )}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 sm:p-6">
           {catalog.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-              {t("Nenhuma skill nova no catálogo — você já instalou tudo que a plataforma oferece hoje.")}
+            <p className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.05] px-4 py-8 text-center text-sm text-muted-foreground">
+              {t(
+                "Nenhuma skill nova no catálogo — você já instalou tudo que a plataforma oferece hoje.",
+              )}
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="grid gap-3 lg:grid-cols-2">
               {catalog.map((skill) => (
                 <li
                   key={skill.name}
-                  className="flex flex-col gap-1.5 rounded-md border border-border/60 p-3 text-sm"
+                  className="group flex h-full flex-col gap-2 rounded-2xl border border-border/60 bg-background p-4 text-sm shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <PuzzlePiece aria-hidden />
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+                      aria-hidden="true"
+                    >
+                      <PuzzlePiece />
+                    </span>
                     <span className="font-medium">{skill.name}</span>
                   </div>
                   {skill.description && <p className="text-text-muted">{skill.description}</p>}
@@ -203,10 +232,12 @@ export function SkillsClient({ initialState }: Props) {
                         size="sm"
                         disabled={install.isPending && pendingName === skill.name}
                         onClick={() => handleInstall(skill.name)}
-                        className="w-full sm:w-auto"
+                        className="w-full rounded-xl sm:w-auto"
                       >
                         <DownloadSimple />
-                        {install.isPending && pendingName === skill.name ? t("Instalando…") : t("Instalar")}
+                        {install.isPending && pendingName === skill.name
+                          ? t("Instalando…")
+                          : t("Instalar")}
                       </Button>
                     </div>
                   )}
