@@ -105,8 +105,7 @@ export function ConversationList({
    * já é robô, e repetir o ícone em cada uma vira ruído. Nas outras abas a
    * lista é mista (ou pode ser), então o ícone segue dizendo algo.
    */
-  const mostrarAutomatico =
-    !(filters.comando?.length === 1 && filters.comando[0] === "automatico");
+  const mostrarAutomatico = !(filters.comando?.length === 1 && filters.comando[0] === "automatico");
 
   useEffect(() => {
     if (onVisibleChange) onVisibleChange(items.map((i) => i.id));
@@ -115,9 +114,9 @@ export function ConversationList({
 
   if (q.isLoading) {
     return (
-      <div className="space-y-3 p-3">
+      <div className="space-y-2 p-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+          <Skeleton key={i} className="h-[4.5rem] w-full rounded-xl" />
         ))}
       </div>
     );
@@ -125,15 +124,11 @@ export function ConversationList({
 
   if (q.isError) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
-        <p>{t("Erro ao carregar conversas.")}</p>
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-2"
-          onClick={() => q.refetch()}
-        >
-          Tentar novamente
+      <div className="m-3 rounded-xl border border-destructive/20 bg-destructive/[0.035] p-4 text-center text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">{t("Erro ao carregar conversas.")}</p>
+        <p className="mt-1 text-xs">{t("A lista não foi atualizada. Tente novamente.")}</p>
+        <Button size="sm" variant="outline" className="mt-3" onClick={() => q.refetch()}>
+          {t("Tentar novamente")}
         </Button>
       </div>
     );
@@ -153,7 +148,7 @@ export function ConversationList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-1.5">
         {/* Vazio por FILTRO: fica DENTRO do return, nunca como `return` precoce —
             e por isso o bloco do `hasNextPage` abaixo continua sendo alcancado. */}
         {items.length === 0 && filtrosAtivos.length > 0 && (

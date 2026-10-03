@@ -195,9 +195,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       // `showApiError`, então digitar a primeira letra de qualquer busca faria
       // piscar um erro na cara de quem digita. A regra é a MESMA que o schema
       // usa (`lib/inbox/termo-de-busca.ts`) — nunca repetida aqui.
-      search: buscaValeConsulta(filterValue.search)
-        ? filterValue.search
-        : undefined,
+      search: buscaValeConsulta(filterValue.search) ? filterValue.search : undefined,
       channel_session_id: filterValue.channel_session_id,
       tag: filterValue.tag,
       unread: filterValue.onlyUnread || undefined,
@@ -211,7 +209,6 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       filterValue.onlyUnread,
     ],
   );
-
 
   // We need the selected conversation object for header / composer / side panel.
   // Source it from the same query the list uses to avoid an extra request.
@@ -324,7 +321,9 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const motivoDaJanela =
     janela.tipo === "fechada"
       ? janela.fechadaHaMs === null
-        ? t("O cliente ainda não escreveu — a janela de 24h nunca abriu. Só um modelo aprovado sai daqui.")
+        ? t(
+            "O cliente ainda não escreveu — a janela de 24h nunca abriu. Só um modelo aprovado sai daqui.",
+          )
         : `${t("A janela de 24h fechou há")} ${formatarDecorrido(janela.fechadaHaMs)}. ${t("Só um modelo aprovado sai daqui — texto livre é recusado pela plataforma.")}`
       : null;
 
@@ -376,32 +375,32 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // deixava. Margem de 2px não é margem, é sorte.
   return (
     <OpenConversationProvider conversationId={selectedId}>
-    <div
-      className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]"
-      /*
-       * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
-       * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
-       * nenhuma tela avisa. Foi o único achado que atravessou o dia intacto
-       * quando o realtime quebrou pela primeira vez, e voltou a morder agora.
-       *
-       * `divergencias` é o que a rede de segurança contou: refetch trouxe estado
-       * novo que o canal NÃO tinha entregue. Zero com o canal vivo; subindo é a
-       * assinatura de canal que assina e não entrega — o defeito que não grita.
-       *
-       * ⚠️ `data-realtime-status` vem do STATUS do canal, não de um objeto que
-       * existe sempre. A primeira versão desta linha derivava o valor de
-       * `listQ.seguranca`, que nunca é nulo — ela diria `ativo` inclusive com o
-       * canal morto. Controle decorativo é pior que controle nenhum: mente com
-       * cara de instrumento.
-       *
-       * Atributo de dado e não texto na tela de propósito: quem lê isto é o
-       * teste e quem depura, não o atendente. Pôr um aviso permanente na cara de
-       * quem atende seria ruído; esconder o sinal do todo é o que custou o dia.
-       */
-      data-realtime-status={listQ.realtimeStatus}
-      data-refetch-divergencias={listQ.seguranca?.divergencias ?? 0}
-    >
-      {/*
+      <div
+        className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]"
+        /*
+         * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
+         * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
+         * nenhuma tela avisa. Foi o único achado que atravessou o dia intacto
+         * quando o realtime quebrou pela primeira vez, e voltou a morder agora.
+         *
+         * `divergencias` é o que a rede de segurança contou: refetch trouxe estado
+         * novo que o canal NÃO tinha entregue. Zero com o canal vivo; subindo é a
+         * assinatura de canal que assina e não entrega — o defeito que não grita.
+         *
+         * ⚠️ `data-realtime-status` vem do STATUS do canal, não de um objeto que
+         * existe sempre. A primeira versão desta linha derivava o valor de
+         * `listQ.seguranca`, que nunca é nulo — ela diria `ativo` inclusive com o
+         * canal morto. Controle decorativo é pior que controle nenhum: mente com
+         * cara de instrumento.
+         *
+         * Atributo de dado e não texto na tela de propósito: quem lê isto é o
+         * teste e quem depura, não o atendente. Pôr um aviso permanente na cara de
+         * quem atende seria ruído; esconder o sinal do todo é o que custou o dia.
+         */
+        data-realtime-status={listQ.realtimeStatus}
+        data-refetch-divergencias={listQ.seguranca?.divergencias ?? 0}
+      >
+        {/*
         NO CELULAR, UMA COISA POR VEZ.
 
         Antes as duas colunas caíam empilhadas em `grid-cols-1`: a lista inteira
@@ -414,33 +413,49 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         classe condicional é resolvida pelo CSS, na primeira pintura, e some no
         `md` — onde as duas colunas cabem juntas e a regra não se aplica.
       */}
-      <div
-        className={cn(
-          "h-full min-h-0 flex-col border-r border-border md:flex",
-          colunas.lista,
-        )}
-      >
-        <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs text-muted-foreground">
-          <span>{t("Atendimento")}</span>
-          <span className="flex items-center gap-1.5" title={t("Saúde das conexões do WhatsApp")}>
-            <ConnectionHealthDot />
-            {t("WhatsApp")}
-          </span>
+        <div
+          className={cn(
+            "h-full min-h-0 flex-col border-r border-border/70 bg-muted/[0.12] md:flex",
+            colunas.lista,
+          )}
+        >
+          <div className="flex items-center justify-between border-b border-border/70 bg-background px-3.5 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"
+                aria-hidden
+              >
+                <ChatCircle size={16} weight="duotone" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-tight">{t("Inbox")}</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {t("Conversas e atendimento")}
+                </p>
+              </div>
+            </div>
+            <span
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
+              title={t("Saúde das conexões do WhatsApp")}
+            >
+              <ConnectionHealthDot />
+              {t("WhatsApp")}
+            </span>
+          </div>
+          <InboxFilters value={filterValue} onChange={setFilterValue} />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ConversationList
+              listQuery={listQ}
+              filters={filters}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              onVisibleChange={handleVisibleChange}
+              onLimparFiltros={limparFiltrosAuxiliares}
+            />
+          </div>
         </div>
-        <InboxFilters value={filterValue} onChange={setFilterValue} />
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <ConversationList
-            listQuery={listQ}
-            filters={filters}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onVisibleChange={handleVisibleChange}
-            onLimparFiltros={limparFiltrosAuxiliares}
-          />
-        </div>
-      </div>
 
-      {/*
+        {/*
         AS DUAS COLUNAS DECIDEM PELO MESMO DADO — `selectedId`, não o objeto.
 
         A da lista some quando há `selectedId`; se esta aparecesse só quando a
@@ -452,113 +467,131 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
         escondido — deixando o dono numa tela vazia, sem sequer o botão de
         voltar, porque ele morava dentro do ramo da conversa carregada.
       */}
-      <div
-        className={cn(
-          "h-full min-h-0 flex-col md:flex",
-          colunas.conversa,
-        )}
-      >
-        {/*
+        <div className={cn("h-full min-h-0 flex-col bg-background md:flex", colunas.conversa)}>
+          {/*
           A barra do celular vive FORA do ramo da conversa carregada: o caminho
           de volta tem de existir inclusive quando não há o que mostrar — é aí
           que ele é a única saída. A porta da ficha, essa sim, depende da
           conversa, e só aparece quando há uma.
         */}
-        {selectedId && (
-          <div className="flex items-center gap-1 border-b border-border px-1 py-1 md:hidden">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 gap-1 px-2"
-              onClick={() => handleSelect(null)}
-            >
-              <CaretLeft size={16} />
-              {t("Conversas")}
-            </Button>
-            <div className="flex-1" />
-            {selectedConversation && (
-              <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 gap-1 px-2 xl:hidden">
-                    <IdentificationCard size={16} />
-                    {t("Ficha")}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
-                  <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
-                  <CRMSidePanel conversation={selectedConversation} />
-                </SheetContent>
-              </Sheet>
-            )}
-          </div>
-        )}
-        {selectedConversation ? (
-          <>
-            <ConversationHeader conversation={selectedConversation} />
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <ChatThread
-                conversationId={selectedConversation.id}
-                onResponder={setRespondendo}
-                // O cartão da passagem escolhe o gesto a partir de quem é o dono
-                // da conversa: sem dono convida a assumir, com outro dono diz
-                // quem atende. Sem estes dois campos ele cairia no estado mais
-                // conservador e ficaria mudo justamente para quem mais precisa.
-                dono={{
-                  userId: selectedConversation.assigned_to_user_id ?? null,
-                  nome: selectedConversation.assigned_to_user_name ?? null,
-                }}
-                contatoId={selectedConversation.contacts?.id ?? null}
-              />
+          {selectedId && (
+            <div className="flex items-center gap-1 border-b border-border/70 bg-muted/[0.16] px-1.5 py-1.5 md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 gap-1 px-2"
+                onClick={() => handleSelect(null)}
+              >
+                <CaretLeft size={16} />
+                {t("Conversas")}
+              </Button>
+              <div className="flex-1" />
+              {selectedConversation && (
+                <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-9 gap-1 px-2 xl:hidden">
+                      <IdentificationCard size={16} />
+                      {t("Ficha")}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
+                    <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
+                    <CRMSidePanel conversation={selectedConversation} />
+                  </SheetContent>
+                </Sheet>
+              )}
             </div>
-            <RetentionNotice conversationId={selectedConversation.id} />
-            {motivoDaJanela && (
-              <JanelaFechadaAviso
+          )}
+          {selectedConversation ? (
+            <>
+              <ConversationHeader conversation={selectedConversation} />
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ChatThread
+                  conversationId={selectedConversation.id}
+                  onResponder={setRespondendo}
+                  // O cartão da passagem escolhe o gesto a partir de quem é o dono
+                  // da conversa: sem dono convida a assumir, com outro dono diz
+                  // quem atende. Sem estes dois campos ele cairia no estado mais
+                  // conservador e ficaria mudo justamente para quem mais precisa.
+                  dono={{
+                    userId: selectedConversation.assigned_to_user_id ?? null,
+                    nome: selectedConversation.assigned_to_user_name ?? null,
+                  }}
+                  contatoId={selectedConversation.contacts?.id ?? null}
+                />
+              </div>
+              <RetentionNotice conversationId={selectedConversation.id} />
+              {motivoDaJanela && (
+                <JanelaFechadaAviso
+                  conversationId={selectedConversation.id}
+                  provider={selectedConversation.channel_sessions?.provider ?? null}
+                  motivo={motivoDaJanela}
+                />
+              )}
+              <Composer
+                ref={composerRef}
                 conversationId={selectedConversation.id}
-                provider={selectedConversation.channel_sessions?.provider ?? null}
-                motivo={motivoDaJanela}
+                blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
+                janelaFechada={motivoDaJanela}
+                disabled={selectedConversation.status === "closed"}
+                contactName={selectedConversation.contacts?.name ?? null}
+                organizationName={activeOrg?.name ?? null}
+                respondendo={respondendo}
+                onCancelarResposta={() => setRespondendo(null)}
+                currentContactId={selectedConversation.contact_id}
               />
-            )}
-            <Composer
-              ref={composerRef}
-              conversationId={selectedConversation.id}
-              blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
-              janelaFechada={motivoDaJanela}
-              disabled={selectedConversation.status === "closed"}
-              contactName={selectedConversation.contacts?.name ?? null}
-              organizationName={activeOrg?.name ?? null}
-              respondendo={respondendo}
-              onCancelarResposta={() => setRespondendo(null)}
-              currentContactId={selectedConversation.contact_id}
-            />
-          </>
-        ) : selectionNotFound ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-            {t("Conversa não encontrada ou fora do seu acesso.")}
-          </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <ChatCircle size={36} weight="thin" className="text-text-subtle" aria-hidden />
-            <p className="text-sm font-medium text-text-muted">{t("Selecione uma conversa")}</p>
-            <p className="text-xs text-text-muted">{t("Ou navegue com J e K")}</p>
-          </div>
-        )}
-      </div>
+            </>
+          ) : selectionNotFound ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="max-w-sm rounded-2xl border border-border/70 bg-muted/[0.18] p-6 text-center">
+                <span
+                  className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+                  aria-hidden
+                >
+                  <ChatCircle size={21} weight="thin" />
+                </span>
+                <p className="mt-4 text-sm font-semibold">{t("Conversa não encontrada")}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                  {t("Esta conversa não existe mais ou está fora do seu acesso.")}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <span
+                className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-muted/[0.22] text-muted-foreground shadow-sm"
+                aria-hidden
+              >
+                <ChatCircle size={27} weight="thin" />
+              </span>
+              <p className="mt-4 text-sm font-semibold tracking-tight">
+                {t("Selecione uma conversa")}
+              </p>
+              <p className="mt-1.5 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                {t("Escolha um contato à esquerda para ver o histórico e responder.")}
+              </p>
+              <p className="mt-3 rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                {t("Atalho: J e K para navegar")}
+              </p>
+            </div>
+          )}
+        </div>
 
-      <div className="hidden h-full min-h-0 xl:block">
-        <CRMSidePanel conversation={selectedConversation} />
-      </div>
+        <div className="hidden h-full min-h-0 border-l border-border/70 bg-muted/[0.08] xl:block">
+          <CRMSidePanel conversation={selectedConversation} />
+        </div>
 
-      <InboxKeyboardShortcuts
-        visibleIds={visibleIds}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        onFocusReply={handleFocusReply}
-        onClaim={supportReadonly ? () => {} : handleClaim}
-        onClose={supportReadonly ? () => {} : handleClose}
-        onToggleHelp={() => setHelpOpen((v) => !v)}
-      />
-      <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
-    </div>
+        <InboxKeyboardShortcuts
+          visibleIds={visibleIds}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          onFocusReply={handleFocusReply}
+          onClaim={supportReadonly ? () => {} : handleClaim}
+          onClose={supportReadonly ? () => {} : handleClose}
+          onToggleHelp={() => setHelpOpen((v) => !v)}
+        />
+        <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      </div>
     </OpenConversationProvider>
   );
 }

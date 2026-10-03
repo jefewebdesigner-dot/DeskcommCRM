@@ -95,9 +95,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const menuOpen = mode === "reply" && slash.open && !menuDismissed;
 
   const sugestaoAtual = sugestao.data;
-  const chaveDaSugestao = sugestaoAtual && currentContactId
-    ? `${currentContactId}:${sugestaoAtual.shortcut}`
-    : null;
+  const chaveDaSugestao =
+    sugestaoAtual && currentContactId ? `${currentContactId}:${sugestaoAtual.shortcut}` : null;
   const respostaInstalada = sugestaoAtual
     ? (templates.data ?? []).find(
         (template) => template.shortcut?.toLowerCase() === sugestaoAtual.shortcut.toLowerCase(),
@@ -230,7 +229,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 
   if (blockedReason) {
     return (
-      <div className="border-t border-border bg-muted/40 px-4 py-3 text-center text-xs text-muted-foreground">
+      <div className="border-t border-border/70 bg-muted/[0.22] px-4 py-3 text-center text-xs font-medium text-muted-foreground">
         {blockedReason}
       </div>
     );
@@ -240,15 +239,15 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     <>
       <div
         className={cn(
-          "relative border-t border-border bg-background px-3 py-2",
-          mode === "note" && "border-warning/40 bg-warning-bg",
+          "relative border-t border-border/70 bg-card px-3 py-3",
+          mode === "note" && "border-warning/30 bg-warning-bg/60",
         )}
       >
         {mode === "reply" && (
           <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
         )}
         {mostrarSugestaoContextual && respostaContextual && sugestaoAtual && chaveDaSugestao ? (
-          <div className="mb-2 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="mb-2.5 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.045] px-3 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium">
                 {t("Sugestão para este cliente")}: {respostaContextual.title}
@@ -283,12 +282,12 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onPick={applyTemplate}
           onClose={() => setMenuDismissed(true)}
         />
-        <div className="mb-1.5 flex gap-1">
+        <div className="mb-2 inline-flex gap-0.5 rounded-lg bg-muted/65 p-1">
           <button
             type="button"
             onClick={() => setMode("reply")}
             className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
               mode === "reply"
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted",
@@ -300,7 +299,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             type="button"
             onClick={() => setMode("note")}
             className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
               mode === "note"
                 ? "bg-warning text-warning-fg"
                 : "text-muted-foreground hover:bg-muted",
@@ -398,8 +397,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                 : t("Enter envia · Shift+Enter quebra linha")
             }
             className={cn(
-              "max-h-40 min-h-9 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm",
-              "placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden",
+              "max-h-40 min-h-10 flex-1 resize-none rounded-xl border border-border/70 bg-muted/25 px-3 py-2.5 text-sm shadow-none transition-colors",
+              "placeholder:text-muted-foreground focus:border-border-strong focus:bg-background focus:ring-2 focus:ring-ring/20 focus:outline-hidden",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}
             aria-label={t("Mensagem")}
@@ -408,7 +407,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <Button
               type="button"
               size="icon"
-              className="h-9 w-9 shrink-0"
+              className="h-10 w-10 shrink-0 rounded-xl"
               onClick={handleSubmit}
               disabled={(mode === "note" ? isDisabled : respostaBarrada) || !text.trim()}
               aria-label={t("Enviar")}

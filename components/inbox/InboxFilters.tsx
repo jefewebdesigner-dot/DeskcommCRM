@@ -157,11 +157,8 @@ export function InboxFilters({ value, onChange }: Props) {
   // com o filtro AINDA APLICADO — a lista fica num subconjunto, às vezes vazio,
   // e nada na tela diz que há filtro nem oferece como tirá-lo.
   const tagForaDoVocabulario =
-    value.tag != null &&
-    tagVocabulary != null &&
-    !tagVocabulary.includes(value.tag);
-  const mostrarSeletorDeTag =
-    (tagVocabulary?.length ?? 0) > 0 || tagForaDoVocabulario;
+    value.tag != null && tagVocabulary != null && !tagVocabulary.includes(value.tag);
+  const mostrarSeletorDeTag = (tagVocabulary?.length ?? 0) > 0 || tagForaDoVocabulario;
 
   // O timer lê o valor MAIS RECENTE, não o do render em que foi agendado.
   //
@@ -200,14 +197,14 @@ export function InboxFilters({ value, onChange }: Props) {
   }, [searchInput]);
 
   return (
-    <div className="border-b border-border bg-background">
-      <div className="space-y-2 px-3 pt-3 pb-2">
+    <div className="border-b border-border/70 bg-background">
+      <div className="space-y-2.5 px-3 py-3">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <MagnifyingGlass
               size={15}
               weight="regular"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-subtle"
               aria-hidden
             />
             {/* "última mensagem", e não "mensagem": a busca alcança apenas
@@ -220,7 +217,7 @@ export function InboxFilters({ value, onChange }: Props) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t("Buscar por nome, telefone ou última mensagem…")}
-              className="h-9 rounded-full border-transparent bg-surface-elevated pl-9 text-sm shadow-none focus-visible:border-border focus-visible:bg-background"
+              className="h-9 rounded-xl border-border/60 bg-muted/45 pl-9 text-sm shadow-none transition-colors placeholder:text-muted-foreground/75 focus-visible:border-border-strong focus-visible:bg-background"
               aria-label={t("Buscar conversas")}
             />
           </div>
@@ -232,11 +229,11 @@ export function InboxFilters({ value, onChange }: Props) {
             aria-pressed={value.onlyUnread}
             onClick={() => onChange({ ...value, onlyUnread: !value.onlyUnread })}
             className={cn(
-              "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "h-9 shrink-0 rounded-xl border px-3 text-xs font-semibold transition-colors",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyUnread
                 ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
+                : "border-border/60 bg-background text-text-muted hover:bg-muted",
             )}
           >
             {t("Não lidos")}
@@ -332,9 +329,9 @@ export function InboxFilters({ value, onChange }: Props) {
       <Tabs
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
-        className="px-3"
+        className="[scrollbar-width:none] overflow-x-auto px-3"
       >
-        <TabsList className="h-auto w-full justify-between gap-2 rounded-none bg-transparent p-0 [scrollbar-width:none]">
+        <TabsList className="h-auto w-max min-w-full justify-start gap-4 rounded-none bg-transparent p-0">
           {tabs.map((tab) => {
             const meta = INBOX_TABS.find((t) => t.value === tab)!;
             const count = countFor[tab];
@@ -342,11 +339,13 @@ export function InboxFilters({ value, onChange }: Props) {
               <TabsTrigger
                 key={tab}
                 value={tab}
-                className="-mb-px shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-xs font-medium text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
+                className="-mb-px shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2.5 text-xs font-semibold text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
               >
                 {t(meta.label)}
                 {typeof count === "number" && count > 0 && (
-                  <span className="text-[11px] tabular-nums text-text-subtle">{count}</span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-subtle tabular-nums">
+                    {count}
+                  </span>
                 )}
               </TabsTrigger>
             );

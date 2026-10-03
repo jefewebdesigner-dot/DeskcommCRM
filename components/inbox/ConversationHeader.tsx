@@ -4,6 +4,7 @@ import { useT } from "@/hooks/i18n/useT";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
 import { Phone, ArrowRight } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -27,6 +28,15 @@ import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 interface Props {
   conversation: ConversationWithContact;
+}
+
+function iniciaisDoContato(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  if (partes.length === 1) return partes[0]!.slice(0, 2).toUpperCase();
+  const primeira = partes[0]?.charAt(0) || "?";
+  const ultima = partes.at(-1)?.charAt(0) || "";
+  return (primeira + ultima).toUpperCase();
 }
 
 /**
@@ -128,12 +138,17 @@ export function ConversationHeader({ conversation }: Props) {
    * distribui sem calar, de propósito, senão uma org em round_robin ficaria sem
    * automático nenhum.
    */
-  const podePausar =
-    automaticoAtivo && !encerrada && conversation.assigned_to_user_id !== null;
+  const podePausar = automaticoAtivo && !encerrada && conversation.assigned_to_user_id !== null;
 
-  if (user.support?.access_mode === "support_readonly") return <header className="flex items-center justify-between border-b p-4">
-    <strong>{displayName}</strong><span className="text-sm text-muted-foreground">{STATUS_LABEL[status] ?? status} · Somente leitura</span>
-  </header>;
+  if (user.support?.access_mode === "support_readonly")
+    return (
+      <header className="flex items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-3">
+        <strong className="truncate text-sm">{displayName}</strong>
+        <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+          {STATUS_LABEL[status] ?? status} · Somente leitura
+        </span>
+      </header>
+    );
   return (
     // `flex-wrap` porque este header travava a LARGURA DA TELA INTEIRA. Ele
     // media 707px de `min-content` — a identidade do contato encolhia bem
@@ -146,59 +161,58 @@ export function ConversationHeader({ conversation }: Props) {
     // de antes (uma linha), e quando aperta a barra desce para a linha de baixo.
     // Nenhuma ação some — um menu "mais" esconderia o "Lembrar" que a spec
     // `canais-baseline` clica, e, pior, esconderia ação de quem atende.
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h2 className="truncate text-sm font-semibold">{displayName}</h2>
-          <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
-            {t(STATUS_LABEL[status] ?? status)}
-          </Badge>
-          {/* Ao lado do estado, não escondido num painel: a pergunta "dá para
-              escrever agora?" se faz ANTES de digitar, não depois de receber um
-              `failed` com um código de cinco dígitos. */}
-          <JanelaSelo
-            provider={conversation.channel_sessions?.provider ?? null}
-            lastInboundAt={conversation.last_inbound_at}
-          />
-          {/* Sem esta marca, a conversa em que o robô está calado tem exatamente
-              a mesma cara de uma conversa normal — e ninguém entende por que as
-              respostas automáticas pararam.
-              O testid é o MESMO de antes de propósito: `escalacao-ciclo.spec.ts`
-              o clica, e rótulo visível é contrato. O que mudou é o texto DIZER o
-              motivo — "alguém assumiu" e "pausado para este cliente" pediam ações
-              diferentes e tinham a mesma frase. */}
-          {motivo !== null && (
-            <Badge
-              variant="outline"
-              className="h-4 px-1.5 text-[10px]"
-              data-testid="badge-atendimento-humano"
-            >
-              {t(ROTULO_DO_MOTIVO[motivo])}
-            </Badge>
-          )}
-        </div>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar className="h-10 w-10 shrink-0 border border-border/60 shadow-sm">
+          {c?.avatar_storage_path && !c?.is_anonymized ? (
+            <AvatarImage src={`/api/v1/contacts/${c.id}/avatar`} alt="" className="object-cover" />
+          ) : null}
+          <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
+            {iniciaisDoContato(displayName)}
+          </AvatarFallback>
+        </Avatar>
 
-        {/* QUEM ESTÁ NO COMANDO, com nome e por GEOMETRIA — disco cheio para
-            pessoa, anel vazado para o automático. É o mesmo componente do card do
-            funil e do dossiê: um terceiro jeito de dizer "quem manda", por cor ou
-            por texto, faria a mesma pergunta ter três respostas diferentes na
-            mesma tela. Cor não sobrevive ao daltonismo nem ao teste do metro. */}
-        <div className="mt-1 flex items-center gap-2" data-testid="comando-da-conversa">
-          {comando.quem === "humano" ? (
-            <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} />
-          ) : comando.quem === "automatico" ? (
-            <OwnerBadge ownerKind="ai" ownerName={t("Automático")} />
-          ) : (
-            // `ninguem`, `aguardando` e `encerrada` sem dono caem aqui: o disco
-            // TRACEJADO do OwnerBadge, que é como o funil já desenha "ninguém".
-            <OwnerBadge ownerKind={null} ownerName={null} />
-          )}
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <h2 className="max-w-[16rem] truncate text-[15px] font-semibold tracking-tight">
+              {displayName}
+            </h2>
+            <Badge variant="outline" className="h-5 rounded-full px-2 text-[10px] font-medium">
+              {t(STATUS_LABEL[status] ?? status)}
+            </Badge>
+            <JanelaSelo
+              provider={conversation.channel_sessions?.provider ?? null}
+              lastInboundAt={conversation.last_inbound_at}
+            />
+            {motivo !== null && (
+              <Badge
+                variant="outline"
+                className="h-5 rounded-full px-2 text-[10px]"
+                data-testid="badge-atendimento-humano"
+              >
+                {t(ROTULO_DO_MOTIVO[motivo])}
+              </Badge>
+            )}
+          </div>
+
+          <div
+            className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
+            data-testid="comando-da-conversa"
+          >
+            {comando.quem === "humano" ? (
+              <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} />
+            ) : comando.quem === "automatico" ? (
+              <OwnerBadge ownerKind="ai" ownerName={t("Automático")} />
+            ) : (
+              <OwnerBadge ownerKind={null} ownerName={null} />
+            )}
+            {phone && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Phone size={11} weight="regular" aria-hidden /> {phone}
+              </span>
+            )}
+          </div>
         </div>
-        {phone && (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone size={11} weight="regular" aria-hidden /> {phone}
-          </p>
-        )}
       </div>
 
       {/* `shrink-0` saiu daqui: era ele que impunha o piso de largura. Agora a
@@ -261,7 +275,9 @@ export function ConversationHeader({ conversation }: Props) {
             // que às vezes faz mais do que o nome promete precisa dizer quando.
             title={
               motivo === "contato_travado"
-                ? t("Religa o atendimento automático para este cliente — vale para todas as conversas dele.")
+                ? t(
+                    "Religa o atendimento automático para este cliente — vale para todas as conversas dele.",
+                  )
                 : t("Devolve esta conversa ao atendimento automático.")
             }
             onClick={() => retomar.mutate({ conversation_id: conversation.id })}
@@ -302,17 +318,31 @@ export function ConversationHeader({ conversation }: Props) {
             disabled={close.isPending}
             onClick={() => {
               if (confirm(t("Fechar esta conversa?"))) {
-                close.mutate({ conversation_id: conversation.id, expected_revision: conversation.service_revision });
+                close.mutate({
+                  conversation_id: conversation.id,
+                  expected_revision: conversation.service_revision,
+                });
               }
             }}
           >
             {t("Fechar")}
           </Button>
         )}
-        {encerrada && <Button size="sm" variant="outline" disabled={reopen.isPending}
-          onClick={() => reopen.mutate({ conversation_id: conversation.id, expected_revision: conversation.service_revision })}>
-          {t("Reabrir")}
-        </Button>}
+        {encerrada && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={reopen.isPending}
+            onClick={() =>
+              reopen.mutate({
+                conversation_id: conversation.id,
+                expected_revision: conversation.service_revision,
+              })
+            }
+          >
+            {t("Reabrir")}
+          </Button>
+        )}
         {/* ARQUIVAR (#923): tira da frente sem destruir.
             A conversa já arquivada não mostra o botão — arquivar duas vezes não
             é um gesto que exista, e o botão só reapareceria como um clique que
