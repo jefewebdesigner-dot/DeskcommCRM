@@ -47,17 +47,26 @@ export default async function AvisoDeCasoPage() {
   const idioma = user.idioma;
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {traduzir("Aviso no WhatsApp", idioma)}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {traduzir(
-            "Escolha um número da equipe para receber uma mensagem toda vez que o assistente travar e precisar de uma pessoa.",
-            idioma,
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-emerald-500/[0.06] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {traduzir("Escalonamento humano", idioma)}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {traduzir("Aviso no WhatsApp", idioma)}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {traduzir(
+              "Receba no WhatsApp quando a IA travar em algo que precisa de uma pessoa — e acompanhe se os avisos realmente estão chegando.",
+              idioma,
+            )}
+          </p>
+        </div>
       </header>
       <AvisoNoWhatsApp />
     </div>

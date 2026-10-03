@@ -18,19 +18,13 @@ interface Props {
   };
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <Card className="p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+    <Card className="min-h-[132px] rounded-2xl border-border/60 p-4 shadow-sm">
+      <p className="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+        {label}
+      </p>
+      <p className="mt-3 text-2xl font-semibold tracking-[-0.04em]">{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </Card>
   );
@@ -40,7 +34,7 @@ function StatSkeletons() {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i} className="p-4">
+        <Card key={i} className="min-h-[132px] rounded-2xl border-border/60 p-4 shadow-sm">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="mt-2 h-8 w-32" />
         </Card>
@@ -53,7 +47,7 @@ function ChartSkeletons() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-lg border bg-card p-4">
+        <div key={i} className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
           <Skeleton className="h-3 w-32" />
           <Skeleton className="mt-4 h-[200px] w-full" />
         </div>
@@ -115,7 +109,9 @@ export function UsageDashboardClient({ agents, initial }: Props) {
               })} s`}
               hint={`${t("a maioria responde em")} ${(
                 q.data.totals.p50_latency_ms / 1000
-              ).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} s; ${t("este é o pior caso comum")}`}
+              ).toLocaleString("pt-BR", {
+                maximumFractionDigits: 1,
+              })} s; ${t("este é o pior caso comum")}`}
             />
           </div>
 

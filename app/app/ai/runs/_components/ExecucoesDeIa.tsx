@@ -85,7 +85,9 @@ export function ExecucoesDeIa() {
       }
       if (!res.ok) {
         setErro(
-          json?.error?.message ? t(json.error.message) : `${t("não consegui carregar")} (${res.status})`,
+          json?.error?.message
+            ? t(json.error.message)
+            : `${t("não consegui carregar")} (${res.status})`,
         );
         return;
       }
@@ -120,18 +122,29 @@ export function ExecucoesDeIa() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-6" data-testid="execucoes-de-ia">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Execuções de IA")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          {t(
-            "Tudo que a inteligência artificial fez por aqui — e, quando algo falhou, o que aconteceu e o que fazer.",
-          )}
-        </p>
+    <div className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6" data-testid="execucoes-de-ia">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Observabilidade")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Execuções de IA")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t(
+              "Tudo que a inteligência artificial fez por aqui — e, quando algo falhou, o que aconteceu e o que fazer.",
+            )}
+          </p>
+        </div>
       </header>
 
       {/* O resumo responde "está tudo bem?" antes da lista. */}
-      <Card className="mb-6 p-4" data-testid="resumo">
+      <Card className="rounded-2xl border-border/60 p-4 shadow-sm" data-testid="resumo">
         {resumo.erros === 0 ? (
           <p className="text-sm">
             <span className="font-medium text-emerald-600 dark:text-emerald-500">
@@ -158,11 +171,12 @@ export function ExecucoesDeIa() {
         )}
       </Card>
 
-      <div className="mb-3">
+      <div>
         <Button
           size="sm"
           variant={soErros ? "default" : "outline"}
           onClick={() => setSoErros((v) => !v)}
+          className="rounded-xl"
           data-testid="filtro-erros"
         >
           {soErros ? t("Mostrando só as falhas") : t("Ver só as falhas")}
@@ -170,7 +184,10 @@ export function ExecucoesDeIa() {
       </div>
 
       {execucoes.length === 0 ? (
-        <Card className="p-6 text-sm text-muted-foreground" data-testid="lista-vazia">
+        <Card
+          className="rounded-[24px] border-dashed border-border/60 bg-muted/[0.05] p-6 text-sm text-muted-foreground shadow-none"
+          data-testid="lista-vazia"
+        >
           {soErros
             ? t("Nenhuma falha registrada.")
             : t("Nenhuma execução ainda. Assim que o agente atender alguém, aparece aqui.")}
@@ -180,7 +197,11 @@ export function ExecucoesDeIa() {
           {execucoes.map((e) => (
             <Card
               key={e.id}
-              className={e.status === "erro" ? "border-destructive/40 p-4" : "p-4"}
+              className={
+                e.status === "erro"
+                  ? "rounded-2xl border-destructive/40 p-4 shadow-sm"
+                  : "rounded-2xl border-border/60 p-4 shadow-sm"
+              }
               data-testid={`execucao-${e.id}`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -202,7 +223,8 @@ export function ExecucoesDeIa() {
                   {/* 1º: o que o CLIENTE viu. */}
                   {e.consequencia && (
                     <p data-testid="consequencia">
-                      <span className="font-medium">{t("O que aconteceu:")}</span> {t(e.consequencia)}
+                      <span className="font-medium">{t("O que aconteceu:")}</span>{" "}
+                      {t(e.consequencia)}
                     </p>
                   )}
                   {/* 2º: o que fazer. */}
@@ -214,8 +236,10 @@ export function ExecucoesDeIa() {
                   {/* 3º: só então, o texto cru — para quem for investigar. */}
                   {e.error_message && (
                     <details className="text-xs text-muted-foreground">
-                      <summary className="cursor-pointer">{t("Mensagem técnica do provedor")}</summary>
-                      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2">
+                      <summary className="cursor-pointer">
+                        {t("Mensagem técnica do provedor")}
+                      </summary>
+                      <pre className="mt-1 overflow-x-auto rounded-md bg-muted p-2 break-words whitespace-pre-wrap">
                         {e.error_message}
                         {e.http_status ? `\n(${t("código")} ${e.http_status})` : ""}
                       </pre>

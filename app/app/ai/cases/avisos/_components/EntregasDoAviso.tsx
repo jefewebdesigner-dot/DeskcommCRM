@@ -76,7 +76,7 @@ export function EntregasDoAviso({
   const locale = useLocaleDeData();
 
   return (
-    <Card className="p-4">
+    <Card className="rounded-[24px] border-border/60 p-5 shadow-sm">
       <div className="mb-3 space-y-1">
         <h2 className="text-sm font-semibold">{t("Últimos avisos enviados")}</h2>
         <p className="text-xs text-muted-foreground">
@@ -88,7 +88,7 @@ export function EntregasDoAviso({
 
       {entregas.length === 0 ? (
         <p
-          className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground"
+          className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.05] p-5 text-xs text-muted-foreground"
           data-testid="entregas-vazias"
         >
           {t(
@@ -96,7 +96,10 @@ export function EntregasDoAviso({
           )}
         </p>
       ) : (
-        <ul className="divide-y rounded-lg border" data-testid="lista-de-entregas">
+        <ul
+          className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60"
+          data-testid="lista-de-entregas"
+        >
           {entregas.map((entrega) => {
             const frase = fraseDoErro(entrega.erro_codigo);
             const quando = entrega.enviado_em ?? entrega.created_at;
@@ -192,7 +195,7 @@ function Medida({
 }) {
   const t = useT();
   return (
-    <div className="rounded-lg border p-3">
+    <div className="rounded-xl border border-border/60 bg-muted/[0.06] p-3">
       <p className="text-xs text-muted-foreground">{titulo}</p>
       <p className="text-lg font-semibold tabular-nums">
         {minutos === null ? "—" : `${minutos} min`}

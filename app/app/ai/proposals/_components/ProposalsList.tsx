@@ -34,11 +34,14 @@ export function ProposalsList({ canDecide }: { canDecide: boolean }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as "pending" | "history")}>
-        <TabsList>
-          <TabsTrigger value="pending">
-            {t("Aguardando decisão")}{data ? ` (${data.pending.length})` : ""}
+        <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
+          <TabsTrigger value="pending" className="rounded-lg px-4 text-xs">
+            {t("Aguardando decisão")}
+            {data ? ` (${data.pending.length})` : ""}
           </TabsTrigger>
-          <TabsTrigger value="history">{t("Já decididas")}</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-lg px-4 text-xs">
+            {t("Já decididas")}
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -86,9 +89,12 @@ function Pendentes({
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="space-y-3">
       {itens.map((p) => (
-        <li key={`${p.lead_id}-${p.seq}`} className="flex flex-col gap-3 p-4">
+        <li
+          key={`${p.lead_id}-${p.seq}`}
+          className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
+        >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-sm font-medium">{p.lead_title}</span>
             {p.contact_name && (
@@ -150,9 +156,12 @@ function Historico({ itens }: { itens: DecisaoPassada[] }) {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="space-y-2">
       {itens.map((d) => (
-        <li key={d.activity_id} className="flex flex-col gap-1.5 p-4">
+        <li
+          key={d.activity_id}
+          className="flex flex-col gap-1.5 rounded-2xl border border-border/60 bg-muted/[0.05] p-4"
+        >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {/* IGNORAR NÃO É "NADA ACONTECEU": ganha o mesmo destaque visual de
                 aprovar, porque a wave 4 existe exatamente para que a recusa
@@ -174,7 +183,7 @@ function Historico({ itens }: { itens: DecisaoPassada[] }) {
 
 function Vazio({ titulo, detalhe }: { titulo: string; detalhe: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-dashed border-border/60 bg-muted/[0.05] px-6 py-16 text-center">
       <p className="text-sm font-medium">{titulo}</p>
       <p className="max-w-md text-xs text-muted-foreground">{detalhe}</p>
     </div>

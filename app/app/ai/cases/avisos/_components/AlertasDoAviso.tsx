@@ -111,7 +111,7 @@ export function AlertasDoAviso({ avisos }: { avisos: AvisoDaTela[] }) {
             key={aviso.codigo}
             data-testid={`alerta-${aviso.codigo}`}
             data-bloqueia={aviso.bloqueia ? "sim" : "nao"}
-            className={`flex items-start gap-3 rounded-lg border p-3 ${
+            className={`flex items-start gap-3 rounded-2xl border p-4 shadow-sm ${
               aviso.bloqueia
                 ? "border-destructive/40 bg-destructive/5"
                 : "border-border bg-muted/40"

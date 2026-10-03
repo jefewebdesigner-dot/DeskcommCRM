@@ -98,7 +98,7 @@ export function AvisoNoWhatsApp() {
 
   if (error || !estado) {
     return (
-      <Card className="flex items-start gap-3 p-4">
+      <Card className="flex items-start gap-3 rounded-2xl border-border/60 p-4 shadow-sm">
         <WarningOctagon className="mt-0.5 h-5 w-5 shrink-0 text-destructive" weight="duotone" />
         <p className="text-sm">
           {t(
@@ -217,7 +217,7 @@ function FormularioDoAviso({ estado }: { estado: EstadoDoAviso }) {
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-4">
+    <Card className="flex flex-col gap-5 rounded-[24px] border-border/60 p-5 shadow-sm">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="conexao">{t("Conexão que envia os avisos")}</Label>
         <Select
@@ -276,7 +276,7 @@ function FormularioDoAviso({ estado }: { estado: EstadoDoAviso }) {
         />
       </div>
 
-      <div className="flex items-start gap-3 rounded-lg border p-3">
+      <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/[0.08] p-4">
         <Switch
           id="ligado"
           checked={rascunho.ligado}
@@ -298,7 +298,7 @@ function FormularioDoAviso({ estado }: { estado: EstadoDoAviso }) {
 
       {confirmarContato ? (
         <div
-          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3"
+          className="flex flex-col gap-2 rounded-2xl border border-destructive/40 bg-destructive/5 p-4"
           data-testid="confirmar-numero-de-cliente"
         >
           <p className="text-sm font-medium">{confirmarContato}</p>
@@ -319,11 +319,12 @@ function FormularioDoAviso({ estado }: { estado: EstadoDoAviso }) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => void enviar(false)} disabled={!podeSalvar}>
+        <Button className="rounded-xl" onClick={() => void enviar(false)} disabled={!podeSalvar}>
           {salvar.isPending ? t("Salvando…") : t("Salvar")}
         </Button>
         <Button
           variant="outline"
+          className="rounded-xl"
           onClick={() => void mandarTeste()}
           disabled={!jaSalvo || testar.isPending}
         >
