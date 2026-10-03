@@ -137,10 +137,10 @@ function Metric({
 
   return (
     <article
-      className={`group min-w-0 rounded-2xl border p-5 shadow-sm transition-colors ${toneClass}`}
+      className={`group relative min-h-[156px] min-w-0 overflow-hidden rounded-2xl border p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md ${toneClass}`}
     >
       <div className="flex items-start justify-between gap-4">
-        <p className="max-w-[15rem] text-[13px] leading-snug font-medium text-muted-foreground">
+        <p className="max-w-[15rem] text-[11px] leading-snug font-semibold tracking-[0.08em] text-muted-foreground uppercase">
           {title}
         </p>
         {Icon && (
@@ -152,10 +152,10 @@ function Metric({
           </span>
         )}
       </div>
-      <p className="mt-4 text-[clamp(1.65rem,2.6vw,2.1rem)] leading-none font-semibold tracking-[-0.035em] break-words tabular-nums">
+      <p className="mt-5 text-[clamp(1.7rem,2.8vw,2.2rem)] leading-none font-semibold tracking-[-0.045em] break-words tabular-nums">
         {value}
       </p>
-      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{note}</p>
     </article>
   );
 }
@@ -597,7 +597,7 @@ export function BillingDashboardClient({
   return (
     <div className="h-full min-w-0 overflow-y-auto">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <header className="relative overflow-hidden rounded-2xl border border-border/70 bg-card px-5 py-5 shadow-sm sm:px-6 sm:py-6">
+        <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 px-5 py-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:px-6 sm:py-6">
           <div
             className="pointer-events-none absolute -top-28 -right-24 h-64 w-64 rounded-full bg-primary/[0.055] blur-3xl"
             aria-hidden="true"
@@ -605,18 +605,18 @@ export function BillingDashboardClient({
           <div className="relative flex flex-wrap items-start justify-between gap-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                   {organizationName}
-                </p>
-                <span className="h-1 w-1 rounded-full bg-border-strong" aria-hidden="true" />
+                </span>
                 <p className="text-[11px] font-medium text-muted-foreground">Central de operação</p>
               </div>
-              <h1 className="mt-3 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+              <h1 className="mt-4 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
                 Dashboard
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Receita, contratos, atendimento e rotina comercial da PeríciaIA, priorizados pelo
-                que precisa de decisão.
+                Uma leitura rápida da receita, contratos e operação — com prioridade para o que
+                exige ação agora.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -676,6 +676,21 @@ export function BillingDashboardClient({
               </span>
             )}
           </div>
+          <nav
+            aria-label="Acesso rápido"
+            className="relative mt-4 flex flex-wrap gap-2 border-t border-border/50 pt-4"
+          >
+            {atalhosOperacionais.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/60 bg-background/65 px-2.5 text-[11px] font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
+          </nav>
         </header>
 
         {error && (
@@ -719,6 +734,58 @@ export function BillingDashboardClient({
               />
             ))}
           </div>
+        )}
+
+        {operacao && (
+          <section
+            aria-label="Prioridades de hoje"
+            className={
+              "grid overflow-hidden rounded-2xl border md:grid-cols-[1fr_auto] " +
+              (atencaoOperacional && atencaoOperacional > 0
+                ? "border-amber-500/20 bg-amber-500/[0.035]"
+                : "border-emerald-500/20 bg-emerald-500/[0.025]")
+            }
+          >
+            <div className="flex min-w-0 items-start gap-3 px-4 py-4 sm:px-5">
+              <span
+                className={
+                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
+                  (atencaoOperacional && atencaoOperacional > 0
+                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")
+                }
+                aria-hidden="true"
+              >
+                {atencaoOperacional && atencaoOperacional > 0 ? (
+                  <AlertTriangle className="h-4 w-4" />
+                ) : (
+                  <BadgeCheck className="h-4 w-4" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                  Prioridade de hoje
+                </p>
+                <p className="mt-1 text-sm font-semibold tracking-tight">
+                  {atencaoOperacional && atencaoOperacional > 0
+                    ? atencaoOperacional + " item(ns) precisam de atenção"
+                    : "Nenhuma pendência crítica detectada"}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {operacao.aguardando_atendimento} conversa(s) aguardando atendimento ·{" "}
+                  {operacao.tarefas_atrasadas} tarefa(s) atrasada(s).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center border-t border-border/50 px-4 py-3 md:border-t-0 md:border-l md:px-5">
+              <Link
+                href={operacao.aguardando_atendimento > 0 ? "/app/inbox" : "/app/tasks"}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground transition-colors hover:text-primary"
+              >
+                Abrir prioridades <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
         )}
 
         <section
@@ -838,45 +905,6 @@ export function BillingDashboardClient({
                     icon={CalendarDays}
                   />
                 </div>
-
-                <div
-                  className={
-                    "mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 " +
-                    (atencaoOperacional && atencaoOperacional > 0
-                      ? "border-amber-500/20 bg-amber-500/[0.045]"
-                      : "border-emerald-500/20 bg-emerald-500/[0.035]")
-                  }
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {atencaoOperacional && atencaoOperacional > 0 ? (
-                      <AlertTriangle
-                        className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <BadgeCheck
-                        className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">
-                        {atencaoOperacional && atencaoOperacional > 0
-                          ? atencaoOperacional + " item(ns) pedem atenção agora"
-                          : "Operação sem pendência crítica nesta leitura"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Tarefas atrasadas e conversas aguardando atendimento são priorizadas aqui.
-                      </p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/app/tasks"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold hover:text-primary"
-                  >
-                    Ver prioridades <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
-                </div>
               </>
             ) : (
               <div role="status" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -885,47 +913,47 @@ export function BillingDashboardClient({
                 ))}
               </div>
             )}
-
-            <nav aria-label="Atalhos operacionais" className="mt-5 flex flex-wrap gap-2">
-              {atalhosOperacionais.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-background px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-border-strong hover:bg-muted hover:text-foreground"
-                >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
-                  {label}
-                </Link>
-              ))}
-            </nav>
           </div>
         </section>
 
         {operacao && (
-          <section
+          <details
             aria-label="Prontidão da operação"
-            className="rounded-2xl border border-border/70 bg-muted/[0.18] p-5 sm:p-6"
+            className="group overflow-hidden rounded-2xl border border-border/70 bg-muted/[0.14]"
           >
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-                  Infraestrutura operacional
-                </p>
-                <h2 className="mt-1 text-lg font-semibold tracking-tight">Prontidão da operação</h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Conexões essenciais para a PeríciaIA operar sem depender de ajustes manuais.
-                </p>
-              </div>
-              {prontidaoConhecida > 0 && (
-                <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2 text-right shadow-sm">
-                  <p className="text-lg leading-none font-semibold tabular-nums">
-                    {prontidaoOk}/{prontidaoConhecida}
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  <Activity className="h-4 w-4" strokeWidth={1.8} />
+                </span>
+                <div>
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                    Infraestrutura operacional
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">prontas agora</p>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight">
+                    Prontidão da operação
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                    Conexões essenciais para a PeríciaIA operar sem depender de ajustes manuais.
+                  </p>
                 </div>
-              )}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              </div>
+              <div className="flex items-center gap-3">
+                {prontidaoConhecida > 0 && (
+                  <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                    {prontidaoOk}/{prontidaoConhecida} prontas
+                  </span>
+                )}
+                <ArrowRight
+                  className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90"
+                  aria-hidden="true"
+                />
+              </div>
+            </summary>
+            <div className="grid gap-3 border-t border-border/60 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
               <ReadinessCard
                 title="Responsáveis"
                 ready={
@@ -1013,7 +1041,7 @@ export function BillingDashboardClient({
                 icon={CreditCard}
               />
             </div>
-          </section>
+          </details>
         )}
 
         {(configure || state?.configured === false) && (
