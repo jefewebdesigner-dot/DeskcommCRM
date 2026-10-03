@@ -6,11 +6,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
-import {
-  FunisClient,
-  type FunilDaLista,
-  type MetricasDoFunilDaLista,
-} from "../_client";
+import { FunisClient, type FunilDaLista, type MetricasDoFunilDaLista } from "../_client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Gerenciar funis" };
@@ -51,7 +47,9 @@ export default async function GerenciarFunisPage() {
     // invisível e indestrutível: quem arquivou não tinha como ver, tirar do
     // arquivo nem excluir o que arquivou. A separação passou para a partição
     // abaixo — a lista de trabalho continua só com os vivos.
-    .select("id, name, slug, description, position, is_default, is_client_pipeline, is_archived, settings")
+    .select(
+      "id, name, slug, description, position, is_default, is_client_pipeline, is_archived, settings",
+    )
     .eq("organization_id", activeOrg.orgId)
     .order("position");
 
@@ -96,17 +94,37 @@ export default async function GerenciarFunisPage() {
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <header className="flex items-center gap-3">
-        <Kanban size={28} className="text-muted-foreground" weight="duotone" />
-        {/* Era "Pipelines" — nome de quem construiu o sistema, não de quem
-            vende. O comentário anterior aqui listava o preço de trocá-lo
-            (`rbac-roles.spec.ts` e `invite-lifecycle.spec.ts`) e dizia que
-            uniformizar era decisão do dono do produto. Ela foi tomada, e o preço
-            era maior do que o comentário contava: são QUATRO assertions em TRÊS
-            specs, e `pipelines-gestao.spec.ts` — a spec da própria feature que
-            gerou o comentário — é uma delas. Todas atualizadas junto. */}
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Funis")}</h1>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 shadow-sm">
+            <Kanban size={21} className="text-muted-foreground" weight="duotone" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Estrutura comercial")}
+            </p>
+            {/* Era "Pipelines" — nome de quem construiu o sistema, não de quem
+                vende. O comentário anterior aqui listava o preço de trocá-lo
+                (`rbac-roles.spec.ts` e `invite-lifecycle.spec.ts`) e dizia que
+                uniformizar era decisão do dono do produto. Ela foi tomada, e o preço
+                era maior do que o comentário contava: são QUATRO assertions em TRÊS
+                specs, e `pipelines-gestao.spec.ts` — a spec da própria feature que
+                gerou o comentário — é uma delas. Todas atualizadas junto. */}
+            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+              {t("Gerenciar funis")}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {t(
+                "Organize os funis, acompanhe a carga de cada um e gerencie o que está ativo ou arquivado.",
+              )}
+            </p>
+          </div>
+        </div>
       </header>
 
       <FunisClient
