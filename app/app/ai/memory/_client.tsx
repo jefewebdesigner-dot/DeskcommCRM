@@ -120,22 +120,31 @@ export function OrgMemoryClient({ initialState }: Props) {
       { id, status: next },
       {
         onSuccess: () => {
-          toast.success(next === "archived" ? t("Aprendizado arquivado.") : t("Aprendizado reativado."));
+          toast.success(
+            next === "archived" ? t("Aprendizado arquivado.") : t("Aprendizado reativado."),
+          );
         },
         onError: showApiError,
       },
     );
   }
 
-  const visibleEntries = entries.filter((e) => (showArchived ? e.status === "archived" : e.status === "active"));
+  const visibleEntries = entries.filter((e) =>
+    showArchived ? e.status === "archived" : e.status === "active",
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden rounded-[24px] border-border/60 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-muted/[0.10]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle>{t("Documento da organização")}</CardTitle>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("Regra global")}
+              </p>
+              <CardTitle className="mt-1 tracking-[-0.02em]">
+                {t("Documento da organização")}
+              </CardTitle>
               <CardDescription>
                 {t(
                   'O texto-base que qualquer agente de IA lê antes de responder — como a "política da casa" que todo atendente novo teria que decorar.',
@@ -151,14 +160,14 @@ export function OrgMemoryClient({ initialState }: Props) {
             )}
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-3 p-5 sm:p-6">
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t(
               "Ex.: Nunca prometa desconto sem confirmar com um humano. Horário de atendimento: 9h–18h, seg-sex. Sempre chame o cliente pelo primeiro nome.",
             )}
-            className="min-h-[220px] font-mono text-[13px]"
+            className="min-h-[240px] rounded-2xl border-border/60 bg-muted/[0.08] p-4 font-mono text-[13px] leading-relaxed shadow-inner"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">
@@ -172,6 +181,7 @@ export function OrgMemoryClient({ initialState }: Props) {
               )}
               <Button
                 onClick={handlePublish}
+                className="rounded-xl"
                 disabled={!canSubmitPublish || publish.isPending}
               >
                 {publish.isPending ? t("Publicando…") : t("Publicar versão")}
@@ -180,18 +190,22 @@ export function OrgMemoryClient({ initialState }: Props) {
           </div>
 
           {versions.length > 0 && (
-            <div className="mt-4 border-t border-border pt-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">{t("Histórico de versões")}</p>
-              <ul className="flex flex-col gap-1">
+            <details className="group mt-4 rounded-2xl border border-border/60 bg-muted/[0.06]">
+              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-muted-foreground">
+                {t("Histórico de versões")} · {versions.length}
+              </summary>
+              <ul className="flex flex-col gap-1 border-t border-border/60 p-2">
                 {versions.map((v) => (
                   <li key={v.id}>
                     <button
                       type="button"
                       onClick={() => setHistoryTarget(v)}
-                      className="flex w-full items-center gap-3 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent-soft"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-accent-soft"
                     >
                       <span className="font-mono text-xs">v{v.version_number}</span>
-                      <span className="text-xs text-muted-foreground">{formatDate(v.created_at, tagDoIdioma)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(v.created_at, tagDoIdioma)}
+                      </span>
                       {document?.version_id === v.id && (
                         <Badge variant="success" className="text-[10px]">
                           {t("ativa")}
@@ -201,32 +215,40 @@ export function OrgMemoryClient({ initialState }: Props) {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="rounded-[24px] border-border/60 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-muted/[0.06]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle>{t("Aprendizados")}</CardTitle>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("Lembranças pontuais")}
+              </p>
+              <CardTitle className="mt-1 tracking-[-0.02em]">{t("Aprendizados")}</CardTitle>
               <CardDescription>
                 {t(
                   "Fatos e correções pontuais que os agentes também levam em conta — adicionados à mão ou aprendidos automaticamente pelo sistema a partir de conversas reais.",
                 )}
               </CardDescription>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setFormOpen((v) => !v)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => setFormOpen((v) => !v)}
+            >
               <Plus /> {t("Novo aprendizado")}
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-4 p-5 sm:p-6">
           {formOpen && (
             <form
               onSubmit={handleCreateEntry}
-              className="flex flex-col gap-3 rounded-md border border-border bg-surface-elevated p-4"
+              className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/[0.08] p-4"
             >
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="entry-title">{t("Título")}</Label>
@@ -236,6 +258,7 @@ export function OrgMemoryClient({ initialState }: Props) {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={t("Ex.: Não oferecer frete grátis no primeiro contato")}
                   maxLength={200}
+                  className="rounded-xl"
                   required
                 />
               </div>
@@ -246,15 +269,26 @@ export function OrgMemoryClient({ initialState }: Props) {
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder={t("Descreva a regra ou o aprendizado em texto simples.")}
-                  className="min-h-[100px]"
+                  className="min-h-[110px] rounded-xl"
                   required
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => setFormOpen(false)}
+                >
                   {t("Cancelar")}
                 </Button>
-                <Button type="submit" size="sm" disabled={createEntry.isPending}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="rounded-xl"
+                  disabled={createEntry.isPending}
+                >
                   {createEntry.isPending ? t("Salvando…") : t("Salvar aprendizado")}
                 </Button>
               </div>
@@ -265,14 +299,14 @@ export function OrgMemoryClient({ initialState }: Props) {
             <button
               type="button"
               onClick={() => setShowArchived((v) => !v)}
-              className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="self-start rounded-lg px-1 py-1 text-xs font-medium text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
             >
               {showArchived ? t("Ver aprendizados ativos") : t("Ver aprendizados arquivados")}
             </button>
           )}
 
           {visibleEntries.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+            <p className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.05] px-4 py-8 text-center text-sm text-muted-foreground">
               {showArchived
                 ? t("Nenhum aprendizado arquivado.")
                 : t(
@@ -280,18 +314,23 @@ export function OrgMemoryClient({ initialState }: Props) {
                   )}
             </p>
           ) : (
-            <ol className="flex flex-col gap-2">
+            <ol className="grid gap-3 lg:grid-cols-2">
               {visibleEntries.map((entry) => (
                 <li
                   key={entry.id}
-                  className="flex flex-col gap-1.5 rounded-md border border-border/60 p-3 text-sm"
+                  className="flex h-full flex-col gap-2 rounded-2xl border border-border/60 bg-background p-4 text-sm shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{entry.title}</span>
-                    <Badge variant={entry.source === "flywheel" ? "info" : "neutral"} className="text-[10px]">
+                    <Badge
+                      variant={entry.source === "flywheel" ? "info" : "neutral"}
+                      className="text-[10px]"
+                    >
                       {entry.source === "flywheel" ? t("aprendido automaticamente") : t("manual")}
                     </Badge>
-                    <span className="ml-auto text-xs text-muted-foreground">{formatDate(entry.created_at, tagDoIdioma)}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {formatDate(entry.created_at, tagDoIdioma)}
+                    </span>
                   </div>
                   <p className="whitespace-pre-wrap text-text-muted">{entry.body}</p>
                   <div className="flex sm:justify-end">
@@ -300,9 +339,12 @@ export function OrgMemoryClient({ initialState }: Props) {
                       size="sm"
                       disabled={setStatus.isPending}
                       onClick={() =>
-                        handleToggleArchive(entry.id, entry.status === "active" ? "archived" : "active")
+                        handleToggleArchive(
+                          entry.id,
+                          entry.status === "active" ? "archived" : "active",
+                        )
                       }
-                      className="w-full sm:w-auto"
+                      className="w-full rounded-xl sm:w-auto"
                     >
                       {entry.status === "active" ? (
                         <>
@@ -323,25 +365,28 @@ export function OrgMemoryClient({ initialState }: Props) {
       </Card>
 
       <Dialog open={historyTarget != null} onOpenChange={(o) => !o && setHistoryTarget(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle>
               {t("Versão")} v{historyTarget?.version_number}
             </DialogTitle>
             <DialogDescription>
-              {historyTarget ? `${t("Publicada em")} ${formatDate(historyTarget.created_at, tagDoIdioma)}` : null}
+              {historyTarget
+                ? `${t("Publicada em")} ${formatDate(historyTarget.created_at, tagDoIdioma)}`
+                : null}
             </DialogDescription>
           </DialogHeader>
           {versionDetail.isLoading ? (
             <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>
           ) : (
-            <pre className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-surface-elevated p-4 font-mono text-[13px]">
+            <pre className="max-h-[50vh] overflow-y-auto rounded-2xl border border-border/60 bg-muted/[0.08] p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap">
               {versionDetail.data?.content}
             </pre>
           )}
           <DialogFooter>
             <Button
               variant="secondary"
+              className="rounded-xl"
               disabled={!versionDetail.data}
               onClick={() =>
                 versionDetail.data &&
