@@ -54,7 +54,7 @@ export function RiskRadarList() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
@@ -196,7 +196,7 @@ export function RiskRadarList() {
           <div
             key={item.label}
             className={
-              "rounded-2xl border p-4 shadow-sm " +
+              "min-w-0 rounded-2xl border p-3 shadow-sm sm:p-4 " +
               (item.tone === "error"
                 ? "border-error-fg/15 bg-error-bg/25"
                 : item.tone === "warning"
@@ -207,9 +207,9 @@ export function RiskRadarList() {
             <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
-              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground sm:text-right sm:text-[11px]">
                 {item.helper}
               </p>
             </div>
@@ -221,7 +221,7 @@ export function RiskRadarList() {
         className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm"
         data-testid="radar-filtros"
       >
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex max-w-full flex-nowrap gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(
             [
               ["all", "Todos"],
@@ -234,7 +234,7 @@ export function RiskRadarList() {
               key={value}
               size="sm"
               variant={risk === value ? "default" : "ghost"}
-              className="h-8 rounded-lg px-3 text-[11px]"
+              className="h-8 shrink-0 rounded-lg px-3 text-[11px]"
               onClick={() => trocarRisco(value)}
               aria-pressed={risk === value}
             >
@@ -243,7 +243,7 @@ export function RiskRadarList() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex max-w-full flex-nowrap gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(
             [
               ["all", "Todos os responsáveis"],
@@ -255,7 +255,7 @@ export function RiskRadarList() {
               key={value}
               size="sm"
               variant={ownership === value ? "default" : "ghost"}
-              className="h-8 rounded-lg px-3 text-[11px]"
+              className="h-8 shrink-0 rounded-lg px-3 text-[11px]"
               onClick={() => trocarResponsavel(value)}
               aria-pressed={ownership === value}
             >
@@ -356,9 +356,9 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
     <li
       data-testid="radar-item"
       data-risk={lead.risk}
-      className="flex items-start gap-2 rounded-2xl border border-border/60 bg-card pr-3 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
+      className="flex flex-col rounded-2xl border border-border/60 bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md sm:flex-row sm:items-start sm:pr-3"
     >
-      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3.5">
+      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 pt-3.5 pb-2 sm:py-3.5">
         <Badge variant={meta.variant} className="mt-0.5 shrink-0">
           {t(meta.label)}
         </Badge>
@@ -397,7 +397,7 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
           )}
         </div>
       </Link>
-      <div className="flex shrink-0 items-center gap-2 self-center">
+      <div className="flex w-full shrink-0 items-center justify-end gap-2 border-t border-border/50 px-4 py-2.5 sm:w-auto sm:self-center sm:border-t-0 sm:px-0 sm:py-0">
         {lead.agenda?.appointment_id ? (
           <Link
             className="text-xs underline"
