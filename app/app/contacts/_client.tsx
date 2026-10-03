@@ -121,7 +121,7 @@ export function ContactsListClient() {
           vem do PR #267, e vale para os DOIS botões agora: numa tela de 390px
           uma linha de dois botões sem isso comprime os rótulos.
         */}
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="-mx-1 flex w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
             {/*
             A porta do recurso de duplicados fica AQUI, na tela que já existe, e
             não num item de menu novo: quem descobre que tem contato repetido
@@ -130,7 +130,7 @@ export function ContactsListClient() {
           */}
             <Button
               variant="outline"
-              className="rounded-xl bg-background/70"
+              className="shrink-0 rounded-xl bg-background/70"
               onClick={() => setDuplicadosOpen(true)}
             >
               <UsersThree size={16} weight="bold" aria-hidden />
@@ -138,13 +138,13 @@ export function ContactsListClient() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-xl bg-background/70"
+              className="shrink-0 rounded-xl bg-background/70"
               onClick={() => setImportOpen(true)}
             >
               <UploadSimple size={16} weight="bold" aria-hidden />
               <span>{t("Importar CSV")}</span>
             </Button>
-            <Button className="rounded-xl" onClick={() => setCreateOpen(true)}>
+            <Button className="shrink-0 rounded-xl" onClick={() => setCreateOpen(true)}>
               <Plus size={16} weight="bold" aria-hidden />
               <span>{t("Novo contato")}</span>
             </Button>
