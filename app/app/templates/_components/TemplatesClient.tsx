@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, PencilSimple, Trash } from "@/lib/ui/icons";
+import { MagnifyingGlass, Plus, PencilSimple, Trash } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useMessageTemplates, type MessageTemplate } from "@/hooks/inbox/useMessageTemplates";
@@ -42,6 +42,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
   const { data: templates, isLoading } = useMessageTemplates();
   const qc = useQueryClient();
   const [query, setQuery] = React.useState("");
+  const [scope, setScope] = React.useState<"all" | "shared" | "personal">("all");
   const del = useMutation({
     mutationFn: async (id: string) => apiClient.delete(`/api/v1/message-templates/${id}`),
     onError: showApiError,
@@ -95,6 +96,8 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
   });
   const q = query.trim().toLowerCase();
   const visiveis = atuais.filter((template) => {
+    if (scope === "shared" && template.owner_user_id !== null) return false;
+    if (scope === "personal" && template.owner_user_id === null) return false;
     if (!q) return true;
     return [template.title, template.body, template.shortcut ?? ""].some((valor) =>
       valor.toLowerCase().includes(q),
@@ -105,75 +108,135 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <Badge variant="neutral">{atuais.length} {t("respostas")}</Badge>
-          <Badge variant="default">{compartilhadas} {t("da equipe")}</Badge>
-          <Badge variant="neutral">{pessoais} {t("pessoais")}</Badge>
+      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo das respostas rápidas")}>
+        {[
+          { label: t("Total"), value: atuais.length, helper: t("respostas disponíveis") },
+          { label: t("Equipe"), value: compartilhadas, helper: t("visíveis para o time") },
+          { label: t("Pessoais"), value: pessoais, helper: t("somente suas") },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+          >
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+              {item.label}
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
+              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+                {item.helper}
+              </p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative min-w-0 flex-1 lg:max-w-xl">
+          <MagnifyingGlass
+            size={15}
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("Buscar por nome, texto ou atalho…")}
+            aria-label={t("Buscar respostas rápidas")}
+            className="h-9 rounded-xl border-border/60 bg-muted/25 pl-9 shadow-none"
+          />
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {sugeridasAusentes.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pacote.isPending}
-              onClick={() => pacote.mutate()}
-            >
-              {pacote.isPending
-                ? t("Adicionando…")
-                : `${t("Adicionar pacote sugerido")} (${sugeridasAusentes.length})`}
-            </Button>
-          ) : null}
-          <Button type="button" onClick={openNew}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-xl bg-muted/45 p-1">
+            {(
+              [
+                ["all", "Todas"],
+                ["shared", "Equipe"],
+                ["personal", "Pessoais"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={scope === value ? "default" : "ghost"}
+                className="h-7 rounded-lg px-2.5 text-[11px]"
+                aria-pressed={scope === value}
+                onClick={() => setScope(value)}
+              >
+                {t(label)}
+              </Button>
+            ))}
+          </div>
+          <Button type="button" className="rounded-xl" onClick={openNew}>
             <Plus /> {t("Nova resposta rápida")}
           </Button>
         </div>
       </div>
 
       {sugeridasAusentes.length > 0 ? (
-        <section className="rounded-xl border border-border bg-muted/30 p-4">
-          <p className="text-sm font-medium">{t("Pacote operacional sugerido")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t(
-              "Inclui primeiro contato, proposta, follow-up, contratação, onboarding, vencimento de fatura, cobrança, pagamento, ausência em compromisso e pós-venda. As mensagens usam nome do cliente e nome da empresa automaticamente.",
-            )}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {sugeridasAusentes.map((sugestao) => (
-              <Badge key={sugestao.shortcut} variant="neutral">
-                /{sugestao.shortcut}
-              </Badge>
-            ))}
+        <section className="rounded-2xl border border-border/60 bg-muted/[0.16] p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold tracking-tight">
+                {t("Pacote operacional sugerido")}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t(
+                  "Inclui primeiro contato, proposta, follow-up, contratação, onboarding, vencimento de fatura, cobrança, pagamento, ausência em compromisso e pós-venda. As mensagens usam nome do cliente e nome da empresa automaticamente.",
+                )}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sugeridasAusentes.map((sugestao) => (
+                  <Badge key={sugestao.shortcut} variant="neutral">
+                    /{sugestao.shortcut}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 rounded-xl bg-background"
+              disabled={pacote.isPending}
+              onClick={() => pacote.mutate()}
+            >
+              {pacote.isPending
+                ? t("Adicionando…")
+                : `${t("Adicionar pacote")} (${sugeridasAusentes.length})`}
+            </Button>
           </div>
         </section>
       ) : null}
 
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("Buscar por nome, texto ou atalho…")}
-        aria-label={t("Buscar respostas rápidas")}
-        className="max-w-xl"
-      />
-
       {atuais.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center">
+        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.06] p-10 text-center">
           <p className="text-sm font-medium">{t("Nenhuma resposta rápida ainda.")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {t("Crie uma resposta manualmente ou instale o pacote sugerido para começar.")}
           </p>
         </div>
       ) : visiveis.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("Nenhuma resposta encontrada para esta busca.")}</p>
+        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.06] p-10 text-center">
+          <p className="text-sm font-medium">{t("Nenhuma resposta encontrada")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("Ajuste a busca ou o filtro de visibilidade.")}
+          </p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {visiveis.map((template) => {
@@ -186,19 +249,21 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
             return (
               <li
                 key={template.id}
-                className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
+                className="group flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
               >
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{template.title}</span>
+                    <span className="font-semibold tracking-[-0.01em]">{template.title}</span>
                     {template.shortcut ? (
-                      <Badge variant="neutral">/{template.shortcut}</Badge>
+                      <Badge variant="neutral" className="font-mono text-[10px]">
+                        /{template.shortcut}
+                      </Badge>
                     ) : null}
                     <Badge variant={template.owner_user_id ? "neutral" : "default"}>
                       {t(template.owner_user_id ? "Pessoal" : "Compartilhada")}
                     </Badge>
                   </div>
-                  <p className="line-clamp-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  <p className="line-clamp-2 text-sm whitespace-pre-wrap text-muted-foreground">
                     {template.body}
                   </p>
                   {(() => {
@@ -212,7 +277,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                   })()}
                 </div>
                 {canModify && (
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 gap-1 opacity-80 transition-opacity group-hover:opacity-100">
                     <Button
                       type="button"
                       variant="ghost"

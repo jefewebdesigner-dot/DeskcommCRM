@@ -113,18 +113,21 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="rounded-[22px] sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? t("Editar resposta rápida") : t("Nova resposta rápida")}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? t("Editar resposta rápida") : t("Nova resposta rápida")}
+          </DialogTitle>
           <DialogDescription>
             {t("Crie uma mensagem reutilizável para o atendimento comercial e operacional.")}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="tpl-title">{t("Título")}</Label>
             <Input
               id="tpl-title"
+              className="rounded-xl"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("Saudação inicial")}
@@ -144,7 +147,8 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
               minLength={1}
               maxLength={4096}
               required
-              rows={6}
+              rows={7}
+              className="rounded-xl bg-muted/[0.12]"
             />
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">{t("Inserir variável:")}</span>
@@ -154,7 +158,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2 font-mono text-[11px]"
+                  className="h-7 rounded-lg px-2 font-mono text-[11px]"
                   onClick={() => inserirVariavel(variavel)}
                 >
                   {variavel}
@@ -162,13 +166,16 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {t("O Inbox preenche nome do cliente e nome da empresa automaticamente antes do envio.")}
+              {t(
+                "O Inbox preenche nome do cliente e nome da empresa automaticamente antes do envio.",
+              )}
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="tpl-shortcut">{t("Atalho (opcional)")}</Label>
             <Input
               id="tpl-shortcut"
+              className="rounded-xl"
               value={shortcut}
               onChange={(e) => setShortcut(e.target.value)}
               placeholder="oi"
@@ -176,7 +183,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
             />
           </div>
           {canShare && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/[0.14] p-3">
               <Switch
                 id="tpl-shared"
                 checked={shared}
@@ -187,10 +194,15 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
             </div>
           )}
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="rounded-xl"
+              onClick={() => onOpenChange(false)}
+            >
               {t("Cancelar")}
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" className="rounded-xl" disabled={pending}>
               {isEdit ? t("Salvar") : t("Criar resposta rápida")}
             </Button>
           </DialogFooter>
