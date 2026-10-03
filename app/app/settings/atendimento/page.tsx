@@ -50,26 +50,40 @@ export default async function AtendimentoSettingsPage() {
   };
   // `.catch(...)`: config antiga ou corrompida no jsonb não pode derrubar a
   // tela que serve justamente para consertá-la.
-  const routing = routingConfigSchema.catch(routingConfigSchema.parse({})).parse(settings.routing ?? {});
+  const routing = routingConfigSchema
+    .catch(routingConfigSchema.parse({}))
+    .parse(settings.routing ?? {});
   const idioma = user.idioma;
   const channels = await loadChannelRoutingSettings(supabase, activeOrg.orgId);
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {traduzir("Distribuição de atendimento", idioma)}
-        </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          {traduzir(
-            "Quem recebe cada cliente novo, e o que cada atendente enxerga. As duas decisões andam juntas: distribuir sem restringir deixa todo mundo vendo a carteira do colega; restringir sem distribuir deixa o funil de cada um vazio.",
-            idioma,
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {traduzir("Operação da equipe", idioma)}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {traduzir("Distribuição de atendimento", idioma)}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {traduzir(
+              "Quem recebe cada cliente novo, e o que cada atendente enxerga. As duas decisões andam juntas: distribuir sem restringir deixa todo mundo vendo a carteira do colega; restringir sem distribuir deixa o funil de cada um vazio.",
+              idioma,
+            )}
+          </p>
+        </div>
       </header>
 
       <AtendimentoForm
-        initial={{ ...routing, visibility_mode: settings.visibility_mode ?? DEFAULT_VISIBILITY_MODE }}
+        initial={{
+          ...routing,
+          visibility_mode: settings.visibility_mode ?? DEFAULT_VISIBILITY_MODE,
+        }}
       />
       <ChannelRoutingForm initial={channels} />
     </div>

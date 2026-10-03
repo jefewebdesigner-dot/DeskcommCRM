@@ -55,17 +55,28 @@ export default async function MetaAdsSettingsPage() {
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Meta Ads")}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          {t(
-            "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo em Análise › Meta Ads. É uma conexão só de leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-blue-500/[0.06] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Conexão de leitura")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Meta Ads")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t(
+              "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo em Análise › Meta Ads. É uma conexão só de leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
+            )}
+          </p>
+        </div>
       </header>
 
-      <div className="rounded-md border border-sky-500/40 bg-sky-500/10 p-4 text-sm">
+      <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-sm">
         {/*
           A permissão exata está escrita aqui porque é o erro nº 1 desta
           integração: um token gerado sem `ads_read` conecta, salva, e só falha

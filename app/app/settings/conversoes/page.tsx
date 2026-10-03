@@ -62,7 +62,8 @@ export const dynamic = "force-dynamic";
 /** O que a volta do OAuth do Google Ads diz, traduzido — ver o callback. */
 const ERRO_DO_GOOGLE_EM_PORTUGUES: Record<string, string> = {
   cancelado: "Você cancelou a autorização no Google. Nada foi conectado.",
-  estado_invalido: "O link de conexão expirou ou é inválido. Clique em \"Conectar com Google\" de novo.",
+  estado_invalido:
+    'O link de conexão expirou ou é inválido. Clique em "Conectar com Google" de novo.',
   sem_codigo: "O Google não devolveu o código esperado. Tente de novo.",
   google_ads_nao_configurado:
     "Esta instalação ainda não tem as credenciais do Google Ads configuradas. Fale com quem administra o servidor.",
@@ -112,36 +113,53 @@ export default async function ConversoesPage({
   )}`;
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Conversões")}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          {t(
-            "Quando um negócio que veio de anúncio é marcado como ganho, o valor da venda volta para a plataforma que trouxe o cliente. É esse retorno que ensina o anúncio a procurar mais gente parecida com quem comprou.",
-          )}
-        </p>
+    <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-emerald-500/[0.05] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Atribuição e retorno")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Conversões")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t(
+              "Quando um negócio que veio de anúncio é marcado como ganho, o valor da venda volta para a plataforma que trouxe o cliente. É esse retorno que ensina o anúncio a procurar mais gente parecida com quem comprou.",
+            )}
+          </p>
+        </div>
       </header>
 
       {erroDoGoogle && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
-          {t(ERRO_DO_GOOGLE_EM_PORTUGUES[erroDoGoogle] ?? "Não consegui conectar com o Google Ads.")}
+        <div className="rounded-2xl border border-border/60 border-destructive/40 bg-destructive/10 p-4 text-sm">
+          {t(
+            ERRO_DO_GOOGLE_EM_PORTUGUES[erroDoGoogle] ?? "Não consegui conectar com o Google Ads.",
+          )}
         </div>
       )}
       {okDoGoogle && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
+        <div className="rounded-2xl border border-border/60 border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
           {t("Google Ads autorizado. Agora informe a conta e a ação de conversão abaixo.")}
         </div>
       )}
 
       {estado.conectada && !estado.habilitada && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          {t("O envio está pausado. As vendas continuam sendo registradas aqui, mas não vão para a plataforma enquanto isto estiver desligado.")}
+        <div className="rounded-2xl border border-amber-500/40 border-border/60 bg-amber-500/10 p-4 text-sm">
+          {t(
+            "O envio está pausado. As vendas continuam sendo registradas aqui, mas não vão para a plataforma enquanto isto estiver desligado.",
+          )}
         </div>
       )}
 
       {estado.testEventCode && (
-        <div className="rounded-md border border-sky-500/40 bg-sky-500/10 p-4 text-sm">
-          {t("Modo de teste ligado: as vendas vão marcadas como teste e não contam para a otimização. Apague o código de teste quando terminar de conferir.")}
+        <div className="rounded-2xl border border-border/60 border-sky-500/40 bg-sky-500/10 p-4 text-sm">
+          {t(
+            "Modo de teste ligado: as vendas vão marcadas como teste e não contam para a otimização. Apague o código de teste quando terminar de conferir.",
+          )}
         </div>
       )}
 
@@ -162,17 +180,19 @@ export default async function ConversoesPage({
         </div>
 
         {pendencias.length === 0 ? (
-          <p className="rounded-md border p-4 text-sm text-muted-foreground">
+          <p className="rounded-2xl border border-border/60 p-4 text-sm text-muted-foreground">
             {/*
               Ausência de pendência tem DUAS causas com significados opostos, e
               dizer só "tudo certo" esconderia a segunda: ou nada falhou, ou nunca
               fechou uma venda vinda de anúncio. Quem acabou de conectar precisa
               saber que a lista vazia ainda não prova que funciona.
             */}
-            {t("Nenhuma pendência. Ou tudo que veio de anúncio foi reportado, ou ainda não fechou nenhuma venda com origem em anúncio.")}
+            {t(
+              "Nenhuma pendência. Ou tudo que veio de anúncio foi reportado, ou ainda não fechou nenhuma venda com origem em anúncio.",
+            )}
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-2xl border border-border/60">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr>
@@ -186,7 +206,10 @@ export default async function ConversoesPage({
                 {pendencias.map((p) => (
                   <tr key={p.leadId} className="border-t align-top">
                     <td className="p-3">
-                      <a className="underline underline-offset-2" href={`/app/kanban?lead=${p.leadId}`}>
+                      <a
+                        className="underline underline-offset-2"
+                        href={`/app/kanban?lead=${p.leadId}`}
+                      >
                         {p.tituloDoLead ?? t("(sem título)")}
                       </a>
                     </td>
@@ -196,7 +219,9 @@ export default async function ConversoesPage({
                     <td className="p-3">
                       <span>{t(MOTIVO_LEGIVEL[p.motivo ?? ""] ?? p.motivo ?? "—")}</span>
                       {p.detalhe && (
-                        <span className="mt-1 block text-xs text-muted-foreground">{p.detalhe}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {p.detalhe}
+                        </span>
                       )}
                     </td>
                     <td className="p-3 whitespace-nowrap text-muted-foreground">
@@ -228,7 +253,7 @@ export default async function ConversoesPage({
           )}
         </p>
 
-        <div className="rounded-md border p-4 text-sm">
+        <div className="rounded-2xl border border-border/60 p-4 text-sm">
           <p className="font-medium">{t("Como montar o link do botão")}</p>
           <ol className="mt-2 flex list-decimal flex-col gap-2 pl-5">
             <li>
