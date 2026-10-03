@@ -58,10 +58,7 @@ const STATUS_VARIANT: Record<
   pending_review: "outline",
 };
 
-const SLA_VARIANT: Record<
-  SlaBucket,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
+const SLA_VARIANT: Record<SlaBucket, "default" | "secondary" | "destructive" | "outline"> = {
   overdue: "destructive",
   critical: "destructive",
   warning: "outline",
@@ -143,7 +140,7 @@ export function RequestsTable() {
       {!q.isLoading && rows.length > 0 && <SlaBanner requests={rows} />}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
         <Select
           value={status ?? ALL}
           onValueChange={(v) => {
@@ -288,18 +285,18 @@ export function RequestsTable() {
                       {r.id.slice(0, 8)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="whitespace-nowrap text-xs">
+                      <Badge variant="secondary" className="text-xs whitespace-nowrap">
                         {t(TYPE_LABELS[r.request_type] ?? r.request_type)}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[140px] truncate font-mono text-xs">
                       {subject}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                       {fmtRelative(r.received_at, t)}
                     </TableCell>
                     <TableCell
-                      className={`whitespace-nowrap text-xs font-medium ${due.urgent ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+                      className={`text-xs font-medium whitespace-nowrap ${due.urgent ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
                     >
                       {due.label}
                     </TableCell>
@@ -311,7 +308,7 @@ export function RequestsTable() {
                     <TableCell>
                       <Badge
                         variant={STATUS_VARIANT[r.status]}
-                        className="whitespace-nowrap text-xs"
+                        className="text-xs whitespace-nowrap"
                       >
                         {t(STATUS_LABELS[r.status] ?? r.status)}
                       </Badge>

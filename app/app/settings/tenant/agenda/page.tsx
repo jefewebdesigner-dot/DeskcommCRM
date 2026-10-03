@@ -40,7 +40,8 @@ export default async function TiposDeAgendamentoPage() {
   // `viewer` vê a lista (é informação de operação: quanto dura uma consulta);
   // criar e alterar é `manager`, e a rota cobra de novo — a tela esconder não é
   // autorização, é cortesia.
-  const podeEditar = (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
+  const podeEditar =
+    (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
 
   const supabase = await createClient();
   const [{ data: tipos }, { data: pessoas }, { data: org }] = await Promise.all([
@@ -79,12 +80,21 @@ export default async function TiposDeAgendamentoPage() {
   const nomes = await nomesDosAtendentes((pessoas ?? []).map((p) => String(p.user_id)));
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Tipos de agendamento")}</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {t("O que se pode marcar, quanto dura e quem atende. É isto que a tela de marcar e o agente de IA oferecem ao cliente.")}
-        </p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Configuração da agenda")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Tipos de agendamento")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-muted">
+            {t(
+              "O que se pode marcar, quanto dura e quem atende. É isto que a tela de marcar e o agente de IA oferecem ao cliente.",
+            )}
+          </p>
+        </div>
       </header>
       <TiposDeAgendamentoClient
         tiposIniciais={(tipos ?? []) as TipoRow[]}

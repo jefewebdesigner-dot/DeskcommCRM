@@ -112,7 +112,7 @@ export function ApiTokensClient() {
       ) : tokens.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("Nenhum token criado ainda.")}</p>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-2xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -148,7 +148,9 @@ export function ApiTokensClient() {
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {tok.expires_at ? new Date(tok.expires_at).toLocaleDateString(tagDoIdioma) : "—"}
+                    {tok.expires_at
+                      ? new Date(tok.expires_at).toLocaleDateString(tagDoIdioma)
+                      : "—"}
                   </TableCell>
                   <TableCell>
                     {!tok.revoked_at ? (
@@ -176,9 +178,7 @@ export function ApiTokensClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("Criar novo token")}</DialogTitle>
-            <DialogDescription>
-              {t("O plaintext será mostrado apenas uma vez.")}
-            </DialogDescription>
+            <DialogDescription>{t("O plaintext será mostrado apenas uma vez.")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="space-y-4">
             <div className="space-y-2">
@@ -203,7 +203,7 @@ export function ApiTokensClient() {
                     onClick={() => toggleScope(s.id)}
                     title={t(s.label)}
                     aria-label={`${s.id} — ${t(s.label)}`}
-                    className={`rounded-md border px-2 py-1 text-xs ${
+                    className={`rounded-2xl border border-border/60 px-2 py-1 text-xs ${
                       scopes.includes(s.id) ? "border-primary bg-primary/10" : "border-border"
                     }`}
                   >
@@ -247,7 +247,7 @@ export function ApiTokensClient() {
           </DialogHeader>
           {created ? (
             <div className="space-y-3">
-              <code className="block break-all rounded-md border bg-muted p-3 text-sm">
+              <code className="block rounded-2xl border border-border/60 bg-muted p-3 text-sm break-all">
                 {created.plaintext}
               </code>
               <Button
