@@ -43,9 +43,9 @@ export function NotificationPrefsClient() {
   }
 
   return (
-    <Card className="p-0">
+    <Card className="overflow-hidden rounded-[24px] border-border/60 p-0 shadow-sm">
       <table className="w-full text-sm">
-        <thead className="border-b">
+        <thead className="border-b border-border/60 bg-muted/[0.10]">
           <tr>
             <th className="px-4 py-3 text-left font-medium">{t("Categoria")}</th>
             <th className="px-4 py-3 text-center font-medium">Email</th>
@@ -55,7 +55,10 @@ export function NotificationPrefsClient() {
         </thead>
         <tbody>
           {NOTIFY_UI_CATEGORIES.map((cat) => (
-            <tr key={cat} className="border-b last:border-0">
+            <tr
+              key={cat}
+              className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/[0.08]"
+            >
               <td className="px-4 py-3">
                 {t(LABELS[cat])}
                 {cat === "message" && denied ? (
@@ -82,7 +85,13 @@ export function NotificationPrefsClient() {
                   disabled={denied || unsupported}
                   onCheckedChange={(on) => void onToggle(cat, "push", on)}
                   aria-label={`${t(LABELS[cat])} via push`}
-                  data-testid={cat === "message" ? (prefs.message.push ? "alerts-toggle" : "alerts-enable") : undefined}
+                  data-testid={
+                    cat === "message"
+                      ? prefs.message.push
+                        ? "alerts-toggle"
+                        : "alerts-enable"
+                      : undefined
+                  }
                 />
               </td>
             </tr>

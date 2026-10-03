@@ -46,25 +46,42 @@ export default async function TeamPage({
   const isManager = !!activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Equipe")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("Gestão de membros, roles e atendimento do tenant.")}
-          </p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Sua empresa")}
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+              {t("Equipe")}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {t(
+                "Gerencie quem trabalha aqui, os níveis de acesso e a capacidade de atendimento de cada pessoa.",
+              )}
+            </p>
+          </div>
+          {isAdmin ? (
+            <Button asChild className="shrink-0 rounded-xl">
+              <Link href="/app/team/invite">{t("Convidar membros")}</Link>
+            </Button>
+          ) : null}
         </div>
-        {isAdmin ? (
-          <Button asChild className="shrink-0">
-            <Link href="/app/team/invite">{t("Convidar membros")}</Link>
-          </Button>
-        ) : null}
       </header>
 
       <Tabs defaultValue={abaInicial} className="flex flex-1 flex-col">
-        <TabsList>
-          <TabsTrigger value="members">{t("Membros")}</TabsTrigger>
-          <TabsTrigger value="attendants">{t("Atendimento")}</TabsTrigger>
+        <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
+          <TabsTrigger value="members" className="rounded-lg px-4 text-xs">
+            {t("Membros")}
+          </TabsTrigger>
+          <TabsTrigger value="attendants" className="rounded-lg px-4 text-xs">
+            {t("Atendimento")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="members" className="mt-4 flex flex-col gap-8">
           <TeamMembersClient currentUserId={user.id} canManage={isAdmin} />

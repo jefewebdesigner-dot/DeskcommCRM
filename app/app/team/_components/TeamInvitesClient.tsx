@@ -90,7 +90,7 @@ export function TeamInvitesClient({ canManage }: Props) {
       {invites.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("Nenhum convite enviado.")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-2xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -218,9 +218,7 @@ export function TeamInvitesClient({ canManage }: Props) {
             <DialogTitle>{t("Revogar convite")}</DialogTitle>
             <DialogDescription>
               {revokeDialog?.email}{" "}
-              {t(
-                "não poderá mais usar este convite para entrar. Você pode enviar um novo depois.",
-              )}
+              {t("não poderá mais usar este convite para entrar. Você pode enviar um novo depois.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

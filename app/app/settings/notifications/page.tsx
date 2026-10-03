@@ -49,16 +49,29 @@ export default async function NotificationsPage() {
   const pushPronto = vapidPronto();
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Notificações")}</h1>
-        <p className="text-sm text-muted-foreground">{t("Canais e categorias.")}</p>
+    <div className="flex h-full flex-col gap-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-amber-500/[0.06] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Preferências de aviso")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Notificações")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t("Escolha quais acontecimentos merecem sua atenção e por onde você quer recebê-los.")}
+          </p>
+        </div>
       </header>
 
       {pushPronto ? (
         <Card
           data-testid="push-status-pronto"
-          className="border-amber-500/40 bg-amber-50/40 p-4 text-sm dark:bg-amber-900/10"
+          className="rounded-2xl border-amber-500/30 bg-amber-50/40 p-4 text-sm shadow-sm dark:bg-amber-900/10"
         >
           {t(
             "Email ainda não está disponível. In-app (toast) e Push (Chrome) já funcionam para as cinco categorias, inclusive com a aba fechada.",
@@ -67,7 +80,7 @@ export default async function NotificationsPage() {
       ) : (
         <Card
           data-testid="push-status-faltando-chaves"
-          className="border-amber-500/40 bg-amber-50/40 p-4 text-sm dark:bg-amber-900/10"
+          className="rounded-2xl border-amber-500/30 bg-amber-50/40 p-4 text-sm shadow-sm dark:bg-amber-900/10"
         >
           <p className="font-medium">
             {t("Nesta instalação, os avisos só aparecem com o site aberto.")}

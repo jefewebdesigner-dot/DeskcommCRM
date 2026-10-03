@@ -13,20 +13,10 @@ import {
   type AttendantAvailability,
 } from "@/hooks/team/useAttendants";
 import { estaDePlantao } from "@/lib/routing/eligibility";
-import {
-  ROUTING_MODES,
-  type RoutingConfig,
-  type ScheduleWindow,
-} from "@/lib/schemas/routing";
+import { ROUTING_MODES, type RoutingConfig, type ScheduleWindow } from "@/lib/schemas/routing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -203,7 +193,9 @@ function ScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("Horário de")} {attendant.name}</DialogTitle>
+          <DialogTitle>
+            {t("Horário de")} {attendant.name}
+          </DialogTitle>
           <DialogDescription>
             {t(
               "Sem janelas, o roteamento aceita conversa a qualquer hora — mas a Agenda não oferece NENHUM horário para marcar. Adicione janelas para publicar seus horários de atendimento.",
@@ -222,7 +214,7 @@ function ScheduleDialog({
               id="tz"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 w-full rounded-2xl border border-border/60 border-input bg-background px-2 text-sm"
             >
               {FUSOS_OFERECIDOS.map((f) => (
                 <option key={f.codigo} value={f.codigo}>
@@ -243,9 +235,7 @@ function ScheduleDialog({
                 <Select
                   value={String(w.dow)}
                   onValueChange={(v) =>
-                    setWindows((ws) =>
-                      ws.map((x, j) => (j === i ? { ...x, dow: Number(v) } : x)),
-                    )
+                    setWindows((ws) => ws.map((x, j) => (j === i ? { ...x, dow: Number(v) } : x)))
                   }
                 >
                   <SelectTrigger className="w-[90px]" aria-label="Dia da semana">
@@ -293,9 +283,7 @@ function ScheduleDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                setWindows((ws) => [...ws, { dow: 1, start: "08:00", end: "18:00" }])
-              }
+              onClick={() => setWindows((ws) => [...ws, { dow: 1, start: "08:00", end: "18:00" }])}
             >
               <Plus size={16} className="mr-1" /> Adicionar janela
             </Button>
@@ -340,7 +328,9 @@ function RoutingCard({ canManage }: { canManage: boolean }) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm text-destructive">{t("Erro ao carregar a configuração de roteamento.")}</p>
+          <p className="text-sm text-destructive">
+            {t("Erro ao carregar a configuração de roteamento.")}
+          </p>
         </CardContent>
       </Card>
     );
@@ -457,7 +447,7 @@ export function AttendantsClient({ canManage }: Props) {
     <div className="space-y-6">
       <RoutingCard canManage={canManage} />
 
-      <div className="rounded-md border">
+      <div className="rounded-2xl border border-border/60">
         <div className="border-b px-4 py-3" data-testid="atendentes-e-horarios">
           <h2 className="text-sm font-semibold">{t("Atendentes e horários de atendimento")}</h2>
           <p className="text-xs text-muted-foreground">
@@ -485,7 +475,9 @@ export function AttendantsClient({ canManage }: Props) {
           <p className="p-4 text-sm text-destructive">Erro ao carregar atendentes.</p>
         ) : attendants.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">
-            {t("Nenhum atendente na organização. Convide membros com papel de atendente ou superior.")}
+            {t(
+              "Nenhum atendente na organização. Convide membros com papel de atendente ou superior.",
+            )}
           </p>
         ) : (
           <Table>

@@ -16,11 +16,7 @@ import {
 import { updateProfile } from "@/app/actions/settings/updateProfile";
 import { useT } from "@/hooks/i18n/useT";
 import { IDIOMAS_VISIVEIS } from "@/lib/i18n/registro";
-import {
-  profileSchema,
-  SEM_PREFERENCIA_DE_IDIOMA,
-  type Locale,
-} from "@/lib/schemas/settings";
+import { profileSchema, SEM_PREFERENCIA_DE_IDIOMA, type Locale } from "@/lib/schemas/settings";
 
 const TIMEZONES = [
   "Africa/Luanda",
@@ -74,14 +70,12 @@ export function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl">
-      <Card className="space-y-4 p-6">
+    <form onSubmit={handleSubmit} className="max-w-2xl">
+      <Card className="space-y-5 rounded-[24px] border-border/60 p-5 shadow-sm sm:p-6">
         <div className="space-y-2">
           <Label htmlFor="email">{t("Email")}</Label>
           <Input id="email" value={email} disabled />
-          <p className="text-xs text-muted-foreground">
-            {t("Trocar email — em breve.")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("Trocar email — em breve.")}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="full_name">{t("Nome completo")}</Label>

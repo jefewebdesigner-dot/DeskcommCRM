@@ -8,10 +8,7 @@ import { RecoveryCodesPanel } from "@/components/auth/RecoveryCodesPanel";
 import { MfaEnrollModal } from "@/components/auth/MfaEnrollModal";
 import { regenerateRecoveryCodes } from "@/app/actions/settings/regenerateRecoveryCodes";
 import { signOutEverywhere } from "@/app/actions/settings/signOutEverywhere";
-import {
-  definirExigenciaDeMfa,
-  desativarMfaDaConta,
-} from "@/app/actions/auth/politicaDeMfa";
+import { definirExigenciaDeMfa, desativarMfaDaConta } from "@/app/actions/auth/politicaDeMfa";
 import { PainelDeChamadaDeVoz } from "@/components/voice/PainelDeChamadaDeVoz";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -36,11 +33,7 @@ export function SecurityClient({
   const [mexendo, startMexer] = useTransition();
 
   function handleRegenerate() {
-    if (
-      !confirm(
-        t("Gerar novos códigos invalida TODOS os atuais. Tem certeza?"),
-      )
-    ) {
+    if (!confirm(t("Gerar novos códigos invalida TODOS os atuais. Tem certeza?"))) {
       return;
     }
     startTransition(async () => {
@@ -55,12 +48,7 @@ export function SecurityClient({
   }
 
   function handleSignOutAll() {
-    if (
-      !confirm(
-        t("Sair de TODOS os dispositivos? Você precisará fazer login de novo."),
-      )
-    )
-      return;
+    if (!confirm(t("Sair de TODOS os dispositivos? Você precisará fazer login de novo."))) return;
     startSignOut(async () => {
       await signOutEverywhere();
     });
@@ -72,7 +60,7 @@ export function SecurityClient({
           Ele recarrega a página ao terminar, e o servidor reavalia o estado. */}
       {ativando ? <MfaEnrollModal motivo="escolha" /> : null}
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-4 rounded-[24px] border-border/60 p-5 shadow-sm sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">{t("Verificação em duas etapas")}</h2>
@@ -106,10 +94,10 @@ export function SecurityClient({
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-xl"
                 disabled={mexendo}
                 onClick={() => {
-                  if (!confirm(t("Desligar a verificação em duas etapas desta conta?")))
-                    return;
+                  if (!confirm(t("Desligar a verificação em duas etapas desta conta?"))) return;
                   startMexer(async () => {
                     const r = await desativarMfaDaConta();
                     if (!r.ok) {
@@ -126,14 +114,14 @@ export function SecurityClient({
             )}
           </div>
         ) : (
-          <Button size="sm" onClick={() => setAtivando(true)}>
+          <Button size="sm" className="rounded-xl" onClick={() => setAtivando(true)}>
             {t("Ativar")}
           </Button>
         )}
       </Card>
 
       {podeExigirDaEquipe ? (
-        <Card className="space-y-3 p-6">
+        <Card className="space-y-4 rounded-[24px] border-border/60 p-5 shadow-sm sm:p-6">
           <h2 className="text-sm font-semibold">{t("Exigir de quem administra")}</h2>
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -172,7 +160,7 @@ export function SecurityClient({
         </Card>
       ) : null}
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-4 rounded-[24px] border-border/60 p-5 shadow-sm sm:p-6">
         <h2 className="text-sm font-semibold">{t("Códigos de recuperação")}</h2>
         <p className="text-xs text-muted-foreground">
           {t("Use se perder acesso ao autenticador. Cada código é de uso único.")}
@@ -182,6 +170,7 @@ export function SecurityClient({
         ) : (
           <Button
             variant="outline"
+            className="rounded-xl"
             disabled={!mfaEnrolled || isPending}
             onClick={handleRegenerate}
           >
@@ -200,13 +189,14 @@ export function SecurityClient({
           não tem a feature ou quem lê não pode enxergá-la. */}
       <PainelDeChamadaDeVoz />
 
-      <Card className="space-y-3 p-6">
+      <Card className="space-y-4 rounded-[24px] border-border/60 p-5 shadow-sm sm:p-6">
         <h2 className="text-sm font-semibold">{t("Sessões ativas")}</h2>
         <p className="text-xs text-muted-foreground">
           {t("Listagem de sessões — em breve. Por enquanto, deslogue todos os dispositivos:")}
         </p>
         <Button
           variant="outline"
+          className="rounded-xl"
           disabled={isSigningOut}
           onClick={handleSignOutAll}
         >
