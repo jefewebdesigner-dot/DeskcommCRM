@@ -19,6 +19,7 @@ import { useDeleteNote } from "@/hooks/inbox/useDeleteNote";
 import { useDebugToggle } from "@/hooks/ai/useDebugToggle";
 import { useActiveOrg, useUser } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { cn } from "@/lib/utils";
 import { montarCartoesDaPassagem, type CartaoDaPassagem } from "@/lib/escalacao/cartao-da-passagem";
 import type { Message, Note } from "@/lib/types/messaging";
 
@@ -69,6 +70,19 @@ export function mergeThreadItems(
   // DEPOIS das duas, que é o que aconteceu: ela é consequência da última fala.
   items.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
   return items;
+}
+
+/**
+ * Pequeno respiro quando a conversa muda de "bloco mental": troca de lado,
+ * intervalo maior que cinco minutos, nota interna ou passagem de atendimento.
+ * É o equivalente visual de um parágrafo — sem transformar cada mensagem em card.
+ */
+function precisaDeRespiro(item: ThreadItem, anterior?: ThreadItem): boolean {
+  if (!anterior) return false;
+  const intervalo = new Date(item.ts).getTime() - new Date(anterior.ts).getTime();
+  if (intervalo > 5 * 60 * 1000) return true;
+  if (item.kind !== "message" || anterior.kind !== "message") return true;
+  return item.data.direction !== anterior.data.direction;
 }
 
 function dayLabel(
@@ -279,81 +293,92 @@ export function ChatThread({ conversationId, onResponder, dono, contatoId }: Pro
   return (
     <div
       {...sinalDoCanal}
-      className="flex h-full flex-col bg-gradient-to-b from-muted/[0.10] via-background to-background"
+      className="flex h-full flex-col bg-gradient-to-b from-muted/[0.08] via-background to-background"
     >
-      <div ref={scrollerRef} className="flex-1 overflow-y-auto px-2 py-3 sm:px-3 lg:px-4 xl:px-5">
-        {q.hasNextPage && (
-          <div className="flex justify-center py-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => q.fetchNextPage()}
-              disabled={q.isFetchingNextPage}
-            >
-              {q.isFetchingNextPage ? t("Carregando…") : t("Carregar mais antigas")}
-            </Button>
-          </div>
-        )}
-
-        {groups.map((g) => (
-          <div key={g.key} className="space-y-1">
-            <div className="sticky top-0 z-10 flex justify-center py-1">
-              <span className="rounded-full border border-border/50 bg-background/90 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
-                {dayLabel(g.date, t, localeDaData)}
-              </span>
+      <div ref={scrollerRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 lg:px-6">
+        <div className="mx-auto w-full max-w-[72rem]">
+          {q.hasNextPage && (
+            <div className="flex justify-center py-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => q.fetchNextPage()}
+                disabled={q.isFetchingNextPage}
+              >
+                {q.isFetchingNextPage ? t("Carregando…") : t("Carregar mais antigas")}
+              </Button>
             </div>
-            {g.items.map((item) =>
-              item.kind === "passagem" ? (
-                <PassagemCard
-                  key={`passagem-${item.data.id}`}
-                  cartao={item.data}
-                  contatoId={contatoId ?? null}
-                  assumindo={claim.isPending}
-                  // O MESMO gesto do cabeçalho — uma rota, um efeito. Uma
-                  // segunda maneira de assumir seria uma segunda chance de os
-                  // dois caminhos divergirem sobre o que "assumir" faz.
-                  onAssumir={() =>
-                    conversationId &&
-                    claim.mutate({
-                      conversation_id: conversationId,
-                      expected_assignee: dono?.userId ?? null,
-                    })
-                  }
-                />
-              ) : item.kind === "note" ? (
-                <NoteCard
-                  key={`note-${item.data.id}`}
-                  note={item.data}
-                  // Só o autor ou manager+ vê o excluir — o backend barra o resto (403),
-                  // então não mostramos um botão que daria erro.
-                  onDelete={
-                    item.data.created_by_user_id === currentUser.id || canManage
-                      ? () => deleteNote.mutate(item.data.id)
-                      : undefined
-                  }
-                />
-              ) : (
-                <MessageBubble
-                  key={`msg-${item.data.id}`}
-                  message={item.data}
-                  debugCitations={debugCitations}
-                  onResponder={onResponder}
-                  // A citada sai da MESMA lista já carregada: buscar no servidor
-                  // por cada citação faria uma consulta por bolha. Quando a
-                  // citada é antiga demais e ficou fora da página, o fio some —
-                  // que é melhor que segurar a conversa esperando.
-                  citada={porId.get(item.data.reply_to_message_id ?? "") ?? null}
-                  // Sem isto o balão diz "Você" em toda mensagem digitada no
-                  // CRM — inclusive nas do colega, porque `sent_via='user'` só
-                  // registra que um humano digitou, nunca qual.
-                  viewerUserId={currentUser.id}
-                />
-              ),
-            )}
-          </div>
-        ))}
+          )}
 
-        <div ref={bottomRef} />
+          {groups.map((g) => (
+            <div key={g.key} className="pb-1">
+              <div className="sticky top-0 z-10 flex items-center gap-2 py-2">
+                <span className="h-px flex-1 bg-border/45" aria-hidden />
+                <span className="rounded-full border border-border/50 bg-background/95 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+                  {dayLabel(g.date, t, localeDaData)}
+                </span>
+                <span className="h-px flex-1 bg-border/45" aria-hidden />
+              </div>
+              {g.items.map((item, index) => {
+                const anterior = g.items[index - 1];
+                return (
+                  <div
+                    key={`${item.kind}-${item.data.id}`}
+                    className={cn(
+                      index > 0 && (precisaDeRespiro(item, anterior) ? "mt-3" : "mt-1"),
+                    )}
+                  >
+                    {item.kind === "passagem" ? (
+                      <PassagemCard
+                        cartao={item.data}
+                        contatoId={contatoId ?? null}
+                        assumindo={claim.isPending}
+                        // O MESMO gesto do cabeçalho — uma rota, um efeito. Uma
+                        // segunda maneira de assumir seria uma segunda chance de os
+                        // dois caminhos divergirem sobre o que "assumir" faz.
+                        onAssumir={() =>
+                          conversationId &&
+                          claim.mutate({
+                            conversation_id: conversationId,
+                            expected_assignee: dono?.userId ?? null,
+                          })
+                        }
+                      />
+                    ) : item.kind === "note" ? (
+                      <NoteCard
+                        note={item.data}
+                        // Só o autor ou manager+ vê o excluir — o backend barra o resto (403),
+                        // então não mostramos um botão que daria erro.
+                        onDelete={
+                          item.data.created_by_user_id === currentUser.id || canManage
+                            ? () => deleteNote.mutate(item.data.id)
+                            : undefined
+                        }
+                      />
+                    ) : (
+                      <MessageBubble
+                        message={item.data}
+                        debugCitations={debugCitations}
+                        onResponder={onResponder}
+                        // A citada sai da MESMA lista já carregada: buscar no servidor
+                        // por cada citação faria uma consulta por bolha. Quando a
+                        // citada é antiga demais e ficou fora da página, o fio some —
+                        // que é melhor que segurar a conversa esperando.
+                        citada={porId.get(item.data.reply_to_message_id ?? "") ?? null}
+                        // Sem isto o balão diz "Você" em toda mensagem digitada no
+                        // CRM — inclusive nas do colega, porque `sent_via='user'` só
+                        // registra que um humano digitou, nunca qual.
+                        viewerUserId={currentUser.id}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
     </div>
   );

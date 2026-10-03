@@ -121,7 +121,7 @@ export function ReplyReviewPanel({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 px-2 text-[11px] text-muted-foreground"
+          className="h-7 gap-1.5 rounded-full border border-transparent bg-muted/20 px-2.5 text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted/50 hover:text-foreground"
           disabled={disabled || busy}
           onClick={generate}
           aria-label={t("Sugerir resposta")}

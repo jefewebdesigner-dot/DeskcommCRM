@@ -171,7 +171,7 @@ export function ConversationHeader({
     // de antes (uma linha), e quando aperta a barra desce para a linha de baixo.
     // Nenhuma ação some — um menu "mais" esconderia o "Lembrar" que a spec
     // `canais-baseline` clica, e, pior, esconderia ação de quem atende.
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-gradient-to-r from-card via-card to-muted/25 px-4 py-3.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/75 bg-background/95 px-4 py-3 shadow-[0_1px_0_rgba(0,0,0,0.025)] backdrop-blur-sm">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="h-11 w-11 shrink-0 border border-border/60 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           {c?.avatar_storage_path && !c?.is_anonymized ? (
@@ -183,7 +183,7 @@ export function ConversationHeader({
         </Avatar>
 
         <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-xl bg-background/35 p-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <h2 className="max-w-[16rem] truncate text-[15px] font-semibold tracking-[-0.02em]">
               {displayName}
             </h2>
@@ -228,7 +228,7 @@ export function ConversationHeader({
       {/* `shrink-0` saiu daqui: era ele que impunha o piso de largura. Agora a
           barra pode encolher e quebrar internamente, e os botões continuam
           todos visíveis e clicáveis — só que em duas linhas quando preciso. */}
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-1 rounded-lg bg-muted/20 p-1">
         {isOpen && (
           <Button
             size="sm"
@@ -365,7 +365,7 @@ export function ConversationHeader({
           <Button
             size="sm"
             variant="ghost"
-            className="hidden gap-1.5 md:inline-flex"
+            className="order-2 ml-0.5 hidden gap-1.5 md:inline-flex"
             onClick={onOpenContext}
             aria-label={t("Contexto")}
             title={t("Abrir contexto e ficha CRM")}
@@ -378,7 +378,7 @@ export function ConversationHeader({
           <Button
             size="sm"
             variant={focusMode ? "outline" : "ghost"}
-            className="hidden gap-1.5 md:inline-flex"
+            className="order-3 hidden gap-1.5 md:inline-flex"
             onClick={onToggleFocus}
             aria-label={focusMode ? t("Sair do modo foco") : t("Modo foco")}
             aria-pressed={focusMode}
@@ -391,7 +391,8 @@ export function ConversationHeader({
         {status !== "archived" && (
           <Button
             size="sm"
-            variant="ghost"
+            variant="outline"
+            className="order-1"
             disabled={arquivar.isPending}
             onClick={() => {
               // A confirmação precisa dizer o que ACONTECE, e o que acontece
@@ -429,7 +430,7 @@ export function ConversationHeader({
             contato — por isso a condição é a mesma do painel, e não um valor
             escolhido à parte. Não é esconder ação; é não repeti-la. */}
         {c?.id && (
-          <Button asChild size="sm" variant="ghost" className="xl:hidden">
+          <Button asChild size="sm" variant="ghost" className="order-4 xl:hidden">
             <Link href={`/app/contacts/${c.id}`} className="flex items-center gap-1">
               {t("Ver contato")}
               <ArrowRight size={12} weight="regular" aria-hidden />

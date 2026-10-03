@@ -202,7 +202,7 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group relative flex w-full items-start gap-2.5 overflow-hidden rounded-lg border border-transparent px-2 py-2.5 text-left transition-[background,border-color,box-shadow,transform] duration-150 hover:border-border/60 hover:bg-background hover:shadow-sm",
+        "group relative flex w-full items-start gap-2.5 overflow-hidden rounded-lg border border-transparent px-2 py-2.5 text-left transition-[background,border-color,box-shadow] duration-150 hover:bg-muted/35",
         "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-hidden",
         unread > 0 && !isSelected && "bg-background/55",
         isSelected &&

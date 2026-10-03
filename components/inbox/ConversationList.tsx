@@ -155,17 +155,19 @@ export function ConversationList({
           <EmptyPorFiltro filtros={filtrosAtivos} onLimpar={onLimparFiltros} />
         )}
         {items.map((c, i) => (
-          <ConversationListItem
-            key={c.id}
-            conversation={c}
-            isSelected={c.id === selectedId}
-            onSelect={onSelect}
-            queuePosition={isQueue ? i + 1 : undefined}
-            mostrarCanal={maisDeUmCanal}
-            mostrarAtendente={mostrarAtendente}
-            mostrarAutomatico={mostrarAutomatico}
-            automaticoDaOrg={automaticoDaOrg.data}
-          />
+          <div key={c.id}>
+            {i > 0 && <div className="mr-2 ml-[3.25rem] h-px bg-border/45" aria-hidden />}
+            <ConversationListItem
+              conversation={c}
+              isSelected={c.id === selectedId}
+              onSelect={onSelect}
+              queuePosition={isQueue ? i + 1 : undefined}
+              mostrarCanal={maisDeUmCanal}
+              mostrarAtendente={mostrarAtendente}
+              mostrarAutomatico={mostrarAutomatico}
+              automaticoDaOrg={automaticoDaOrg.data}
+            />
+          </div>
         ))}
         {q.hasNextPage && (
           <div className="flex justify-center p-3">
