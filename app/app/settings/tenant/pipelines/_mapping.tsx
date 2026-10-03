@@ -163,10 +163,8 @@ export function mensagemDeErro(
 ): string {
   if (e instanceof ApiError) {
     if (e.status === 409 || e.status === 422) return t(e.message);
-    if (e.status === 401)
-      return t("Sua sessão expirou. Entre de novo para salvar suas escolhas.");
-    if (e.status === 403)
-      return t("Você não tem permissão para mudar a configuração deste funil.");
+    if (e.status === 401) return t("Sua sessão expirou. Entre de novo para salvar suas escolhas.");
+    if (e.status === 403) return t("Você não tem permissão para mudar a configuração deste funil.");
   }
   return t("Não deu para salvar agora. Tente de novo em instantes.");
 }
@@ -254,7 +252,9 @@ export function AgentMappingSection({
             se chama Funis e trata dos funis do tenant. Duas coisas diferentes
             com o mesmo nome, na mesma tela, fazem o dono da clínica procurar um
             segundo funil que não existe. O título diz o que a seção FAZ. */}
-        <h3 className="text-sm font-semibold">{t("Para onde o card vai em cada passo")}</h3>
+        <h3 className="text-sm font-semibold tracking-tight">
+          {t("Para onde o card vai em cada passo")}
+        </h3>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           {t(
             "Quando o agente avança no atendimento, o card do cliente pode andar sozinho no seu funil. Escolha para qual etapa ele vai em cada momento. Deixar em «não mover» é uma escolha válida — o card fica onde está e o agente segue trabalhando.",
@@ -262,7 +262,7 @@ export function AgentMappingSection({
         </p>
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-background/70">
         {LEAD_STAGES.map((passo) => {
           const opcoes = opcoesDoPasso(passo, etapas, rascunho);
           // A etapa já escolhida some das opções DOS OUTROS passos, nunca das
@@ -272,7 +272,7 @@ export function AgentMappingSection({
           return (
             <li
               key={passo}
-              className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-4"
+              className="flex flex-col gap-2 p-4 transition-colors hover:bg-muted/[0.16] sm:flex-row sm:items-center sm:gap-4"
               data-testid={`passo-${passo}`}
             >
               <div className="min-w-0 sm:w-64">
@@ -286,7 +286,10 @@ export function AgentMappingSection({
               />
               <div className="min-w-0 flex-1">
                 {opcoes.length === 0 ? (
-                  <p className="text-xs leading-relaxed text-text-muted" data-testid={`vazio-${passo}`}>
+                  <p
+                    className="text-xs leading-relaxed text-text-muted"
+                    data-testid={`vazio-${passo}`}
+                  >
                     {motivoDaListaVazia(passo, etapas, t)}
                     {/* O ciclo se fecha aqui: o mapeamento APONTA a lacuna, a
                         seção de etapas RESOLVE. Sem o link, o texto acima é um
@@ -308,10 +311,7 @@ export function AgentMappingSection({
                     )}
                   </p>
                 ) : (
-                  <Select
-                    value={escolhida ?? SEM_ETAPA}
-                    onValueChange={(v) => escolher(passo, v)}
-                  >
+                  <Select value={escolhida ?? SEM_ETAPA} onValueChange={(v) => escolher(passo, v)}>
                     <SelectTrigger
                       aria-label={`${t("Etapa para")} «${t(ROTULO_DO_PASSO[passo])}»`}
                       data-testid={`etapa-${passo}`}
@@ -342,15 +342,18 @@ export function AgentMappingSection({
           <Warning size={18} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
           <p className="text-sm leading-relaxed">
             {erro}{" "}
-            {t(
-              "As escolhas voltaram para o que está gravado agora — confira e escolha de novo.",
-            )}
+            {t("As escolhas voltaram para o que está gravado agora — confira e escolha de novo.")}
           </p>
         </Card>
       )}
 
       <div className="flex items-center justify-end gap-3">
-        <Button onClick={enviar} disabled={!mudou || gravando} data-testid="salvar-mapeamento">
+        <Button
+          className="rounded-xl"
+          onClick={enviar}
+          disabled={!mudou || gravando}
+          data-testid="salvar-mapeamento"
+        >
           {gravando ? t("Salvando…") : t("Salvar estas escolhas")}
         </Button>
       </div>

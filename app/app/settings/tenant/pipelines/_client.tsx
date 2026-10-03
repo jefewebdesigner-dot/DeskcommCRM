@@ -78,29 +78,43 @@ export function PipelinesClient({
     // vazio manda "Ir para Configurações": pingue-pongue fechado, com o usuário
     // procurando um botão que não existe em lugar nenhum.
     return (
-      <Card className="p-6 text-sm leading-relaxed text-muted-foreground">
-        {t("Você ainda não tem nenhum funil. Enquanto for assim, o agente atende normalmente, mas não tem para onde levar o card de ninguém — não há etapas para onde mover. Criar o funil é feito por quem instalou o sistema, direto no banco; depois ele aparece aqui para você escolher a etapa de cada passo.")}
+      <Card className="rounded-[24px] border-border/60 bg-muted/[0.06] p-6 text-sm leading-relaxed text-muted-foreground shadow-sm">
+        {t(
+          "Você ainda não tem nenhum funil. Enquanto for assim, o agente atende normalmente, mas não tem para onde levar o card de ninguém — não há etapas para onde mover. Criar o funil é feito por quem instalou o sistema, direto no banco; depois ele aparece aqui para você escolher a etapa de cada passo.",
+        )}
       </Card>
     );
   }
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {pipelines.map((p) => (
-        <Card key={p.id} className="space-y-6 p-6">
-          <header>
-            <h2 className="text-base font-semibold">{p.name}</h2>
-            <p className="text-xs text-muted-foreground">/{p.slug}</p>
+        <Card
+          key={p.id}
+          className="overflow-hidden rounded-[24px] border-border/60 bg-card p-0 shadow-[0_10px_28px_rgba(0,0,0,0.04)]"
+        >
+          <header className="border-b border-border/60 bg-muted/[0.14] px-5 py-4 sm:px-6">
+            <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              {t("Funil")}
+            </p>
+            <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+              <h2 className="text-lg font-semibold tracking-[-0.025em]">{p.name}</h2>
+              <p className="rounded-lg border border-border/50 bg-background/65 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                /{p.slug}
+              </p>
+            </div>
           </header>
-          {/* As ETAPAS vêm primeiro, e a ordem é a do raciocínio de quem
+          <div className="space-y-6 p-5 sm:p-6">
+            {/* As ETAPAS vêm primeiro, e a ordem é a do raciocínio de quem
               configura: primeiro o quadro existe do jeito da sua operação,
               depois se decide o que o assistente faz com ele. Invertido, a
               primeira coisa que o dono da clínica vê é um mapeamento sobre
               colunas de e-commerce que ele nem sabia que dava para trocar. */}
-          <StagesSection pipelineId={p.id} ancoraMapeamento={ancoraDoMapeamento(p.id)} />
-          <div className="border-t border-border pt-6">
-            <AgentMappingSection pipelineId={p.id} ancoraEtapas={ancoraDasEtapas(p.id)} />
+            <StagesSection pipelineId={p.id} ancoraMapeamento={ancoraDoMapeamento(p.id)} />
+            <section className="rounded-2xl border border-border/60 bg-muted/[0.08] p-4 sm:p-5">
+              <AgentMappingSection pipelineId={p.id} ancoraEtapas={ancoraDasEtapas(p.id)} />
+            </section>
+            {podeEditarConfig && <PipelineEditor pipeline={p} />}
           </div>
-          {podeEditarConfig && <PipelineEditor pipeline={p} />}
         </Card>
       ))}
     </div>
@@ -160,10 +174,16 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
     });
   }
 
-
   return (
-    <div className="space-y-4 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold">{t("Vocabulário e campos")}</h3>
+    <section className="space-y-4 rounded-2xl border border-border/60 bg-muted/[0.08] p-4 sm:p-5">
+      <div>
+        <h3 className="text-sm font-semibold tracking-tight">{t("Vocabulário e campos")}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {t(
+            "Ajustes avançados do funil. Eles mudam como os dados aparecem no dossiê e nos encerramentos.",
+          )}
+        </p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="space-y-1">
@@ -192,10 +212,15 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
       <div className="space-y-2">
         <Label className="text-xs">{t("Campos do lead neste funil")}</Label>
         <p className="text-xs text-muted-foreground">
-          {t("Aparecem no dossiê do negócio. No follow-up, você escolhe em qual campo gravar a resposta.")}
+          {t(
+            "Aparecem no dossiê do negócio. No follow-up, você escolhe em qual campo gravar a resposta.",
+          )}
         </p>
         {fields.map((f, i) => (
-          <div key={`${f.key}-${i}`} className="grid gap-2 rounded-md border border-border p-2 md:grid-cols-[1fr_1fr_8rem_auto]">
+          <div
+            key={`${f.key}-${i}`}
+            className="grid gap-2 rounded-xl border border-border/60 bg-background/70 p-2.5 md:grid-cols-[1fr_1fr_8rem_auto]"
+          >
             <Input
               aria-label={`${t("Chave do campo")} ${i + 1}`}
               placeholder={t("chave (endereco)")}
@@ -239,6 +264,7 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
               type="button"
               variant="ghost"
               size="sm"
+              className="rounded-lg"
               aria-label={`${t("Remover campo")} ${f.label || i + 1}`}
               onClick={() => setFields(fields.filter((_, j) => j !== i))}
             >
@@ -280,6 +306,7 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
             type="button"
             variant="outline"
             size="sm"
+            className="rounded-xl"
             onClick={() =>
               setFields([
                 ...fields,
@@ -293,10 +320,10 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
       </div>
 
       <div className="flex sm:justify-end">
-        <Button onClick={handleSave} disabled={isPending} className="w-full sm:w-auto">
+        <Button onClick={handleSave} disabled={isPending} className="w-full rounded-xl sm:w-auto">
           {isPending ? t("Salvando…") : t("Salvar vocabulário e campos")}
         </Button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -210,10 +210,16 @@ export function StagesSection({
   const editar = useEditarEtapa(pipelineId);
   const arquivar = useArquivarEtapa(pipelineId);
 
-  const [erro, setErro] = useState<
-    { etapaId: string | null; texto: string; sobrePapel?: boolean } | null
-  >(null);
-  const [confirmacao, setConfirmacao] = useState<{ etapaId: string; papel: Papel; texto: string } | null>(null);
+  const [erro, setErro] = useState<{
+    etapaId: string | null;
+    texto: string;
+    sobrePapel?: boolean;
+  } | null>(null);
+  const [confirmacao, setConfirmacao] = useState<{
+    etapaId: string;
+    papel: Papel;
+    texto: string;
+  } | null>(null);
   const [arquivamento, setArquivamento] = useState<Arquivamento | null>(null);
   const [nova, setNova] = useState<string | null>(null);
 
@@ -317,9 +323,13 @@ export function StagesSection({
   }
 
   return (
-    <div className="space-y-4" id={ancoraDasEtapas(pipelineId)} data-testid={`etapas-${pipelineId}`}>
+    <section
+      className="space-y-4 rounded-2xl border border-border/60 bg-background p-4 shadow-sm sm:p-5"
+      id={ancoraDasEtapas(pipelineId)}
+      data-testid={`etapas-${pipelineId}`}
+    >
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold">{t("Etapas deste funil")}</h3>
+        <h3 className="text-sm font-semibold tracking-tight">{t("Etapas deste funil")}</h3>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           {t(
             "Estas são as colunas do seu quadro, na ordem em que o cliente avança. Você pode renomear, criar, reordenar e arquivar.",
@@ -355,7 +365,7 @@ export function StagesSection({
         <span className={`${LARGURA.arquivar} shrink-0`} />
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-muted/[0.06]">
         {etapas.map((etapa, i) => {
           const passo = passos.get(etapa.id) ?? null;
           const erroDaLinha = erro?.etapaId === etapa.id ? erro.texto : null;
@@ -366,13 +376,11 @@ export function StagesSection({
           return (
             <li
               key={`${etapa.id}:${etapa.name}`}
-              className="flex flex-col gap-3 p-4"
+              className="flex flex-col gap-3 bg-background/60 p-4 transition-colors hover:bg-background"
               data-testid={`etapa-${etapa.id}`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <span className="w-6 shrink-0 text-xs tabular-nums text-text-muted">
-                  {i + 1}.
-                </span>
+                <span className="w-6 shrink-0 text-xs text-text-muted tabular-nums">{i + 1}.</span>
 
                 {/* No empilhado, cada controle carrega o rótulo que no desktop
                     vive no cabeçalho — mesmas constantes, `sm:hidden`. */}
@@ -398,30 +406,30 @@ export function StagesSection({
                     {t(ROTULO.ordem)}
                   </span>
                   <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`${t("Mover")} «${etapa.name}» ${t("uma coluna para trás")}`}
-                    data-testid={`subir-${etapa.id}`}
-                    disabled={i === 0 || ocupado}
-                    onClick={() =>
-                      aplicar(etapa.id, { depois_de: vizinhoAoMover(etapas, i, "subir") })
-                    }
-                  >
-                    <CaretUp size={16} aria-hidden />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`${t("Mover")} «${etapa.name}» ${t("uma coluna para frente")}`}
-                    data-testid={`descer-${etapa.id}`}
-                    disabled={i === etapas.length - 1 || ocupado}
-                    onClick={() =>
-                      aplicar(etapa.id, { depois_de: vizinhoAoMover(etapas, i, "descer") })
-                    }
-                  >
-                    <CaretDown size={16} aria-hidden />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`${t("Mover")} «${etapa.name}» ${t("uma coluna para trás")}`}
+                      data-testid={`subir-${etapa.id}`}
+                      disabled={i === 0 || ocupado}
+                      onClick={() =>
+                        aplicar(etapa.id, { depois_de: vizinhoAoMover(etapas, i, "subir") })
+                      }
+                    >
+                      <CaretUp size={16} aria-hidden />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`${t("Mover")} «${etapa.name}» ${t("uma coluna para frente")}`}
+                      data-testid={`descer-${etapa.id}`}
+                      disabled={i === etapas.length - 1 || ocupado}
+                      onClick={() =>
+                        aplicar(etapa.id, { depois_de: vizinhoAoMover(etapas, i, "descer") })
+                      }
+                    >
+                      <CaretDown size={16} aria-hidden />
+                    </Button>
                   </div>
                 </div>
 
@@ -458,7 +466,12 @@ export function StagesSection({
                   disabled={ocupado}
                   onClick={() => {
                     setErro(null);
-                    setArquivamento({ etapaId: etapa.id, negocios: null, destino: null, erro: null });
+                    setArquivamento({
+                      etapaId: etapa.id,
+                      negocios: null,
+                      destino: null,
+                      erro: null,
+                    });
                   }}
                 >
                   <Archive size={16} className="mr-1" aria-hidden />
@@ -511,7 +524,10 @@ export function StagesSection({
                   data-testid={`arquivar-painel-${etapa.id}`}
                 >
                   {arquivandoAqui.erro ? (
-                    <p className="text-sm leading-relaxed" data-testid={`arquivar-erro-${etapa.id}`}>
+                    <p
+                      className="text-sm leading-relaxed"
+                      data-testid={`arquivar-erro-${etapa.id}`}
+                    >
                       {arquivandoAqui.erro}
                     </p>
                   ) : arquivandoAqui.negocios === null ? (
@@ -525,7 +541,10 @@ export function StagesSection({
                   ) : destinos.length === 0 ? (
                     // Sem destino possível não há pergunta a fazer — e mandar
                     // escolher entre nada seria um beco sem saída.
-                    <p className="text-sm leading-relaxed" data-testid={`arquivar-sem-destino-${etapa.id}`}>
+                    <p
+                      className="text-sm leading-relaxed"
+                      data-testid={`arquivar-sem-destino-${etapa.id}`}
+                    >
                       {contagemDeNegocios(arquivandoAqui.negocios, t)}{" "}
                       {arquivandoAqui.negocios === 1
                         ? t("está nesta etapa e não há outra coluna em aberto para recebê-lo.")
@@ -536,7 +555,10 @@ export function StagesSection({
                     </p>
                   ) : (
                     <>
-                      <p className="text-sm leading-relaxed" data-testid={`arquivar-pergunta-${etapa.id}`}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        data-testid={`arquivar-pergunta-${etapa.id}`}
+                      >
                         {contagemDeNegocios(arquivandoAqui.negocios, t)}{" "}
                         {arquivandoAqui.negocios === 1
                           ? t("está nesta etapa. Para onde ele vai?")
@@ -545,9 +567,7 @@ export function StagesSection({
                       <div className="sm:w-72">
                         <Select
                           value={arquivandoAqui.destino ?? ""}
-                          onValueChange={(v) =>
-                            setArquivamento({ ...arquivandoAqui, destino: v })
-                          }
+                          onValueChange={(v) => setArquivamento({ ...arquivandoAqui, destino: v })}
                         >
                           <SelectTrigger
                             aria-label={`${t("Para onde vão os negócios de")} «${etapa.name}»`}
@@ -593,24 +613,24 @@ export function StagesSection({
                   )}
 
                   <div className="flex gap-2">
-                    {!arquivandoAqui.erro && !(arquivandoAqui.negocios !== null && destinos.length === 0) && (
-                      <Button
-                        size="sm"
-                        data-testid={`arquivar-confirmar-${etapa.id}`}
-                        // Com negócios na etapa, arquivar sem destino não é
-                        // oferecido: perder o rastro deles não pode ser um
-                        // clique de distância.
-                        disabled={
-                          ocupado ||
-                          (arquivandoAqui.negocios !== null && !arquivandoAqui.destino)
-                        }
-                        onClick={() => pedirArquivamento(etapa, arquivandoAqui.destino)}
-                      >
-                        {arquivandoAqui.negocios === null
-                          ? t("Arquivar")
-                          : t("Mover os negócios e arquivar")}
-                      </Button>
-                    )}
+                    {!arquivandoAqui.erro &&
+                      !(arquivandoAqui.negocios !== null && destinos.length === 0) && (
+                        <Button
+                          size="sm"
+                          data-testid={`arquivar-confirmar-${etapa.id}`}
+                          // Com negócios na etapa, arquivar sem destino não é
+                          // oferecido: perder o rastro deles não pode ser um
+                          // clique de distância.
+                          disabled={
+                            ocupado || (arquivandoAqui.negocios !== null && !arquivandoAqui.destino)
+                          }
+                          onClick={() => pedirArquivamento(etapa, arquivandoAqui.destino)}
+                        >
+                          {arquivandoAqui.negocios === null
+                            ? t("Arquivar")
+                            : t("Mover os negócios e arquivar")}
+                        </Button>
+                      )}
                     <Button size="sm" variant="ghost" onClick={() => setArquivamento(null)}>
                       {arquivandoAqui.erro ? t("Fechar") : t("Cancelar")}
                     </Button>
@@ -644,7 +664,13 @@ export function StagesSection({
       </ul>
 
       {nova === null ? (
-        <Button variant="ghost" size="sm" data-testid="nova-etapa" onClick={() => setNova("")}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          data-testid="nova-etapa"
+          onClick={() => setNova("")}
+        >
           <Plus size={16} className="mr-1" aria-hidden />
           {t("Acrescentar etapa ao fim")}
         </Button>
@@ -687,7 +713,7 @@ export function StagesSection({
           <p className="text-sm leading-relaxed">{erro.texto}</p>
         </Card>
       )}
-    </div>
+    </section>
   );
 }
 
