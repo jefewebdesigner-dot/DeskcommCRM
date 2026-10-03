@@ -185,7 +185,7 @@ export function ProdutosClient({
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo do catálogo")}>
+      <section className="grid grid-cols-3 gap-2 sm:gap-3" aria-label={t("Resumo do catálogo")}>
         {[
           { label: t("Total"), value: inicial.length, helper: t("produtos cadastrados") },
           { label: t("Ativos"), value: ativos, helper: t("podem ser oferecidos") },
@@ -193,14 +193,14 @@ export function ProdutosClient({
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            className="min-w-0 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:p-4"
           >
             <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
-              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground sm:text-right sm:text-[11px]">
                 {item.helper}
               </p>
             </div>
@@ -225,11 +225,11 @@ export function ProdutosClient({
           />
         </div>
         {podeEditar ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="-mx-1 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden">
             <a
               href="/api/v1/products/import"
               download="modelo-catalogo.csv"
-              className="inline-flex h-9 items-center rounded-xl px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex h-9 shrink-0 items-center rounded-xl px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               data-testid="modelo-planilha"
             >
               {t("Baixar modelo CSV")}
@@ -247,7 +247,7 @@ export function ProdutosClient({
             />
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="shrink-0 rounded-xl"
               disabled={importando}
               onClick={() => arquivoRef.current?.click()}
               data-testid="importar-planilha"
@@ -256,7 +256,7 @@ export function ProdutosClient({
               {t(importando ? "Importando…" : "Importar planilha")}
             </Button>
             <Button
-              className="rounded-xl"
+              className="shrink-0 rounded-xl"
               onClick={() => setCriando((v) => !v)}
               data-testid="novo-produto"
             >
@@ -410,7 +410,7 @@ export function ProdutosClient({
 
           <div className="mt-4 flex justify-end">
             <Button
-              className="rounded-xl"
+              className="w-full rounded-xl sm:w-auto"
               onClick={salvar}
               disabled={salvando}
               data-testid="salvar-produto"
