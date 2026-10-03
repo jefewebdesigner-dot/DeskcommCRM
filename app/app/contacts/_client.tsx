@@ -69,10 +69,7 @@ export function ContactsListClient() {
   );
   const q = useContactList(filters);
 
-  const allContacts = useMemo(
-    () => q.data?.pages.flatMap((p) => p.data) ?? [],
-    [q.data],
-  );
+  const allContacts = useMemo(() => q.data?.pages.flatMap((p) => p.data) ?? [], [q.data]);
 
   const tagOptions = useMemo(() => {
     const set = new Set<string>();
@@ -101,46 +98,65 @@ export function ContactsListClient() {
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Contatos")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("Customer 360 — busque, filtre e gerencie contatos.")}
-          </p>
-        </div>
-        {/*
+    <div className="space-y-5 p-4 sm:p-6">
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Base de relacionamento")}
+            </p>
+            <h1 className="text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+              {t("Contatos")}
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {t("Customer 360 — busque, filtre e gerencie contatos.")}
+            </p>
+          </div>
+          {/*
           A estrutura é a da main (o "Importar CSV" do PR #313); o `shrink-0`
           vem do PR #267, e vale para os DOIS botões agora: numa tela de 390px
           uma linha de dois botões sem isso comprime os rótulos.
         */}
-        <div className="flex shrink-0 items-center gap-2">
-          {/*
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/*
             A porta do recurso de duplicados fica AQUI, na tela que já existe, e
             não num item de menu novo: quem descobre que tem contato repetido
             descobre olhando a lista, e a barra lateral não precisa crescer para
             um trabalho que se faz de vez em quando.
           */}
-          <Button variant="outline" onClick={() => setDuplicadosOpen(true)}>
-            <UsersThree size={16} weight="bold" aria-hidden />
-            <span>{t("Duplicados")}</span>
-          </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <UploadSimple size={16} weight="bold" aria-hidden />
-            <span>{t("Importar CSV")}</span>
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} weight="bold" aria-hidden />
-            <span>{t("Novo contato")}</span>
-          </Button>
+            <Button
+              variant="outline"
+              className="rounded-xl bg-background/70"
+              onClick={() => setDuplicadosOpen(true)}
+            >
+              <UsersThree size={16} weight="bold" aria-hidden />
+              <span>{t("Duplicados")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-xl bg-background/70"
+              onClick={() => setImportOpen(true)}
+            >
+              <UploadSimple size={16} weight="bold" aria-hidden />
+              <span>{t("Importar CSV")}</span>
+            </Button>
+            <Button className="rounded-xl" onClick={() => setCreateOpen(true)}>
+              <Plus size={16} weight="bold" aria-hidden />
+              <span>{t("Novo contato")}</span>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
         <div className="relative w-full sm:w-72">
           <MagnifyingGlass
             size={16}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <Input
@@ -148,13 +164,18 @@ export function ContactsListClient() {
             placeholder={t("Buscar por nome, email ou telefone…")}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="h-9 w-full pl-8"
+            className="h-9 w-full rounded-xl border-border/60 bg-muted/25 pl-8 shadow-none focus-visible:bg-background"
           />
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={tagOptions.length === 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-border/60"
+              disabled={tagOptions.length === 0}
+            >
               {tag ? <PontoDaEtiqueta tag={tag} className="mr-2" /> : null}
               {tag ? `${t("Tag")}: ${tag}` : `${t("Tag")}: ${t("todas")}`}
             </Button>
@@ -174,7 +195,7 @@ export function ContactsListClient() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="rounded-xl border-border/60">
               {t(SOURCE_OPTIONS.find((s) => s.value === source)?.label ?? "Origem")}
             </Button>
           </DropdownMenuTrigger>
@@ -189,7 +210,7 @@ export function ContactsListClient() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="rounded-xl border-border/60">
               {limit} {t("por página")}
             </Button>
           </DropdownMenuTrigger>
@@ -208,6 +229,7 @@ export function ContactsListClient() {
           <Button
             variant="ghost"
             size="sm"
+            className="rounded-xl"
             onClick={() => {
               setSearchInput("");
               setSearch("");
@@ -223,28 +245,23 @@ export function ContactsListClient() {
       {q.isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-14 w-full rounded-2xl" />
           ))}
         </div>
       ) : q.isError ? (
-        <Card className="p-6 text-center">
+        <Card className="rounded-2xl border-border/60 p-6 text-center shadow-sm">
           <p className="text-sm text-error-fg">{t("Erro ao carregar contatos.")}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => q.refetch()}
-          >
+          <Button size="sm" variant="outline" className="mt-2" onClick={() => q.refetch()}>
             {t("Tentar novamente")}
           </Button>
         </Card>
       ) : allContacts.length === 0 ? (
-        <Card className="p-2">
+        <Card className="rounded-2xl border-border/60 p-2 shadow-sm">
           <EmptyContacts />
         </Card>
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
             <ContactsTable
               contacts={allContacts}
               orderBy={orderBy}
@@ -252,7 +269,7 @@ export function ContactsListClient() {
               onSort={handleSort}
             />
           </Card>
-          <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+          <div className="flex flex-col items-center gap-2 rounded-xl px-1 sm:flex-row sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {allContacts.length} {allContacts.length === 1 ? t("contato") : t("contatos")}
               {q.hasNextPage ? ` ${t("carregados — há mais resultados")}` : ""}
@@ -261,6 +278,7 @@ export function ContactsListClient() {
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-xl"
                 onClick={() => q.fetchNextPage()}
                 disabled={q.isFetchingNextPage}
               >

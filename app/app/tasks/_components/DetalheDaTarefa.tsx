@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuickReplySuggestion } from "@/hooks/inbox/useQuickReplySuggestion";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
 import { RESPOSTAS_RAPIDAS_SUGERIDAS } from "@/lib/inbox/respostas-sugeridas";
+import { nomeDoContato, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Tarefa } from "@/lib/tarefas/tipos";
 
 type EmbedNome = { name?: string | null } | Array<{ name?: string | null }> | null;
@@ -155,7 +156,7 @@ export function DetalheDaTarefa({
     const contato = contexto.data?.contact;
     setMensagem(
       interpolateTemplate(modelo.body, {
-        name: contato?.display_name ?? contato?.name ?? "",
+        name: nomeDoContato(contato) ?? "",
         organizationName: contexto.data?.organization?.display_name ?? "",
       }),
     );
@@ -259,9 +260,7 @@ export function DetalheDaTarefa({
                   <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     Contato
                   </p>
-                  <h3 className="mt-1 font-semibold">
-                    {contato?.display_name ?? contato?.name ?? "Contato sem nome"}
-                  </h3>
+                  <h3 className="mt-1 font-semibold">{rotuloDoContato(contato)}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {[contato?.phone_number, contato?.email].filter(Boolean).join(" · ") ||
                       "Sem telefone/e-mail"}

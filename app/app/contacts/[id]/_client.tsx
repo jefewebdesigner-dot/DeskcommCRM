@@ -43,7 +43,7 @@ function NivelDaOrigem({ rotulo, valor }: { rotulo: string; valor: string | null
   if (!valor) return null;
   return (
     <div>
-      <dt className="text-xs uppercase text-muted-foreground">{rotulo}</dt>
+      <dt className="text-xs text-muted-foreground uppercase">{rotulo}</dt>
       <dd className="mt-1 break-words">{valor}</dd>
     </div>
   );
@@ -63,7 +63,7 @@ export function ContactDetailClient({ contactId }: Props) {
 
   if (q.isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-5 p-4 sm:p-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -73,14 +73,17 @@ export function ContactDetailClient({ contactId }: Props) {
   if (q.isError || !q.data) {
     return (
       <div className="p-6">
-        <Card className="p-6 text-center text-sm text-error-fg">{t("Erro ao carregar contato.")}</Card>
+        <Card className="p-6 text-center text-sm text-error-fg">
+          {t("Erro ao carregar contato.")}
+        </Card>
       </div>
     );
   }
 
   const contact = q.data.data;
   const isAdmin =
-    (user.is_platform_admin && !user.support) || (activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin);
+    (user.is_platform_admin && !user.support) ||
+    (activeOrg && ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin);
 
   // Uma decisão, um lugar (lib/contacts/rotulo-do-contato.ts). Esta tela era
   // uma das DUAS que ignoravam o telefone: contato com número e sem nome
@@ -96,7 +99,7 @@ export function ContactDetailClient({ contactId }: Props) {
       {contact.is_anonymized && (
         <div
           role="alert"
-          className="border-error-fg/30 sticky top-0 z-20 flex items-center gap-3 rounded-md border bg-error-bg p-3 text-sm text-error-fg"
+          className="sticky top-0 z-20 flex items-center gap-3 rounded-2xl border border-error-fg/25 bg-error-bg p-3.5 text-sm text-error-fg shadow-sm"
         >
           <ShieldCheck size={18} weight="duotone" aria-hidden />
           <span>
@@ -108,34 +111,49 @@ export function ContactDetailClient({ contactId }: Props) {
         </div>
       )}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Customer 360")}
+            </p>
+            {/* Sem truncar: nome é dado que a tela existe pra mostrar, e cortar
               com reticências sem um jeito de ver o resto violaria o princípio
               de nunca esconder informação crítica. Deixa quebrar linha. */}
-          <h1 className="break-words text-2xl font-semibold tracking-tight">{displayName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {contact.email && <span>{contact.email}</span>}
-            {contact.email && contact.phone_number && <span>•</span>}
-            {contact.phone_number && <span>{phoneForDisplay(contact.phone_number)}</span>}
+            <h1 className="text-2xl font-semibold tracking-[-0.045em] break-words sm:text-[2rem]">
+              {displayName}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {contact.email && <span>{contact.email}</span>}
+              {contact.email && contact.phone_number && <span>•</span>}
+              {contact.phone_number && <span>{phoneForDisplay(contact.phone_number)}</span>}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {contact.tags.map((t) => (
+                <ChipDeEtiqueta key={t} tag={t} />
+              ))}
+              {contact.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
+              {contact.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
+            </div>
           </div>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {contact.tags.map((t) => (
-              <ChipDeEtiqueta key={t} tag={t} />
-            ))}
-            {contact.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
-            {contact.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
-          </div>
+          {!contact.is_anonymized && user.support?.access_mode !== "support_readonly" && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
+              <Button
+                variant="outline"
+                onClick={() => setEditOpen(true)}
+                className="shrink-0 rounded-xl bg-background/70"
+              >
+                <PencilSimple size={16} weight="bold" aria-hidden />
+                <span>{t("Editar")}</span>
+              </Button>
+            </div>
+          )}
         </div>
-        {!contact.is_anonymized && user.support?.access_mode !== "support_readonly" && (
-          <div className="flex shrink-0 items-center gap-2">
-            <DialButton contactId={contactId} hasPhone={!!contact.phone_number} />
-            <Button variant="outline" onClick={() => setEditOpen(true)} className="shrink-0">
-              <PencilSimple size={16} weight="bold" aria-hidden />
-              <span>{t("Editar")}</span>
-            </Button>
-          </div>
-        )}
       </header>
 
       <ConversaNoDossie conversa={contact.conversa} />
@@ -152,30 +170,30 @@ export function ContactDetailClient({ contactId }: Props) {
         />
       )}
 
-      <Tabs defaultValue="overview">
-        <TabsList>
+      <Tabs defaultValue="overview" className="space-y-3">
+        <TabsList className="rounded-xl border border-border/60 bg-muted/35 p-1">
           <TabsTrigger value="overview">{t("Visão geral")}</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           {isAdmin && <TabsTrigger value="lgpd">LGPD</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
-          <Card className="p-4">
+        <TabsContent value="overview" className="mt-0">
+          <Card className="rounded-2xl border-border/60 p-5 shadow-sm">
             <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Nome")}</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Nome")}</dt>
                 <dd className="mt-1">{contact.name ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Nome")} · WhatsApp</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Nome")} · WhatsApp</dt>
                 <dd className="mt-1">{contact.display_name ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">Email</dt>
+                <dt className="text-xs text-muted-foreground uppercase">Email</dt>
                 <dd className="mt-1">{contact.email ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Telefone")}</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Telefone")}</dt>
                 <dd className="mt-1">
                   {contact.phone_number ? phoneForDisplay(contact.phone_number) : "—"}
                 </dd>
@@ -188,7 +206,7 @@ export function ContactDetailClient({ contactId }: Props) {
                 anúncio — mesmo com o `utm_source` da campanha gravado ao lado.
               */}
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Origem")}</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Origem")}</dt>
                 <dd className="mt-1">{origem.origem}</dd>
               </div>
               <NivelDaOrigem rotulo={t("Campanha")} valor={origem.campanha} />
@@ -197,16 +215,14 @@ export function ContactDetailClient({ contactId }: Props) {
               <NivelDaOrigem rotulo={t("Posicionamento")} valor={origem.posicionamento} />
               {origem.semPosicionamentoDeAnuncio && (
                 <div>
-                  <dt className="text-xs uppercase text-muted-foreground">
-                    {t("Posicionamento")}
-                  </dt>
+                  <dt className="text-xs text-muted-foreground uppercase">{t("Posicionamento")}</dt>
                   <dd className="mt-1 text-sm text-muted-foreground">
                     {t("A plataforma não informa o posicionamento de cada clique em anúncio.")}
                   </dd>
                 </div>
               )}
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Última atividade")}</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Última atividade")}</dt>
                 <dd className="mt-1">
                   {contact.last_activity_at
                     ? format(new Date(contact.last_activity_at), "dd/MM/yyyy HH:mm", {
@@ -216,7 +232,7 @@ export function ContactDetailClient({ contactId }: Props) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">{t("Criado em")}</dt>
+                <dt className="text-xs text-muted-foreground uppercase">{t("Criado em")}</dt>
                 <dd className="mt-1">
                   {format(new Date(contact.created_at), "dd/MM/yyyy", { locale: localeDaData })}
                 </dd>
@@ -229,9 +245,7 @@ export function ContactDetailClient({ contactId }: Props) {
               */}
               {clientesLigado && contact.first_service_at && (
                 <div>
-                  <dt className="text-xs uppercase text-muted-foreground">
-                    {t("Cliente desde")}
-                  </dt>
+                  <dt className="text-xs text-muted-foreground uppercase">{t("Cliente desde")}</dt>
                   <dd className="mt-1">
                     {format(new Date(contact.first_service_at), "dd/MM/yyyy", {
                       locale: localeDaData,
@@ -240,26 +254,24 @@ export function ContactDetailClient({ contactId }: Props) {
                 </div>
               )}
               <div>
-                <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
+                <dt className="text-xs text-muted-foreground uppercase">Tags</dt>
                 <dd className="mt-1 flex flex-wrap gap-1">
                   {contact.tags.length === 0
                     ? "—"
-                    : contact.tags.map((t) => (
-                        <ChipDeEtiqueta key={t} tag={t} />
-                      ))}
+                    : contact.tags.map((t) => <ChipDeEtiqueta key={t} tag={t} />)}
                 </dd>
               </div>
             </dl>
           </Card>
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4">
+        <TabsContent value="timeline" className="mt-0">
           <TimelineView contactId={contactId} />
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="lgpd" className="mt-4">
-            <Card className="space-y-4 p-4">
+          <TabsContent value="lgpd" className="mt-0">
+            <Card className="space-y-4 rounded-2xl border-border/60 p-5 shadow-sm">
               <div>
                 <h2 className="text-lg font-semibold">{t("Direito ao esquecimento (LGPD)")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -276,7 +288,11 @@ export function ContactDetailClient({ contactId }: Props) {
                   .
                 </p>
               ) : (
-                <Button variant="destructive" onClick={() => setAnonOpen(true)}>
+                <Button
+                  variant="destructive"
+                  className="rounded-xl"
+                  onClick={() => setAnonOpen(true)}
+                >
                   {t("Anonimizar contato")}
                 </Button>
               )}

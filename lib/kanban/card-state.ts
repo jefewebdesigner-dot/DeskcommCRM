@@ -1,3 +1,4 @@
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { ScoreBand } from "@/lib/kanban/score-band";
 import { resolveLeadOwner, type OwnerDisplay } from "@/lib/kanban/owner";
 import type { Lead } from "@/lib/types/leads";
@@ -120,7 +121,7 @@ export function buildCardInput(
     title: lead.title,
     valueCents: lead.value_cents,
     currency: lead.currency,
-    contactName: lead.contact?.display_name ?? lead.contact?.name ?? null,
+    contactName: nomeDoContato(lead.contact),
     contactEmail: lead.contact?.email ?? null,
     contactPhone: lead.contact?.phone_number ?? null,
     source: lead.source,

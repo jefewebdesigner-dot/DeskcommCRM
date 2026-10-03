@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useHorariosLivres } from "@/hooks/agenda/useHorariosLivres";
 import { useMarcarAgendamento } from "@/hooks/agenda/useMarcarAgendamento";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Lead } from "@/lib/types/leads";
 
 interface TipoDeAgenda {
@@ -87,7 +88,7 @@ export function AgendarNoDossie({ lead, pipelineId }: { lead: Lead; pipelineId: 
 
   async function confirmar(inicio: string) {
     if (!tipoSelecionado || !lead.contact_id) return;
-    const nome = lead.contact?.display_name ?? lead.contact?.name ?? lead.title;
+    const nome = nomeDoContato(lead.contact) ?? lead.title;
     await marcar.mutateAsync({
       event_type_id: tipoSelecionado.id,
       starts_at: inicio,

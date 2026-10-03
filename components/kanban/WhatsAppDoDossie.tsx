@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useQuickReplySuggestion } from "@/hooks/inbox/useQuickReplySuggestion";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { RESPOSTAS_RAPIDAS_SUGERIDAS } from "@/lib/inbox/respostas-sugeridas";
 import type { Lead } from "@/lib/types/leads";
 
@@ -31,13 +32,7 @@ function corpoDaResposta<T>(json: unknown): T {
   return (json as { data: T }).data;
 }
 
-export function WhatsAppDoDossie({
-  lead,
-  pipelineId,
-}: {
-  lead: Lead;
-  pipelineId: string;
-}) {
+export function WhatsAppDoDossie({ lead, pipelineId }: { lead: Lead; pipelineId: string }) {
   const org = useActiveOrg();
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
@@ -59,8 +54,7 @@ export function WhatsAppDoDossie({
     staleTime: 60_000,
   });
 
-  const nomeContato =
-    lead.contact?.display_name ?? lead.contact?.name ?? lead.title ?? "";
+  const nomeContato = nomeDoContato(lead.contact) ?? lead.title ?? "";
   const contextoTemplate = {
     name: nomeContato,
     organizationName: org?.name ?? "",
@@ -229,9 +223,7 @@ export function WhatsAppDoDossie({
           Sugestão criada pela IA com base no histórico desta conversa.
         </p>
       ) : origemSugestao === "crm" && sugestao.data?.motivo ? (
-        <p className="mb-2 text-[11px] text-text-muted">
-          Sugestão do CRM: {sugestao.data.motivo}
-        </p>
+        <p className="mb-2 text-[11px] text-text-muted">Sugestão do CRM: {sugestao.data.motivo}</p>
       ) : null}
 
       <Textarea

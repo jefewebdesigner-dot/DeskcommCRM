@@ -155,158 +155,161 @@ export function ContactsTable({ contacts, orderBy, orderDir, onSort }: Props) {
 
   return (
     <>
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <SortableHead
-            label={t("Nome")}
-            column="display_name"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <SortableHead
-            label={t("Email")}
-            column="email"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <SortableHead
-            label={t("Telefone")}
-            column="phone_number"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <TableHead>{t("Tags")}</TableHead>
-          <SortableHead
-            label={t("Última atividade")}
-            column="last_activity_at"
-            orderBy={orderBy}
-            orderDir={orderDir}
-            onSort={onSort}
-          />
-          <TableHead>{t("Status")}</TableHead>
-          <TableHead className="w-[88px]">
-            <span className="sr-only">{t("Ações")}</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {contacts.map((c) => (
-          <TableRow key={c.id} className="cursor-pointer">
-            <TableCell className="font-medium">
-              <Link href={`/app/contacts/${c.id}`} className="hover:underline">
-                {displayName(c)}
-              </Link>
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {c.email ?? "—"}
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {c.phone_number ? phoneForDisplay(c.phone_number) : "—"}
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1">
-                {c.tags.length === 0
-                  ? <span className="text-muted-foreground text-xs">—</span>
-                  : c.tags.map((tag) => (
-                      <ChipDeEtiqueta key={tag} tag={tag} />
-                    ))}
-              </div>
-            </TableCell>
-            <TableCell className="text-muted-foreground text-sm">
-              {c.last_activity_at
-                ? formatUltimaAtividade(c.last_activity_at, localeDaData)
-                : "—"}
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1">
-                {c.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
-                {c.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
-                {/*
+      <Table>
+        <TableHeader className="bg-muted/25">
+          <TableRow>
+            <SortableHead
+              label={t("Nome")}
+              column="display_name"
+              orderBy={orderBy}
+              orderDir={orderDir}
+              onSort={onSort}
+            />
+            <SortableHead
+              label={t("Email")}
+              column="email"
+              orderBy={orderBy}
+              orderDir={orderDir}
+              onSort={onSort}
+            />
+            <SortableHead
+              label={t("Telefone")}
+              column="phone_number"
+              orderBy={orderBy}
+              orderDir={orderDir}
+              onSort={onSort}
+            />
+            <TableHead>{t("Tags")}</TableHead>
+            <SortableHead
+              label={t("Última atividade")}
+              column="last_activity_at"
+              orderBy={orderBy}
+              orderDir={orderDir}
+              onSort={onSort}
+            />
+            <TableHead>{t("Status")}</TableHead>
+            <TableHead className="w-[88px]">
+              <span className="sr-only">{t("Ações")}</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contacts.map((c) => (
+            <TableRow key={c.id} className="cursor-pointer transition-colors hover:bg-muted/20">
+              <TableCell className="font-medium tracking-[-0.01em]">
+                <Link href={`/app/contacts/${c.id}`} className="hover:text-primary">
+                  {displayName(c)}
+                </Link>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {c.phone_number ? phoneForDisplay(c.phone_number) : "—"}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {c.tags.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : (
+                    c.tags.map((tag) => <ChipDeEtiqueta key={tag} tag={tag} />)
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {c.last_activity_at ? formatUltimaAtividade(c.last_activity_at, localeDaData) : "—"}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {c.is_anonymized && <Badge variant="destructive">{t("Anonimizado")}</Badge>}
+                  {c.is_blocked && <Badge variant="warning">{t("Bloqueado")}</Badge>}
+                  {/*
                   Lê a COLUNA, nunca a tag, e só com a regra ligada: a tag
                   `cliente` é removível à mão e pelo PATCH (que substitui `tags`
                   por inteiro), e um selo que some porque alguém editou
                   etiquetas mentiria sobre um fato. Desligada, a coluna está
                   congelada e o selo mentiria do outro lado.
                 */}
-                {clientesLigado && c.first_service_at && (
-                  <Badge variant="secondary">{t("Cliente")}</Badge>
-                )}
-                {!c.is_anonymized && !c.is_blocked && (
-                  <Badge variant="success">{t("Ativo")}</Badge>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center justify-end gap-0.5">
-                {c.conversa ? (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                    <Link
-                      href={`/app/inbox?id=${c.conversa.id}`}
-                      title={t("Abrir conversa no Inbox")}
-                      aria-label={`${t("Abrir conversa com")} ${displayName(c, t)} ${t("no Inbox")}`}
+                  {clientesLigado && c.first_service_at && (
+                    <Badge variant="secondary">{t("Cliente")}</Badge>
+                  )}
+                  {!c.is_anonymized && !c.is_blocked && (
+                    <Badge variant="success">{t("Ativo")}</Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center justify-end gap-0.5">
+                  {c.conversa ? (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
+                      <Link
+                        href={`/app/inbox?id=${c.conversa.id}`}
+                        title={t("Abrir conversa no Inbox")}
+                        aria-label={`${t("Abrir conversa com")} ${displayName(c, t)} ${t("no Inbox")}`}
+                      >
+                        <ChatCircle size={16} weight="regular" aria-hidden />
+                        {c.conversa.unread > 0 && (
+                          <span className="sr-only">
+                            {c.conversa.unread} {t("sem ler")}
+                          </span>
+                        )}
+                      </Link>
+                    </Button>
+                  ) : c.phone_number ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      title={t("Iniciar conversa no Inbox")}
+                      aria-label={`${t("Iniciar conversa com")} ${displayName(c, t)} ${t("no Inbox")}`}
+                      disabled={abrindo === c.id}
+                      onClick={() => void iniciarConversa(c)}
                     >
                       <ChatCircle size={16} weight="regular" aria-hidden />
-                      {c.conversa.unread > 0 && (
-                        <span className="sr-only">{c.conversa.unread} {t("sem ler")}</span>
-                      )}
-                    </Link>
-                  </Button>
-                ) : c.phone_number ? (
+                    </Button>
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
-                    title={t("Iniciar conversa no Inbox")}
-                    aria-label={`${t("Iniciar conversa com")} ${displayName(c, t)} ${t("no Inbox")}`}
-                    disabled={abrindo === c.id}
-                    onClick={() => void iniciarConversa(c)}
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-destructive/5 hover:text-error-fg"
+                    title={t("Excluir contato")}
+                    aria-label={`${t("Excluir contato")} ${displayName(c, t)}`}
+                    onClick={() => setAlvo(c)}
                   >
-                    <ChatCircle size={16} weight="regular" aria-hidden />
+                    <Trash size={16} weight="regular" aria-hidden />
                   </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-error-fg"
-                  title={t("Excluir contato")}
-                  aria-label={`${t("Excluir contato")} ${displayName(c, t)}`}
-                  onClick={() => setAlvo(c)}
-                >
-                  <Trash size={16} weight="regular" aria-hidden />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-    <AlertDialog open={alvo !== null} onOpenChange={(open) => { if (!open) setAlvo(null); }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t("Excluir contato?")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {alvo
-              ? `${t("Isso remove")} ${displayName(alvo, t)} ${t("e a conversa associada, se houver. Esta ação não pode ser desfeita.")}`
-              : null}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={del.isPending}>{t("Cancelar")}</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            onClick={() => void confirmarExclusao()}
-            disabled={del.isPending}
-          >
-            {del.isPending ? t("Excluindo…") : t("Excluir")}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog
+        open={alvo !== null}
+        onOpenChange={(open) => {
+          if (!open) setAlvo(null);
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Excluir contato?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {alvo
+                ? `${t("Isso remove")} ${displayName(alvo, t)} ${t("e a conversa associada, se houver. Esta ação não pode ser desfeita.")}`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={del.isPending}>{t("Cancelar")}</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => void confirmarExclusao()}
+              disabled={del.isPending}
+            >
+              {del.isPending ? t("Excluindo…") : t("Excluir")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

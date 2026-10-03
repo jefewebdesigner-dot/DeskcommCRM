@@ -7,6 +7,7 @@ import { CheckCircle2, ListTodo, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTasks } from "@/hooks/tasks/useTasks";
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Lead } from "@/lib/types/leads";
 
 function amanhaAsNove(): string {
@@ -32,7 +33,7 @@ export function TarefasDoDossie({ lead }: { lead: Lead }) {
     aberto: true,
   });
   const [criando, setCriando] = useState(false);
-  const nome = lead.contact?.display_name ?? lead.contact?.name ?? lead.title;
+  const nome = nomeDoContato(lead.contact) ?? lead.title;
   const [titulo, setTitulo] = useState(() => `Próximo passo · ${nome}`);
 
   const proximas = useMemo(
