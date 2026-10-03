@@ -27,6 +27,44 @@ function provedorLegivel(id: string | null, t: (texto: string) => string): strin
   return `${t("da")} ${PROVEDOR_POR_ID.get(id)?.rotulo ?? id}`;
 }
 
+/**
+ * Lista curta por padrão — as duas listas (capacidades/conferências) chegam
+ * com 10-20 itens cada, e empilhados em texto corrido viravam a queixa real
+ * do operador: "poluído, difícil validar as informações" (PeríciaIA,
+ * 2026-10-02). Mostra as primeiras `PREVIA` e esconde o resto atrás de um
+ * toggle — a informação continua inteira, só não compete por atenção com o
+ * resto da tela de cara.
+ */
+const PREVIA_DA_LISTA = 5;
+
+function ListaRecolhivel({ itens, t }: { itens: string[]; t: (texto: string) => string }) {
+  const [aberta, setAberta] = useState(false);
+  const visiveis = aberta ? itens : itens.slice(0, PREVIA_DA_LISTA);
+  const restantes = itens.length - PREVIA_DA_LISTA;
+
+  return (
+    <>
+      <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+        {visiveis.map((c) => (
+          <li key={c} className="flex gap-2">
+            <span aria-hidden className="text-muted-foreground/50">·</span>
+            <span>{c}</span>
+          </li>
+        ))}
+      </ul>
+      {restantes > 0 && (
+        <button
+          type="button"
+          onClick={() => setAberta((v) => !v)}
+          className="mt-2 text-xs font-medium text-primary hover:underline"
+        >
+          {aberta ? t("Mostrar menos") : `${t("+")} ${restantes} ${t("mais")}`}
+        </button>
+      )}
+    </>
+  );
+}
+
 const JEITOS: { id: PromptTemplate; titulo: string; desc: string }[] = [
   {
     id: "ecommerce_friendly",
@@ -188,20 +226,12 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
       <div className="grid gap-3 sm:grid-cols-2">
         <section className="rounded-lg border bg-background p-4">
           <h3 className="text-sm font-medium">{t("Ele já vem sabendo")}</h3>
-          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-            {capacidades.map((c) => (
-              <li key={c}>· {c}</li>
-            ))}
-          </ul>
+          <ListaRecolhivel itens={capacidades} t={t} />
         </section>
         <section className="rounded-lg border bg-background p-4">
           <h3 className="text-sm font-medium">{t("E nunca vai fazer")}</h3>
-          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-            {conferencias.map((c) => (
-              <li key={c}>· {c}</li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <ListaRecolhivel itens={conferencias} t={t} />
+          <p className="mt-3 text-xs text-muted-foreground">
             {t("Essas conferências acontecem antes de cada mensagem sair, e não têm interruptor.")}
           </p>
         </section>
