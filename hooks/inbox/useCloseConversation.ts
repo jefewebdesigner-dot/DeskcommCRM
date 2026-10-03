@@ -14,10 +14,10 @@ export function useCloseConversation() {
 
   return useMutation({
     mutationFn: async (args: CloseArgs) =>
-      apiClient.post<{ data: Conversation }>(
-        `/api/v1/conversations/${args.conversation_id}/close`,
-        { expected_revision: args.expected_revision },
-      ),
+      apiClient.patch<{ data: Conversation }>(`/api/v1/conversations/${args.conversation_id}`, {
+        status: "closed",
+        expected_revision: args.expected_revision,
+      }),
     onError: (err, args) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
@@ -42,10 +42,11 @@ export function useCloseConversation() {
 export function useArchiveConversation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: CloseArgs) => apiClient.patch<{ data: Conversation }>(
-      `/api/v1/conversations/${args.conversation_id}`,
-      { status: "archived", expected_revision: args.expected_revision },
-    ),
+    mutationFn: (args: CloseArgs) =>
+      apiClient.patch<{ data: Conversation }>(`/api/v1/conversations/${args.conversation_id}`, {
+        status: "archived",
+        expected_revision: args.expected_revision,
+      }),
     // `onSettled`, e não `onSuccess`: mesmo no 409 (alguém mexeu na conversa
     // entre a leitura e este clique) a tela precisa reler — é o estado do
     // servidor que vale, não o que estava no cache.
@@ -61,10 +62,11 @@ export function useArchiveConversation() {
 export function useReopenConversation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: CloseArgs) => apiClient.patch<{ data: Conversation }>(
-      `/api/v1/conversations/${args.conversation_id}`,
-      { status: "open", expected_revision: args.expected_revision },
-    ),
+    mutationFn: (args: CloseArgs) =>
+      apiClient.patch<{ data: Conversation }>(`/api/v1/conversations/${args.conversation_id}`, {
+        status: "open",
+        expected_revision: args.expected_revision,
+      }),
     onError: showApiError,
     onSettled: (_data, _error, args) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
