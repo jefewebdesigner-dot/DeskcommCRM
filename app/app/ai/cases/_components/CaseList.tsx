@@ -31,12 +31,17 @@ export function CaseList() {
   const { data, isLoading } = useCases(tab);
 
   return (
-    <div className="flex min-h-0 flex-1 gap-6">
-      <div className="flex w-full max-w-xs shrink-0 flex-col gap-4">
+    <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="flex min-h-0 w-full flex-col gap-3 rounded-[24px] border border-border/60 bg-muted/[0.08] p-3 shadow-sm">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "open" | "resolved")}>
-          <TabsList>
-            <TabsTrigger value="open">{t("Abertos")}{data ? ` (${data.open_count})` : ""}</TabsTrigger>
-            <TabsTrigger value="resolved">{t("Concluídos")}</TabsTrigger>
+          <TabsList className="h-10 w-full rounded-xl border border-border/50 bg-background/70 p-1">
+            <TabsTrigger value="open" className="flex-1 rounded-lg text-xs">
+              {t("Abertos")}
+              {data ? ` (${data.open_count})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="resolved" className="flex-1 rounded-lg text-xs">
+              {t("Concluídos")}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -46,8 +51,13 @@ export function CaseList() {
             <Skeleton className="h-16 w-full" />
           </div>
         ) : !data || data.cases.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
-            <Robot size={28} className="text-muted-foreground" aria-hidden />
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-16 text-center">
+            <span
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+              aria-hidden="true"
+            >
+              <Robot size={22} weight="duotone" />
+            </span>
             <p className="text-sm font-medium">
               {tab === "open" ? t("Nenhum caso aberto") : t("Nenhum caso concluído")}
             </p>
@@ -58,7 +68,7 @@ export function CaseList() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="min-h-0 space-y-2 overflow-y-auto">
             {data.cases.map((c) => (
               <CaseRow
                 key={c.id}
@@ -69,11 +79,11 @@ export function CaseList() {
             ))}
           </ul>
         )}
-      </div>
+      </aside>
 
-      <div className="min-w-0 flex-1">
+      <section className="min-w-0 rounded-[24px] border border-border/60 bg-card p-4 shadow-sm sm:p-5">
         <CaseDetail caseId={selectedId} />
-      </div>
+      </section>
     </div>
   );
 }
@@ -89,7 +99,10 @@ function CaseRow({
 }) {
   const localeDaData = useLocaleDeData();
   const t = useT();
-  const when = formatDistanceToNowStrict(new Date(item.opened_at), { addSuffix: true, locale: localeDaData });
+  const when = formatDistanceToNowStrict(new Date(item.opened_at), {
+    addSuffix: true,
+    locale: localeDaData,
+  });
   return (
     <li>
       <button
@@ -98,12 +111,12 @@ function CaseRow({
         aria-current={selected ? "true" : undefined}
         data-testid="case-item"
         className={cn(
-          "flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors hover:bg-accent-soft",
-          selected && "bg-accent-soft",
+          "flex w-full flex-col items-start gap-1.5 rounded-2xl border border-transparent bg-background/70 px-3.5 py-3 text-left shadow-sm transition-[background,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-border/60 hover:bg-background hover:shadow-md",
+          selected && "border-accent/20 bg-accent-soft ring-1 ring-accent/10",
         )}
       >
         <div className="flex w-full items-center justify-between gap-2">
-          <p className="truncate text-sm font-medium">{item.title}</p>
+          <p className="truncate text-sm font-semibold tracking-[-0.01em]">{item.title}</p>
           <Badge variant={STATUS_BADGE_VARIANT[item.status]} className="shrink-0">
             {t(STATUS_LABEL[item.status])}
           </Badge>

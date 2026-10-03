@@ -18,9 +18,11 @@ export function CaseDetail({ caseId }: { caseId: string | null }) {
 
   if (caseId === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-1 py-16 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border/60 bg-muted/[0.04] px-6 py-16 text-center">
         <p className="text-sm font-medium">{t("Selecione um caso à esquerda")}</p>
-        <p className="text-xs text-muted-foreground">{t("Os detalhes e a resposta aparecem aqui.")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("Os detalhes e a resposta aparecem aqui.")}
+        </p>
       </div>
     );
   }
@@ -37,9 +39,14 @@ export function CaseDetail({ caseId }: { caseId: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <header className="flex flex-wrap items-center justify-between gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div>
-          <h2 className="text-base font-semibold">{data.contact_name ?? t("Contato sem nome")}</h2>
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            {t("Cliente")}
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em]">
+            {data.contact_name ?? t("Contato sem nome")}
+          </h2>
           <p className="text-xs text-muted-foreground">{data.contact_phone ?? t("Sem telefone")}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -58,11 +65,13 @@ export function CaseDetail({ caseId }: { caseId: string | null }) {
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground">{t("O que o cliente precisa")}</p>
+        <div className="rounded-2xl border border-border/60 bg-muted/[0.06] p-4">
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("O que o cliente precisa")}
+          </p>
           <p className="mt-1 text-sm">{data.summary}</p>
         </div>
-        <div className="rounded-lg border border-border p-3">
+        <div className="border-warning-border/40 rounded-2xl border bg-warning-bg/15 p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("Por que a IA travou")}</p>
           <p className="mt-1 text-sm">{data.blocker}</p>
         </div>
@@ -81,19 +90,25 @@ export function CaseDetail({ caseId }: { caseId: string | null }) {
       */}
       <CaseChatPanel caseId={data.id} />
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold">{t("Linha do tempo")}</h3>
-        <ul className="space-y-2">
+      <section className="rounded-2xl border border-border/60 bg-muted/[0.05] p-4">
+        <h3 className="mb-3 text-sm font-semibold tracking-tight">{t("Linha do tempo")}</h3>
+        <ul className="space-y-2.5">
           {data.events.map((ev) => (
-            <li key={ev.id} className="text-xs text-muted-foreground">
+            <li
+              key={ev.id}
+              className="relative border-l border-border/70 pl-3 text-xs leading-relaxed text-muted-foreground"
+            >
               <span className="text-text">{t(caseEventLabel(ev))}</span>
               {ev.body ? <>: {ev.body}</> : null}
               {" · "}
-              {formatDistanceToNowStrict(new Date(ev.created_at), { addSuffix: true, locale: localeDaData })}
+              {formatDistanceToNowStrict(new Date(ev.created_at), {
+                addSuffix: true,
+                locale: localeDaData,
+              })}
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     </div>
   );
 }

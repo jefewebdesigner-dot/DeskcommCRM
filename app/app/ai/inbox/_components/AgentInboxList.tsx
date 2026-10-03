@@ -37,19 +37,23 @@ export function AgentInboxList({ canResolve }: { canResolve: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "open" | "resolved")}>
-          <TabsList>
-            <TabsTrigger value="open">
-              {t("Abertos")}{data ? ` (${data.open_count})` : ""}
+          <TabsList className="h-9 rounded-xl bg-muted/40 p-1">
+            <TabsTrigger value="open" className="rounded-lg px-4 text-xs">
+              {t("Abertos")}
+              {data ? ` (${data.open_count})` : ""}
             </TabsTrigger>
-            <TabsTrigger value="resolved">{t("Resolvidos")}</TabsTrigger>
+            <TabsTrigger value="resolved" className="rounded-lg px-4 text-xs">
+              {t("Resolvidos")}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         {canResolve && tab === "open" && data && data.items.length > 0 ? (
           <Button
             size="sm"
             variant="outline"
+            className="rounded-xl"
             disabled={resolveAll.isPending}
             onClick={() => resolveAll.mutate()}
           >
@@ -60,16 +64,43 @@ export function AgentInboxList({ canResolve }: { canResolve: boolean }) {
       </div>
 
       {isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-4 text-sm">
-          <p className="min-w-0 flex-1">{t(acessoNegado ? "Seu acesso aos avisos não está disponível. Confira sua sessão e tente novamente." : data ? "Não foi possível atualizar os avisos. A lista abaixo pode estar desatualizada." : "Não foi possível carregar os avisos. Tente novamente.")}</p>
-          <Button variant="outline" size="sm" disabled={isFetching} onClick={() => void refetch()}>{t("Tentar novamente")}</Button>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 text-sm shadow-sm"
+        >
+          <p className="min-w-0 flex-1">
+            {t(
+              acessoNegado
+                ? "Seu acesso aos avisos não está disponível. Confira sua sessão e tente novamente."
+                : data
+                  ? "Não foi possível atualizar os avisos. A lista abaixo pode estar desatualizada."
+                  : "Não foi possível carregar os avisos. Tente novamente.",
+            )}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {t("Tentar novamente")}
+          </Button>
         </div>
       ) : null}
-      {update.isError ? <p role="alert" className="text-sm text-destructive">{t("Não foi possível atualizar este aviso. Tente novamente.")}</p> : null}
+      {update.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t("Não foi possível atualizar este aviso. Tente novamente.")}
+        </p>
+      ) : null}
       {/* O lote pode falhar depois de resolver PARTE dos avisos: a mensagem manda
           conferir a lista em vez de afirmar que nada mudou. Sem isto o clique em
           "Marcar todos resolvidos" não deixaria rastro nenhum quando errasse. */}
-      {resolveAll.isError ? <p role="alert" className="text-sm text-destructive">{t("Não foi possível resolver todos os avisos. Confira a lista e tente novamente.")}</p> : null}
+      {resolveAll.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t("Não foi possível resolver todos os avisos. Confira a lista e tente novamente.")}
+        </p>
+      ) : null}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -77,8 +108,13 @@ export function AgentInboxList({ canResolve }: { canResolve: boolean }) {
           <Skeleton className="h-16 w-full" />
         </div>
       ) : isError && !data ? null : !data || data.items.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
-          <Bell size={28} className="text-muted-foreground" aria-hidden />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-dashed border-border/60 bg-muted/[0.05] px-6 py-16 text-center">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+            aria-hidden="true"
+          >
+            <Bell size={24} weight="duotone" />
+          </span>
           <p className="text-sm font-medium">
             {tab === "open" ? t("Nenhum aviso em aberto") : t("Nenhum aviso resolvido")}
           </p>
@@ -89,7 +125,7 @@ export function AgentInboxList({ canResolve }: { canResolve: boolean }) {
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="space-y-3">
           {data.items.map((item) => (
             <InboxRow
               key={item.id}
@@ -123,7 +159,10 @@ function InboxRow({
     locale: localeDaData,
   });
   return (
-    <li className="flex flex-wrap items-start gap-3 px-4 py-3" data-testid="inbox-item">
+    <li
+      className="flex flex-wrap items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
+      data-testid="inbox-item"
+    >
       <Badge variant={SEVERITY_VARIANT[item.severity]} className="mt-0.5 shrink-0">
         {t(SEVERITY_LABEL[item.severity])}
       </Badge>
@@ -138,25 +177,44 @@ function InboxRow({
             cadastrou por outra que ela não sabe procurar.
             O que continua traduzido é o que é NOSSO: severidade, rótulo do kind,
             orientação e rótulo do destino. */}
-        <p className="text-sm font-medium">{item.title}</p>
+        <p className="text-sm font-semibold tracking-[-0.01em]">{item.title}</p>
         <p className="text-xs text-muted-foreground">
           {kindLabel(item.kind, t)} · {when}
         </p>
         {item.body ? <p className="mt-1 text-xs text-muted-foreground">{item.body}</p> : null}
-        {item.destination.orientacao ? <p className="mt-2 text-xs text-muted-foreground">{t(item.destination.orientacao)}</p> : null}
+        {item.destination.orientacao ? (
+          <p className="mt-2 text-xs text-muted-foreground">{t(item.destination.orientacao)}</p>
+        ) : null}
         {item.destination.estado === "disponivel" ? (
-          <Button asChild size="sm" variant="link" className="mt-1 h-auto whitespace-normal px-0 text-left">
+          <Button
+            asChild
+            size="sm"
+            variant="link"
+            className="mt-1 h-auto px-0 text-left font-semibold whitespace-normal"
+          >
             <Link href={item.destination.href}>{t(item.destination.rotulo)}</Link>
           </Button>
         ) : null}
       </div>
       {canResolve ? (
         item.status === "resolved" ? (
-          <Button size="sm" variant="ghost" disabled={pending} onClick={() => onToggle("open")}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-xl"
+            disabled={pending}
+            onClick={() => onToggle("open")}
+          >
             {t("Reabrir")}
           </Button>
         ) : (
-          <Button size="sm" variant="outline" disabled={pending} onClick={() => onToggle("resolved")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl"
+            disabled={pending}
+            onClick={() => onToggle("resolved")}
+          >
             <Check size={14} aria-hidden />
             {t("Marcar resolvido")}
           </Button>
