@@ -133,10 +133,10 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
             {modo !== "kanban" ? (
               <Select value={situacao} onValueChange={(v) => setSituacao(v as FiltroDeSituacao)}>
-                <SelectTrigger className="h-9 w-[160px] rounded-xl border-border/60 bg-background/70 text-xs">
+                <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-background/70 text-xs xl:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -150,7 +150,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
             ) : null}
 
             <Select value={responsavel} onValueChange={setResponsavel}>
-              <SelectTrigger className="h-9 w-[190px] rounded-xl border-border/60 bg-background/70 text-xs">
+              <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-background/70 text-xs xl:w-[190px]">
                 <SelectValue placeholder={t("Responsável")} />
               </SelectTrigger>
               <SelectContent>
@@ -163,13 +163,13 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-0.5 rounded-xl border border-border/60 bg-muted/35 p-1">
+            <div className="col-span-2 flex items-center gap-0.5 rounded-xl border border-border/60 bg-muted/35 p-1 xl:col-span-1">
               <button
                 type="button"
                 onClick={() => setModo("lista")}
                 aria-pressed={modo === "lista"}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors xl:flex-none",
                   modo === "lista"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -211,7 +211,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-1.5 rounded-xl bg-background/70 text-xs"
+              className="h-9 w-full gap-1.5 rounded-xl bg-background/70 text-xs xl:w-auto"
               onClick={() => recarregar()}
               disabled={carregando}
             >
@@ -222,7 +222,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
             {podeEditar ? (
               <Button
                 size="sm"
-                className="h-9 gap-1.5 rounded-xl text-xs"
+                className="h-9 w-full gap-1.5 rounded-xl text-xs xl:w-auto"
                 onClick={() => abrirNova()}
               >
                 <Plus size={14} aria-hidden />
@@ -235,7 +235,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
 
       <section
         aria-label={t("Resumo das tarefas")}
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4"
       >
         {[
           { rotulo: t("Nesta visão"), valor: resumoDaVisao.total, alerta: false },
@@ -254,7 +254,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
           <article
             key={item.rotulo}
             className={cn(
-              "rounded-2xl border p-4 shadow-sm",
+              "min-w-0 rounded-2xl border p-3.5 shadow-sm sm:p-4",
               item.alerta ? "border-amber-500/20 bg-amber-500/[0.035]" : "border-border/60 bg-card",
             )}
           >
@@ -268,15 +268,15 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
         ))}
       </section>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-sm">
-        <span className="mr-1 text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <span className="mr-1 shrink-0 text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
           {t("Responsável")}
         </span>
         <button
           type="button"
           onClick={() => setResponsavel("todos")}
           className={cn(
-            "rounded-full border px-3 py-1.5 text-xs transition",
+            "shrink-0 rounded-full border px-3 py-1.5 text-xs transition",
             responsavel === "todos"
               ? "border-primary bg-primary/10 font-medium text-primary"
               : "text-muted-foreground hover:text-foreground",
@@ -299,7 +299,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
             {perfil.name}
           </button>
         ))}
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
           {tarefas.length} {tarefas.length === 1 ? t("tarefa") : t("tarefas")}
         </span>
       </div>
