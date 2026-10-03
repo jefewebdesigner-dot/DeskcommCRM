@@ -137,7 +137,7 @@ function Metric({
 
   return (
     <article
-      className={`group relative min-h-[156px] min-w-0 overflow-hidden rounded-2xl border p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md ${toneClass}`}
+      className={`group relative min-h-[132px] min-w-0 overflow-hidden rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md sm:min-h-[156px] sm:p-5 ${toneClass}`}
     >
       <div className="flex items-start justify-between gap-4">
         <p className="max-w-[15rem] text-[11px] leading-snug font-semibold tracking-[0.08em] text-muted-foreground uppercase">
@@ -152,10 +152,10 @@ function Metric({
           </span>
         )}
       </div>
-      <p className="mt-5 text-[clamp(1.7rem,2.8vw,2.2rem)] leading-none font-semibold tracking-[-0.045em] break-words tabular-nums">
+      <p className="mt-4 text-[clamp(1.65rem,2.8vw,2.2rem)] leading-none font-semibold tracking-[-0.045em] break-words tabular-nums sm:mt-5">
         {value}
       </p>
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground sm:mt-3">{note}</p>
     </article>
   );
 }
@@ -596,7 +596,7 @@ export function BillingDashboardClient({
 
   return (
     <div className="h-full min-w-0 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:gap-6 sm:p-6 lg:p-8">
         <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 px-5 py-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:px-6 sm:py-6">
           <div
             className="pointer-events-none absolute -top-28 -right-24 h-64 w-64 rounded-full bg-primary/[0.055] blur-3xl"
@@ -619,12 +619,12 @@ export function BillingDashboardClient({
                 exige ação agora.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full gap-2 sm:w-auto sm:flex-wrap">
               <Button
                 variant="outline"
                 disabled={loading || busy}
                 onClick={refresh}
-                className="gap-2"
+                className="flex-1 gap-2 rounded-xl sm:flex-none"
               >
                 <RefreshCw
                   className={"h-4 w-4 " + (loading ? "animate-spin" : "")}
@@ -637,7 +637,7 @@ export function BillingDashboardClient({
                   variant="outline"
                   onClick={() => setConfigure(!configure)}
                   aria-expanded={configure}
-                  className="gap-2"
+                  className="flex-1 gap-2 rounded-xl sm:flex-none"
                 >
                   <Settings2 className="h-4 w-4" aria-hidden="true" />
                   {configure ? "Fechar configuração" : "Conexões"}
@@ -645,7 +645,7 @@ export function BillingDashboardClient({
               )}
             </div>
           </div>
-          <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+          <div className="relative -mx-1 mt-5 flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-border/60 px-1 pt-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
             {operacao && (
               <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
                 <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -678,13 +678,13 @@ export function BillingDashboardClient({
           </div>
           <nav
             aria-label="Acesso rápido"
-            className="relative mt-4 flex flex-wrap gap-2 border-t border-border/50 pt-4"
+            className="relative -mx-1 mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-border/50 px-1 pt-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
           >
             {atalhosOperacionais.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/60 bg-background/65 px-2.5 text-[11px] font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:bg-muted hover:text-foreground"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background/65 px-2.5 text-[11px] font-semibold text-muted-foreground backdrop-blur-sm transition-colors hover:bg-muted hover:text-foreground"
               >
                 <Icon className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                 {label}
@@ -1602,7 +1602,7 @@ export function BillingDashboardClient({
               description="Priorize retenção, pagamentos pendentes e próximas renovações sem misturar essa análise com o resumo executivo."
             >
               <div
-                className="mb-5 inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border/70 bg-muted/45 p-1"
+                className="mb-5 flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl border border-border/70 bg-muted/45 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 role="group"
                 aria-label="Tipo de registro"
               >
@@ -1619,7 +1619,7 @@ export function BillingDashboardClient({
                     onClick={() => setTab(key)}
                     aria-pressed={tab === key}
                     className={
-                      "rounded-lg px-3 py-2 text-xs font-semibold transition-colors " +
+                      "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors " +
                       (tab === key
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-background/70 hover:text-foreground")
@@ -1686,7 +1686,7 @@ export function BillingDashboardClient({
                           aria-label="Situação da assinatura"
                           value={status}
                           onChange={(e) => setStatus(e.target.value)}
-                          className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm"
+                          className="h-9 w-full max-w-full rounded-xl border border-input bg-background px-3 text-sm sm:w-auto"
                         >
                           <option value="all">Todas as situações</option>
                           <option value="active">Ativas</option>
