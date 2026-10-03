@@ -391,7 +391,7 @@ test.describe("Lote 12 — o painel em 400 px e no tema escuro", () => {
     await abreConversa(page, id!);
 
     // Em 400 px o painel do CRM costuma virar uma aba/gaveta — abrir pela tela.
-    const botaoPainel = page.getByRole("button", { name: /Contato|CRM|Painel/i }).first();
+    const botaoPainel = page.getByRole("button", { name: /Ficha|Contexto|Contato|CRM|Painel/i }).first();
     if (await botaoPainel.count()) await botaoPainel.click().catch(() => {});
 
     const pagina = await transbordoDaPagina(page);

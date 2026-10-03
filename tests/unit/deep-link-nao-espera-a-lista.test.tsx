@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -34,7 +34,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * painel fica sem conversa e o caso reprova.
  */
 
-const { ORG, CONVERSA, CONTATO, CONVERSA_ROW } = vi.hoisted(() => {
+const { ORG, CONVERSA, CONVERSA_ROW } = vi.hoisted(() => {
   const ORG = "00000000-0000-4000-8000-0000000000aa";
   const CONVERSA = "00000000-0000-4000-8000-0000000000cc";
   const CONTATO = "00000000-0000-4000-8000-0000000000c1";
@@ -115,7 +115,13 @@ vi.mock("@/components/inbox/ConversationList", () => ({ ConversationList: () => 
 vi.mock("@/components/inbox/InboxFilters", () => ({ InboxFilters: () => null }));
 vi.mock("@/components/inbox/ChatThread", () => ({ ChatThread: () => null }));
 vi.mock("@/components/inbox/Composer", () => ({ Composer: () => null }));
-vi.mock("@/components/inbox/ConversationHeader", () => ({ ConversationHeader: () => null }));
+vi.mock("@/components/inbox/ConversationHeader", () => ({
+  ConversationHeader: ({ onOpenContext }: { onOpenContext?: () => void }) => (
+    <button type="button" onClick={onOpenContext}>
+      Contexto
+    </button>
+  ),
+}));
 vi.mock("@/components/inbox/RetentionNotice", () => ({ RetentionNotice: () => null }));
 vi.mock("@/components/inbox/InboxKeyboardShortcuts", () => ({
   InboxKeyboardShortcuts: () => null,
@@ -144,13 +150,15 @@ describe("deep-link para conversa fora do filtro", () => {
     );
     // O controle: a lista continua no ar. Sem ele, este caso passaria também
     // num mundo em que a busca única espera — bastaria a lista ter respondido.
-    expect(
-      get.mock.calls.some((c) => (c[0] ?? "").startsWith("/api/v1/conversations?")),
-    ).toBe(true);
+    expect(get.mock.calls.some((c) => (c[0] ?? "").startsWith("/api/v1/conversations?"))).toBe(
+      true,
+    );
   });
 
-  it("entrega a conversa ao painel do contato com a lista ainda no ar", async () => {
+  it("entrega a conversa ao painel do contato assim que o contexto é aberto, sem esperar a lista", async () => {
     montar();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Contexto" })).toBeVisible());
+    fireEvent.click(screen.getByRole("button", { name: "Contexto" }));
     await waitFor(() => expect(screen.getByTestId("painel")).toHaveTextContent(CONVERSA));
   });
 });

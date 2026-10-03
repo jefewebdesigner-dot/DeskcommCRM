@@ -163,7 +163,7 @@ export function MessageBubble({
       )}
       <div
         className={cn(
-          "max-w-[75%] text-sm",
+          "max-w-[75%] text-sm xl:max-w-[44rem]",
           isBareSticker
             ? "px-0 py-0"
             : cn(

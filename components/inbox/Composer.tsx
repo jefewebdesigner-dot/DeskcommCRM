@@ -239,13 +239,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     <>
       <div
         className={cn(
-          "relative border-t border-border/60 bg-card/95 px-3 py-3 shadow-[0_-10px_28px_rgba(0,0,0,0.035)] backdrop-blur-sm",
+          "relative border-t border-border/50 bg-background px-3 py-2",
           mode === "note" && "border-warning/30 bg-warning-bg/60",
         )}
       >
-        {mode === "reply" && (
-          <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
-        )}
         {mostrarSugestaoContextual && respostaContextual && sugestaoAtual && chaveDaSugestao ? (
           <div className="mb-2.5 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.045] px-3 py-2.5">
             <div className="min-w-0 flex-1">
@@ -282,12 +279,12 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onPick={applyTemplate}
           onClose={() => setMenuDismissed(true)}
         />
-        <div className="mb-2 inline-flex gap-0.5 rounded-xl border border-border/50 bg-muted/45 p-1">
+        <div className="mb-1.5 inline-flex gap-0.5 rounded-lg border border-border/40 bg-muted/30 p-0.5">
           <button
             type="button"
             onClick={() => setMode("reply")}
             className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
+              "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
               mode === "reply"
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted",
@@ -299,7 +296,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             type="button"
             onClick={() => setMode("note")}
             className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
+              "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
               mode === "note"
                 ? "bg-warning text-warning-fg"
                 : "text-muted-foreground hover:bg-muted",
@@ -308,6 +305,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             {t("Nota interna")}
           </button>
         </div>
+        {mode === "reply" && (
+          <ReplyReviewPanel conversationId={conversationId} disabled={isDisabled} />
+        )}
         {/*
           A FAIXA DA CITAÇÃO — o que o atendente escolheu responder.
 

@@ -202,7 +202,7 @@ export function ConversationListItem({
       data-conversation-id={conversation.id}
       onClick={() => onSelect(conversation.id)}
       className={cn(
-        "group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-transparent px-2.5 py-3 text-left transition-[background,border-color,box-shadow,transform] duration-150 hover:border-border/60 hover:bg-background hover:shadow-sm",
+        "group relative flex w-full items-start gap-2.5 overflow-hidden rounded-lg border border-transparent px-2 py-2.5 text-left transition-[background,border-color,box-shadow,transform] duration-150 hover:border-border/60 hover:bg-background hover:shadow-sm",
         "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-hidden",
         unread > 0 && !isSelected && "bg-background/55",
         isSelected &&
@@ -214,7 +214,7 @@ export function ConversationListItem({
         <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-accent" aria-hidden />
       )}
       <div className="relative shrink-0">
-        <Avatar className="h-11 w-11 border border-border/50 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <Avatar className="h-10 w-10 border border-border/50 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
           {/* Só monta a <img> quando existe arquivo: sem isso o browser pediria
               a rota para TODO contato da lista e levaria 404 em cada um sem
               foto — que é a maioria. O AvatarFallback do Radix já cobre o caso

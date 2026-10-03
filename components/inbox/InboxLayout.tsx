@@ -30,7 +30,7 @@ import { OpenConversationProvider } from "@/hooks/notifications/OpenConversation
 // ADR-05: ícone de feature sai do mapa canônico, nunca do pacote direto.
 import { CaretLeft, ChatCircle, IdentificationCard } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
 import { buscaValeConsulta } from "@/lib/inbox/termo-de-busca";
@@ -165,8 +165,10 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
-  /** A ficha do contato como painel deslizante — só existe abaixo do `xl`. */
+  /** A ficha CRM é sob demanda: contexto disponível sem roubar largura do chat. */
   const [fichaAberta, setFichaAberta] = useState(false);
+  /** Modo foco: esconde a lista e entrega toda a largura útil à conversa. */
+  const [modoFoco, setModoFoco] = useState(false);
   /**
    * A mensagem escolhida para responder "em cima".
    *
@@ -277,6 +279,8 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // conversa, que hoje entra por `initialSelectedId` vindo da rota.
   const handleSelect = useCallback((id: string | null) => {
     setSelectedId(id);
+    setFichaAberta(false);
+    if (id === null) setModoFoco(false);
     // Sem isto, escolher "responder" numa conversa e trocar para outra levaria
     // a citação junto — e a resposta sairia citando mensagem de outro cliente.
     setRespondendo(null);
@@ -355,28 +359,24 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // `dvh` em vez de `vh` porque no celular a `vh` ignora a barra do navegador — o
   // mesmo corte, só que pior e mudando conforme se rola a página.
 
-  // TRÊS COLUNAS QUE CABEM — medido, não estimado.
+  // A CONVERSA É A SUPERFÍCIE PRINCIPAL.
   //
-  // O `xl` do Tailwind dispara em 1280px, e era ali que a terceira coluna
-  // nascia: no ponto exato em que não havia espaço para ela. Com a barra de
-  // navegação (240px) sobram 1040px, e o grid pedia 300 + 707 + 320 = 1327 —
-  // o painel de CRM ficava 311px FORA da viewport, alcançável só rolando o
-  // `main` de lado, que ninguém faz. Em 1280 o atendente simplesmente não via
-  // contexto nenhum do cliente.
+  // O CRM deixou de ser uma terceira coluna permanente: ele abre em Sheet por
+  // ação explícita no cabeçalho. Assim, consultar contexto continua a um clique,
+  // mas não cobra ~300px o tempo inteiro. A lista também foi reduzida para 252px.
+  // O restante da largura pertence ao fio de mensagens.
   //
-  // Os 707px eram o `min-content` do `ConversationHeader` (a barra de ações
-  // era `shrink-0`), e `1fr` é `minmax(auto, 1fr)`: não encolhe abaixo disso.
-  // Consertado o header, o `1fr` volta a encolher sozinho — `minmax(0,1fr)`
-  // foi medido aqui e não mudou um pixel, então não entrou.
-  //
-  // Duas faixas em vez de uma: compacta onde aperta, generosa onde há espaço.
-  // Em 1280 isso dá 424px de conversa em vez de 372 — 54px de folga sobre o
-  // piso do composer (370px), em vez dos 2px que a versão de uma faixa só
-  // deixava. Margem de 2px não é margem, é sorte.
+  // `-m-6` neutraliza só nesta tela o padding global do AppShell. A altura e a
+  // largura crescem exatamente os mesmos 48px que as margens negativas retiram,
+  // então o Inbox ocupa toda a área útil abaixo da TopBar sem criar scroll extra.
+  // No modo foco a lista some e a conversa vira a única coluna.
   return (
     <OpenConversationProvider conversationId={selectedId}>
       <div
-        className="grid h-[calc(100dvh-3.5rem-2*var(--space-6))] w-full grid-cols-1 overflow-hidden rounded-[24px] border border-border/60 bg-background shadow-[0_12px_40px_rgba(0,0,0,0.055)] md:grid-cols-[300px_1fr] xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]"
+        className={cn(
+          "-m-6 grid h-[calc(100dvh-3.5rem)] w-[calc(100%+3rem)] grid-cols-1 overflow-hidden bg-background md:grid-cols-[252px_minmax(0,1fr)]",
+          modoFoco && "md:grid-cols-1",
+        )}
         /*
          * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
          * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
@@ -415,20 +415,21 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       */}
         <div
           className={cn(
-            "h-full min-h-0 flex-col border-r border-border/60 bg-muted/[0.16] md:flex",
+            "h-full min-h-0 flex-col border-r border-border/50 bg-muted/[0.11] md:flex",
             colunas.lista,
+            modoFoco && "md:hidden",
           )}
         >
-          <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-br from-background via-background to-muted/35 px-3.5 py-3.5">
+          <div className="flex items-center justify-between border-b border-border/50 bg-background px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/10 bg-accent-soft text-accent shadow-sm"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/10 bg-accent-soft text-accent"
                 aria-hidden
               >
                 <ChatCircle size={16} weight="duotone" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-[15px] font-semibold tracking-[-0.02em]">
+                <p className="truncate text-[14px] font-semibold tracking-[-0.02em]">
                   {t("Inbox")}
                 </p>
                 <p className="truncate text-[11px] text-muted-foreground">
@@ -489,24 +490,29 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
               </Button>
               <div className="flex-1" />
               {selectedConversation && (
-                <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-9 gap-1 px-2 xl:hidden">
-                      <IdentificationCard size={16} />
-                      {t("Ficha")}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
-                    <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
-                    <CRMSidePanel conversation={selectedConversation} />
-                  </SheetContent>
-                </Sheet>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 gap-1 px-2 md:hidden"
+                  onClick={() => setFichaAberta(true)}
+                >
+                  <IdentificationCard size={16} />
+                  {t("Ficha")}
+                </Button>
               )}
             </div>
           )}
           {selectedConversation ? (
             <>
-              <ConversationHeader conversation={selectedConversation} />
+              <ConversationHeader
+                conversation={selectedConversation}
+                onOpenContext={() => setFichaAberta(true)}
+                onToggleFocus={() => {
+                  setFichaAberta(false);
+                  setModoFoco((v) => !v);
+                }}
+                focusMode={modoFoco}
+              />
               <div className="min-h-0 flex-1 overflow-hidden">
                 <ChatThread
                   conversationId={selectedConversation.id}
@@ -579,9 +585,17 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
           )}
         </div>
 
-        <div className="hidden h-full min-h-0 border-l border-border/60 bg-muted/[0.08] xl:block">
-          <CRMSidePanel conversation={selectedConversation} />
-        </div>
+        {selectedConversation && (
+          <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
+            <SheetContent
+              side="right"
+              className="w-[min(360px,92vw)] overflow-y-auto border-l border-border/60 p-0 sm:max-w-[360px]"
+            >
+              <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
+              <CRMSidePanel conversation={selectedConversation} />
+            </SheetContent>
+          </Sheet>
+        )}
 
         <InboxKeyboardShortcuts
           visibleIds={visibleIds}

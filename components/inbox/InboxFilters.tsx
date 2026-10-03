@@ -198,7 +198,7 @@ export function InboxFilters({ value, onChange }: Props) {
 
   return (
     <div className="border-b border-border/60 bg-background/95">
-      <div className="space-y-2.5 px-3 py-3.5">
+      <div className="space-y-2 px-2.5 py-2.5">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <MagnifyingGlass
@@ -217,7 +217,7 @@ export function InboxFilters({ value, onChange }: Props) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t("Buscar por nome, telefone ou última mensagem…")}
-              className="h-9 rounded-xl border-border/60 bg-muted/35 pl-9 text-[13px] shadow-none transition-[background,border-color,box-shadow] placeholder:text-muted-foreground/70 focus-visible:border-accent/35 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-accent/10"
+              className="h-8 rounded-lg border-border/60 bg-muted/25 pl-9 text-[12px] shadow-none transition-[background,border-color,box-shadow] placeholder:text-muted-foreground/70 focus-visible:border-accent/35 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-accent/10"
               aria-label={t("Buscar conversas")}
             />
           </div>
@@ -229,7 +229,7 @@ export function InboxFilters({ value, onChange }: Props) {
             aria-pressed={value.onlyUnread}
             onClick={() => onChange({ ...value, onlyUnread: !value.onlyUnread })}
             className={cn(
-              "h-9 shrink-0 rounded-xl border px-3 text-[11px] font-semibold transition-colors",
+              "h-8 shrink-0 rounded-lg border px-2.5 text-[10px] font-semibold transition-colors",
               "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyUnread
                 ? "border-accent bg-accent text-accent-foreground"
@@ -329,9 +329,9 @@ export function InboxFilters({ value, onChange }: Props) {
       <Tabs
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
-        className="[scrollbar-width:none] overflow-x-auto px-3.5"
+        className="[scrollbar-width:none] overflow-x-auto px-2.5"
       >
-        <TabsList className="h-auto w-max min-w-full justify-start gap-4 rounded-none bg-transparent p-0">
+        <TabsList className="h-auto w-max min-w-full justify-start gap-3 rounded-none bg-transparent p-0">
           {tabs.map((tab) => {
             const meta = INBOX_TABS.find((t) => t.value === tab)!;
             const count = countFor[tab];
@@ -339,7 +339,7 @@ export function InboxFilters({ value, onChange }: Props) {
               <TabsTrigger
                 key={tab}
                 value={tab}
-                className="-mb-px shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2.5 text-[11px] font-semibold text-text-muted transition-colors data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
+                className="-mb-px shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2 text-[10.5px] font-semibold text-text-muted transition-colors data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
               >
                 {t(meta.label)}
                 {typeof count === "number" && count > 0 && (

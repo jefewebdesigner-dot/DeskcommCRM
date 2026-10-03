@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/hooks/i18n/useT";
+import { Sparkle } from "@/lib/ui/icons";
 import { sugestaoParaMostrar } from "@/lib/agent-engine/agent/sugestao-de-resposta";
 type Draft = {
   id: string;
@@ -104,13 +105,41 @@ export function ReplyReviewPanel({
     stale: "Sugestão obsoleta: a conversa mudou",
     failed: "Não foi possível concluir a sugestão ou o envio",
   };
+
+  // Sem rascunho, a IA vira uma ação compacta junto ao composer — não uma
+  // caixa permanente disputando espaço com a conversa. Quando há algo para
+  // revisar, o painel completo volta a aparecer porque aí existe trabalho real.
+  if (!draft) {
+    return (
+      <div className="mb-1.5 flex min-h-7 items-center justify-end gap-2">
+        {notice ? (
+          <p role="status" className="mr-auto truncate text-[11px] text-muted-foreground">
+            {notice.message}
+          </p>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-[11px] text-muted-foreground"
+          disabled={disabled || busy}
+          onClick={generate}
+          aria-label={t("Sugerir resposta")}
+        >
+          <Sparkle size={14} weight="duotone" aria-hidden />
+          {t(busy ? "Preparando…" : "IA · Sugerir resposta")}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <section
-      className="mb-3 space-y-2 rounded-md border bg-muted/30 p-3"
+      className="mb-2 space-y-2 rounded-xl border border-border/60 bg-muted/[0.18] p-2.5"
       aria-label={t("Assistência do agente")}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">
+        <p className="text-xs font-medium">
           {t(draft ? (statuses[draft.status] ?? "Assistência do agente") : "Assistência do agente")}
         </p>
         <Button

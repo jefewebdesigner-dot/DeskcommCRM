@@ -45,6 +45,15 @@ async function abrirConversa(page: Page, conversation: string): Promise<void> {
   await page.waitForURL(new RegExp(`/app/inbox\\?id=${conversation}`));
 }
 
+/** A ficha CRM agora é contexto sob demanda, para não roubar largura do chat. */
+async function abrirContexto(page: Page): Promise<void> {
+  const painel = page.getByTestId("inbox-demandas");
+  if (!(await painel.isVisible().catch(() => false))) {
+    await page.getByRole("button", { name: "Contexto", exact: true }).click();
+  }
+  await expect(painel).toBeVisible();
+}
+
 test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à fila", async ({
   browser,
 }) => {
@@ -166,6 +175,7 @@ test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à
     await page.getByRole("button", { name: /entrar/i }).click();
     await page.waitForURL(/\/app(?:\/|$)/);
     await abrirConversa(page, conversation);
+    await abrirContexto(page);
     const panel = page.getByTestId("inbox-demandas");
     await expect(panel.getByText("Demanda vigente neste canal")).toBeVisible();
     await expect(page.getByTestId("inbox-memoria")).toContainText("Preferência de horário");
@@ -207,6 +217,7 @@ test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à
     await expect(panel.getByText("Demanda vigente neste canal")).toBeVisible();
     await page.goto("/app/inbox?filter=unassigned");
     await page.getByText("Voltei para novo atendimento", { exact: true }).first().click();
+    await abrirContexto(page);
     await expect(
       page.getByTestId("inbox-demandas").getByText("Demanda vigente neste canal"),
     ).toBeVisible();
@@ -254,10 +265,12 @@ test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à
     await expect(page.getByTestId("inbox-item")).toContainText("Resposta registrada; atendimento mudou");
     await page.screenshot({ path: `${evidence}/task4-caso-obsoleto-aviso.png`, fullPage: true });
     await abrirConversa(page, conversation);
+    await abrirContexto(page);
     await expect(page.getByTestId("inbox-memoria")).toContainText("Histórico encerrado");
     const language = await db.auth.admin.updateUserById(user, { user_metadata: { locale: "es" } });
     if (language.error) throw language.error;
     await page.reload();
+    await abrirContexto(page);
     await expect(page.getByTestId("inbox-memoria")).toContainText("Historial cerrado — sin tareas pendientes");
     await expect(page.getByTestId("inbox-memoria")).toContainText("Resuelta");
     await page.screenshot({ path: `${evidence}/task4-historico-es.png`, fullPage: true });

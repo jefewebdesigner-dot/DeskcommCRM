@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
-import { Phone, ArrowRight } from "@/lib/ui/icons";
+import { Phone, ArrowRight, IdentificationCard, ArrowsOutSimple } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
@@ -28,6 +28,11 @@ import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 interface Props {
   conversation: ConversationWithContact;
+  /** Abre a ficha CRM como painel lateral, sem roubar largura da conversa. */
+  onOpenContext?: () => void;
+  /** Alterna o modo foco: lista some e o fio ocupa toda a largura útil. */
+  onToggleFocus?: () => void;
+  focusMode?: boolean;
 }
 
 function iniciaisDoContato(nome: string): string {
@@ -65,7 +70,12 @@ const STATUS_LABEL: Record<string, string> = {
   archived: "Arquivada",
 };
 
-export function ConversationHeader({ conversation }: Props) {
+export function ConversationHeader({
+  conversation,
+  onOpenContext,
+  onToggleFocus,
+  focusMode = false,
+}: Props) {
   const t = useT();
   const { user } = useAuth();
   const claim = useClaimConversation();
@@ -351,6 +361,33 @@ export function ConversationHeader({ conversation }: Props) {
             faz a aba "Arquivadas" deixar de ser uma pasta morta.
             A permissão é a mesma de fechar (a rota `/conversations/[id]` é
             `requireSupportWrite`): quem pode encerrar, pode arquivar. */}
+        {onOpenContext && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="hidden gap-1.5 md:inline-flex"
+            onClick={onOpenContext}
+            aria-label={t("Contexto")}
+            title={t("Abrir contexto e ficha CRM")}
+          >
+            <IdentificationCard size={16} aria-hidden />
+            <span className="hidden 2xl:inline">{t("Contexto")}</span>
+          </Button>
+        )}
+        {onToggleFocus && (
+          <Button
+            size="sm"
+            variant={focusMode ? "outline" : "ghost"}
+            className="hidden gap-1.5 md:inline-flex"
+            onClick={onToggleFocus}
+            aria-label={focusMode ? t("Sair do modo foco") : t("Modo foco")}
+            aria-pressed={focusMode}
+            title={focusMode ? t("Sair do modo foco") : t("Expandir conversa")}
+          >
+            <ArrowsOutSimple size={16} aria-hidden />
+            <span className="hidden 2xl:inline">{focusMode ? t("Sair do foco") : t("Foco")}</span>
+          </Button>
+        )}
         {status !== "archived" && (
           <Button
             size="sm"
