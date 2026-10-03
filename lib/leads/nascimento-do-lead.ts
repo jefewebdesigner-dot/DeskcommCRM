@@ -325,6 +325,37 @@ export async function garantirLeadDaConversa(
   }
   const lead = { id: novoId as string };
 
+  // 4b · emite lead.created — sem isto as automation_rules da organização
+  // (ex.: "Vendas · primeiro contato automático", trigger_event:
+  // lead.created) nunca disparam para o caminho MAIS comum de nascimento de
+  // lead num CRM WhatsApp-first: a conversa nova. `_handler.ts` (criação
+  // manual pela tela "+ Novo Lead") já emitia; este caminho — o automático,
+  // que nasce de toda primeira mensagem — nunca emitiu. Medido na PeríciaIA:
+  // 25 regras cadastradas, zero disparos, zero eventos lead.created em
+  // event_log desde sempre. Fire-and-forget como os demais emissores deste
+  // arquivo: perder o evento de automação não pode derrubar o nascimento do
+  // lead, que já está gravado.
+  await db
+    .rpc("emit_event", {
+      p_event_type: "lead.created",
+      p_entity_kind: "crm_lead",
+      p_entity_id: lead.id as string,
+      p_payload: {
+        pipeline_id: destino.pipelineId,
+        stage_id: destino.stageId,
+        title: titulo,
+      },
+      p_metadata: { source: "canal.ingest" },
+      p_organization_id: organizationId,
+    })
+    .then(({ error }: { error: { message: string } | null }) => {
+      if (error) logger.warn("nascimento-do-lead: lead.created não emitido", {
+        organization_id: organizationId,
+        lead_id: lead.id as string,
+        error: error.message.slice(0, 200),
+      });
+    });
+
   // 5 · o registro, pelo EMISSOR CANÔNICO — não por insert cru.
   //
   // `emitLeadActivity` existe porque há vários escritores da timeline e o tipo
