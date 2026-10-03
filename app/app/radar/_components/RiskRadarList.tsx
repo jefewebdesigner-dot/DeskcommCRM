@@ -11,13 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useAtRiskLeads, type AtRiskLead } from "@/hooks/leads/useAtRiskLeads";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
-import {
-  ArrowRight,
-  CheckCircle,
-  ClockCountdown,
-  PaperPlaneTilt,
-  Warning,
-} from "@/lib/ui/icons";
+import { ArrowRight, CheckCircle, ClockCountdown, PaperPlaneTilt, Warning } from "@/lib/ui/icons";
 
 const PAGE_SIZE = 50;
 type RiskFilter = "all" | Exclude<RiskBucket, "em_dia">;
@@ -59,10 +53,15 @@ export function RiskRadarList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+        <Skeleton className="h-14 w-full rounded-2xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
       </div>
     );
   }
@@ -72,17 +71,20 @@ export function RiskRadarList() {
   // "Nenhuma demanda em risco" — escondendo exatamente o vazamento que o
   // invariante 4 existe para denunciar.
   const semPasso = data?.sem_proximo_passo ?? [];
-  const totalGlobal = data
-    ? data.counts.critico + data.counts.em_risco + data.counts.em_voo
-    : 0;
+  const totalGlobal = data ? data.counts.critico + data.counts.em_risco + data.counts.em_voo : 0;
   if (!data || (totalGlobal === 0 && semPasso.length === 0)) {
     return (
       <div
-        className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center"
+        className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[24px] border border-dashed border-border/60 bg-muted/[0.08] px-6 py-16 text-center"
         data-testid="radar-empty"
       >
-        <CheckCircle size={28} className="text-success-fg/70" aria-hidden />
-        <p className="text-sm font-medium">{t("Nenhuma demanda em risco")}</p>
+        <span
+          className="mb-1 flex h-12 w-12 items-center justify-center rounded-2xl bg-success-bg text-success-fg"
+          aria-hidden="true"
+        >
+          <CheckCircle size={23} weight="duotone" />
+        </span>
+        <p className="text-sm font-semibold tracking-tight">{t("Nenhuma demanda em risco")}</p>
         <p className="text-xs text-muted-foreground">
           {t("Toda demanda aberta teve atividade recente ou já tem um retorno agendado.")}
         </p>
@@ -111,21 +113,29 @@ export function RiskRadarList() {
           viola o invariante 5. Esta é a lista que responde "e daí?". */}
       {page === 0 && semPasso.length > 0 ? (
         <section
-          className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
+          className="border-warning-border/70 overflow-hidden rounded-2xl border bg-warning-bg/35 shadow-sm"
           data-testid="radar-sem-proximo-passo"
         >
-          <p className="text-sm font-medium">
-            {semPasso.length}{" "}
-            {semPasso.length === 1
-              ? t("demanda aberta sem próximo passo")
-              : t("demandas abertas sem próximo passo")}
-          </p>
-          <p className="mb-2 text-xs text-muted-foreground">
-            {t(
-              "Ninguém marcou o que acontece a seguir. Cada uma é alguém esperando sem que nada esteja combinado.",
-            )}
-          </p>
-          <ul className="flex flex-col gap-1">
+          <div className="border-warning-border/50 flex items-start gap-3 border-b px-4 py-3.5">
+            <span
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/10 text-warning-fg"
+              aria-hidden="true"
+            >
+              <Warning size={17} weight="duotone" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tracking-tight">
+                {semPasso.length}{" "}
+                {semPasso.length === 1
+                  ? t("demanda aberta sem próximo passo")
+                  : t("demandas abertas sem próximo passo")}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {t("Defina o que acontece a seguir antes que essas oportunidades esfriem.")}
+              </p>
+            </div>
+          </div>
+          <ul className="flex flex-col gap-1 p-2">
             {semPasso.slice(0, 8).map((d) => {
               const href = d.conversation_id
                 ? `/app/inbox?id=${d.conversation_id}`
@@ -134,12 +144,19 @@ export function RiskRadarList() {
                   : "/app/kanban";
               return (
                 <li key={d.id}>
-                  <Link href={href} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-xs transition-colors hover:bg-accent/60">
+                  <Link
+                    href={href}
+                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors hover:bg-background/80"
+                  >
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">{d.contact_name ?? t("Contato sem nome")}</span>
-                      <span className="text-muted-foreground">{t("Sem próximo passo definido")}</span>
+                      <span className="block truncate font-medium">
+                        {d.contact_name ?? t("Contato sem nome")}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {t("Sem próximo passo definido")}
+                      </span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground">
+                    <span className="flex shrink-0 items-center gap-2 text-muted-foreground tabular-nums">
                       {t("aberta há")} {d.horas_aberta}h
                       <ArrowRight size={14} aria-hidden />
                     </span>
@@ -151,33 +168,73 @@ export function RiskRadarList() {
         </section>
       ) : null}
 
-      <div className="flex flex-wrap gap-2" data-testid="radar-counts">
-        <Badge variant="error">
-          {data.counts.critico} {t("crítico")}
-        </Badge>
-        <Badge variant="warning">
-          {data.counts.em_risco} {t("em risco")}
-        </Badge>
-        <Badge variant="info">
-          {data.counts.em_voo} {t("em voo")}
-        </Badge>
-      </div>
+      <section
+        className="grid gap-3 sm:grid-cols-3"
+        data-testid="radar-counts"
+        aria-label={t("Resumo do risco")}
+      >
+        {[
+          {
+            label: t("Críticos"),
+            value: data.counts.critico,
+            helper: t("precisam de ação agora"),
+            tone: "error",
+          },
+          {
+            label: t("Em risco"),
+            value: data.counts.em_risco,
+            helper: t("estão esfriando"),
+            tone: "warning",
+          },
+          {
+            label: t("Em voo"),
+            value: data.counts.em_voo,
+            helper: t("já têm retorno programado"),
+            tone: "info",
+          },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className={
+              "rounded-2xl border p-4 shadow-sm " +
+              (item.tone === "error"
+                ? "border-error-fg/15 bg-error-bg/25"
+                : item.tone === "warning"
+                  ? "border-warning-border/60 bg-warning-bg/25"
+                  : "border-info-fg/15 bg-info-bg/20")
+            }
+          >
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+              {item.label}
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
+              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+                {item.helper}
+              </p>
+            </div>
+          </div>
+        ))}
+      </section>
 
       <div
-        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm"
         data-testid="radar-filtros"
       >
         <div className="flex flex-wrap gap-2">
-          {([
-            ["all", "Todos"],
-            ["critico", "Críticos"],
-            ["em_risco", "Em risco"],
-            ["em_voo", "Em voo"],
-          ] as const).map(([value, label]) => (
+          {(
+            [
+              ["all", "Todos"],
+              ["critico", "Críticos"],
+              ["em_risco", "Em risco"],
+              ["em_voo", "Em voo"],
+            ] as const
+          ).map(([value, label]) => (
             <Button
               key={value}
               size="sm"
-              variant={risk === value ? "default" : "outline"}
+              variant={risk === value ? "default" : "ghost"}
+              className="h-8 rounded-lg px-3 text-[11px]"
               onClick={() => trocarRisco(value)}
               aria-pressed={risk === value}
             >
@@ -187,15 +244,18 @@ export function RiskRadarList() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {([
-            ["all", "Todos os responsáveis"],
-            ["unassigned", "Sem dono"],
-            ["owned", "Com responsável"],
-          ] as const).map(([value, label]) => (
+          {(
+            [
+              ["all", "Todos os responsáveis"],
+              ["unassigned", "Sem dono"],
+              ["owned", "Com responsável"],
+            ] as const
+          ).map(([value, label]) => (
             <Button
               key={value}
               size="sm"
-              variant={ownership === value ? "default" : "outline"}
+              variant={ownership === value ? "default" : "ghost"}
+              className="h-8 rounded-lg px-3 text-[11px]"
               onClick={() => trocarResponsavel(value)}
               aria-pressed={ownership === value}
             >
@@ -206,14 +266,14 @@ export function RiskRadarList() {
       </div>
 
       {data.items.length > 0 ? (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="space-y-2">
           {data.items.map((lead) => (
             <RadarRow key={lead.id} lead={lead} />
           ))}
         </ul>
       ) : (
         <div
-          className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground"
+          className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.06] px-4 py-12 text-center text-sm text-muted-foreground"
           data-testid="radar-filter-empty"
         >
           {t("Nenhum negócio corresponde a este filtro.")}
@@ -221,7 +281,7 @@ export function RiskRadarList() {
       )}
 
       <div
-        className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/[0.08] px-3 py-2.5 text-xs text-muted-foreground"
         data-testid="radar-pagination"
       >
         <span>
@@ -296,14 +356,14 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
     <li
       data-testid="radar-item"
       data-risk={lead.risk}
-      className="flex items-start gap-2 pr-3 transition-colors hover:bg-accent/50"
+      className="flex items-start gap-2 rounded-2xl border border-border/60 bg-card pr-3 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md"
     >
-      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3">
+      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3.5">
         <Badge variant={meta.variant} className="mt-0.5 shrink-0">
           {t(meta.label)}
         </Badge>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{lead.title}</p>
+          <p className="truncate text-sm font-semibold tracking-[-0.01em]">{lead.title}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             {lead.contact_name ? <span className="truncate">{lead.contact_name}</span> : null}
             <span className="inline-flex items-center gap-1">
@@ -315,7 +375,15 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
             </span>
           </p>
           {lead.agenda?.appointment_id ? (
-            <p className="mt-1 text-xs text-info-fg">{t(lead.agenda.motivo === "presenca_vencida" ? "Presença não confirmada · revise o compromisso" : lead.agenda.motivo === "presenca_pendente" ? "Confirme a presença · cobrança aguardando" : "Compromisso agendado · cobrança aguardando")}</p>
+            <p className="mt-1 text-xs text-info-fg">
+              {t(
+                lead.agenda.motivo === "presenca_vencida"
+                  ? "Presença não confirmada · revise o compromisso"
+                  : lead.agenda.motivo === "presenca_pendente"
+                    ? "Confirme a presença · cobrança aguardando"
+                    : "Compromisso agendado · cobrança aguardando",
+              )}
+            </p>
           ) : lead.in_flight && lead.next_followup_at ? (
             <p className="mt-1 inline-flex items-center gap-1 text-xs text-info-fg">
               <PaperPlaneTilt size={13} aria-hidden />
@@ -330,11 +398,19 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
         </div>
       </Link>
       <div className="flex shrink-0 items-center gap-2 self-center">
-        {lead.agenda?.appointment_id ? <Link className="text-xs underline" href={`/app/agenda?compromisso=${lead.agenda.appointment_id}`}>{t("Ver compromisso")}</Link> : null}
+        {lead.agenda?.appointment_id ? (
+          <Link
+            className="text-xs underline"
+            href={`/app/agenda?compromisso=${lead.agenda.appointment_id}`}
+          >
+            {t("Ver compromisso")}
+          </Link>
+        ) : null}
         {canClaim ? (
           <Button
             size="sm"
             variant="outline"
+            className="rounded-xl"
             disabled={claim.isPending}
             onClick={handleClaim}
             data-testid="radar-claim"
