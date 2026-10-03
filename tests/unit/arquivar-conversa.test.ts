@@ -29,14 +29,12 @@ import { NextRequest } from "next/server";
 import { audit, isServiceRoleConfigured } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { AuthUser } from "@/lib/auth/types";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/audit", () => ({
   audit: vi.fn(async () => undefined),
   isServiceRoleConfigured: vi.fn(() => false),
@@ -59,7 +57,7 @@ interface RpcCall {
 }
 
 interface StubState {
-  /** Chamadas na RPC do cliente ADMIN: é por lá que o estado de serviço passa. */
+  /** Chamadas na RPC do cliente autenticado da requisição. */
   rpcCalls: RpcCall[];
   /** Erro devolvido pela RPC (ex.: { code: "40001" } do lock otimista). */
   erroRpc: { code: string; message: string } | null;
@@ -96,16 +94,6 @@ function makeSupabaseStub(state: StubState) {
     from: () => chain,
     rpc: async (fn: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ fn, args });
-      return { data: null, error: null };
-    },
-  };
-}
-
-/** Cliente service-role: é o único caminho por onde o status de serviço passa. */
-function makeAdminStub(state: StubState) {
-  return {
-    rpc: async (fn: string, args: Record<string, unknown>) => {
-      state.rpcCalls.push({ fn, args });
       return { data: null, error: state.erroRpc };
     },
   };
@@ -128,8 +116,6 @@ function agentSession(state: StubState) {
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(createClient).mockResolvedValue(makeSupabaseStub(state) as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  vi.mocked(createAdminClient).mockReturnValue(makeAdminStub(state) as any);
 }
 
 function stubState(overrides: Partial<StubState> = {}): StubState {
@@ -166,10 +152,7 @@ describe("PATCH /conversations/[id] — arquivar (#923)", () => {
     agentSession(state);
     const { PATCH } = await import("@/app/api/v1/conversations/[id]/route");
 
-    const res = await PATCH(
-      patchReq({ status: "archived", expected_revision: 7 }),
-      params,
-    );
+    const res = await PATCH(patchReq({ status: "archived", expected_revision: 7 }), params);
 
     expect(res.status).toBe(200);
     expect(rpcDoStatus(state)?.args).toMatchObject({

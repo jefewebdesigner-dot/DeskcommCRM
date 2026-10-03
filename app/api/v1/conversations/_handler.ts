@@ -1,4 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 /**
  * Core handlers para /api/v1/conversations.
  *
@@ -475,7 +474,7 @@ export async function patchConversationHandler(
 
   if (input.status !== undefined) {
     const observed = await getConversationHandler(supabase, ctx, conversationId);
-    const { error: statusError } = await createAdminClient().rpc("fn_service_status", {
+    const { error: statusError } = await supabase.rpc("fn_service_status", {
       p_org: ctx.organization_id, p_conversation: conversationId, p_status: input.status,
       p_expected: input.expected_revision ?? observed.service_revision,
     });
