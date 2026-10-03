@@ -24,7 +24,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
 
-  const agents = data ?? [];
+  const agents = useMemo(() => data ?? [], [data]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -37,19 +37,37 @@ export function AgentsList({ initialData, canWrite }: Props) {
     });
   }, [agents, status, query, showArchived]);
 
+  const resumo = useMemo(() => {
+    let published = 0;
+    let draft = 0;
+    let archived = 0;
+    for (const agent of agents) {
+      const s = deriveAgentStatus(agent);
+      if (s === "published") published += 1;
+      else if (s === "archived") archived += 1;
+      else draft += 1;
+    }
+    return { published, draft, archived };
+  }, [agents]);
+
   if (!isLoading && agents.length === 0) {
     return (
-      <Card className="flex flex-col items-center gap-3 p-10 text-center">
-        <Robot size={36} aria-hidden className="text-muted-foreground" />
-        <h2 className="font-medium">{t("Nenhum agent configurado")}</h2>
+      <Card className="flex flex-col items-center gap-3 rounded-[24px] border-border/60 bg-muted/[0.06] p-10 text-center shadow-sm">
+        <span
+          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent"
+          aria-hidden="true"
+        >
+          <Robot size={24} weight="duotone" />
+        </span>
+        <h2 className="font-semibold tracking-tight">{t("Nenhum agente configurado")}</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
           {t(
-            "Crie um agent para responder a conversas no WhatsApp com IA. Você configura prompt, tools, gatilhos e janela de contexto.",
+            "Crie um agente para responder no WhatsApp com IA. Você define instruções, ferramentas, gatilhos e contexto.",
           )}
         </p>
         {canWrite && (
           <Link href="/app/ai/agents/new">
-            <Button className="mt-1">
+            <Button className="mt-1 rounded-xl">
               <Plus size={14} aria-hidden className="mr-2" /> {t("Novo agente")}
             </Button>
           </Link>
@@ -60,7 +78,30 @@ export function AgentsList({ initialData, canWrite }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo dos agentes")}>
+        {[
+          { label: t("No ar"), value: resumo.published, helper: t("atendendo agora") },
+          { label: t("Em preparação"), value: resumo.draft, helper: t("ainda não publicados") },
+          { label: t("Arquivados"), value: resumo.archived, helper: t("fora da operação") },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+          >
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+              {item.label}
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
+              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+                {item.helper}
+              </p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
         <AgentsListFilters
           status={status}
           onStatusChange={setStatus}
@@ -71,7 +112,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
         />
         {canWrite && (
           <Link href="/app/ai/agents/new">
-            <Button>
+            <Button className="rounded-xl">
               <Plus size={14} aria-hidden className="mr-2" /> {t("Novo agente")}
             </Button>
           </Link>
@@ -79,7 +120,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
+        <Card className="rounded-2xl border-dashed border-border/60 bg-muted/[0.06] p-10 text-center text-sm text-muted-foreground">
           {t("Nenhum agent corresponde aos filtros atuais.")}
         </Card>
       ) : (

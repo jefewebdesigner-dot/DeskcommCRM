@@ -31,16 +31,19 @@ export function AgentsListFilters({
 }: Props) {
   const t = useT();
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       <Input
         placeholder={t("Buscar por nome…")}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        className="w-full sm:w-64"
-        aria-label={t("Buscar agents")}
+        className="h-9 w-full rounded-xl border-border/60 bg-muted/25 text-[13px] sm:w-64"
+        aria-label={t("Buscar agentes")}
       />
       <Select value={status} onValueChange={(v) => onStatusChange(v as StatusFilter)}>
-        <SelectTrigger className="w-44" aria-label={t("Filtrar por status")}>
+        <SelectTrigger
+          className="h-9 w-44 rounded-xl border-border/60 bg-background"
+          aria-label={t("Filtrar por status")}
+        >
           <SelectValue placeholder={t("Status")} />
         </SelectTrigger>
         <SelectContent>
@@ -50,7 +53,7 @@ export function AgentsListFilters({
           <SelectItem value="archived">{t("Arquivado")}</SelectItem>
         </SelectContent>
       </Select>
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      <label className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-muted/40">
         <input
           type="checkbox"
           checked={showArchived}
