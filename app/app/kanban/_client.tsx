@@ -224,7 +224,7 @@ export function FunisClient({
   }
 
   const formularioDeCriacao = novo !== null && (
-    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-testid="form-novo-funil">
+    <Card className="flex flex-col gap-3 rounded-2xl border-border/60 p-4 shadow-sm sm:flex-row sm:items-center" data-testid="form-novo-funil">
       <Input
         autoFocus
         value={novo}
@@ -238,11 +238,11 @@ export function FunisClient({
         data-testid="nome-do-novo-funil"
         disabled={ocupado}
       />
-      <div className="flex gap-2">
-        <Button onClick={criarFunil} disabled={ocupado || !novo.trim()} data-testid="confirmar-novo-funil">
+      <div className="flex gap-2 sm:shrink-0">
+        <Button className="flex-1 rounded-xl sm:flex-none" onClick={criarFunil} disabled={ocupado || !novo.trim()} data-testid="confirmar-novo-funil">
           {t("Criar funil")}
         </Button>
-        <Button variant="ghost" onClick={() => setNovo(null)} disabled={ocupado}>
+        <Button className="flex-1 rounded-xl sm:flex-none" variant="ghost" onClick={() => setNovo(null)} disabled={ocupado}>
           {t("Cancelar")}
         </Button>
       </div>
@@ -288,14 +288,14 @@ export function FunisClient({
               "Funil arquivado não aparece na lista nem recebe negócio novo. Traga de volta para usar outra vez, ou exclua de vez para liberar o nome.",
             )}
           </p>
-          <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+          <ul className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             {arquivados.map((funil) => {
               const excluindoAqui = excluindo?.id === funil.id ? excluindo : null;
 
               return (
                 <li
                   key={funil.id}
-                  className="flex flex-col gap-3 p-4"
+                  className="flex flex-col gap-3 p-4 sm:p-5"
                   data-testid={`arquivado-${funil.id}`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -303,8 +303,9 @@ export function FunisClient({
                       {funil.name}
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">/{funil.slug}</span>
-                    <div className="flex shrink-0 flex-wrap gap-1">
+                    <div className="-mx-1 flex w-full shrink-0 flex-nowrap gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
                       <Button
+                        className="shrink-0 rounded-xl"
                         variant="ghost"
                         size="sm"
                         onClick={() => aplicar(funil.id, { is_archived: false })}
@@ -315,6 +316,7 @@ export function FunisClient({
                         {t("Tirar do arquivo")}
                       </Button>
                       <Button
+                        className="shrink-0 rounded-xl"
                         variant="ghost"
                         size="sm"
                         onClick={() => {
@@ -339,7 +341,7 @@ export function FunisClient({
                   )}
 
                   {excluindoAqui && (
-                    <Card className="space-y-3 p-4" data-testid={`excluir-painel-${funil.id}`}>
+                    <Card className="space-y-3 rounded-2xl border-border/60 bg-muted/[0.08] p-4 shadow-none" data-testid={`excluir-painel-${funil.id}`}>
                       {excluindoAqui.erro ? (
                         // A recusa da rota, INTEIRA: é ela que diz quantos
                         // negócios o funil tem, ou qual formulário aponta para
@@ -444,7 +446,7 @@ export function FunisClient({
         </p>
       )}
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
         {funis.map((funil, i) => {
           const renomeandoAqui = renomeando?.id === funil.id ? renomeando : null;
           const arquivandoAqui = arquivando?.id === funil.id ? arquivando : null;
@@ -454,7 +456,7 @@ export function FunisClient({
           const rotuloOperacional = rotuloDoTipoOperacional(tipoOperacional);
 
           return (
-            <li key={funil.id} className="flex flex-col gap-3 p-4" data-testid={`funil-${funil.id}`}>
+            <li key={funil.id} className="flex flex-col gap-3 p-4 sm:p-5" data-testid={`funil-${funil.id}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 {podeGerenciar && (
                   <div className="flex shrink-0 flex-wrap gap-1">
@@ -483,7 +485,7 @@ export function FunisClient({
 
                 <div className="min-w-0 flex-1">
                   {renomeandoAqui ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         autoFocus
                         value={renomeandoAqui.nome}
@@ -514,7 +516,7 @@ export function FunisClient({
                       className="group flex flex-col"
                       data-testid={`abrir-${funil.id}`}
                     >
-                      <span className="flex items-center gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium group-hover:underline">{funil.name}</span>
                         {rotuloOperacional ? (
                           <Badge variant="outline" className="text-[10px]">
@@ -557,8 +559,9 @@ export function FunisClient({
                 <span className="shrink-0 text-xs text-muted-foreground">/{funil.slug}</span>
 
                 {podeGerenciar && !renomeandoAqui && (
-                  <div className="flex shrink-0 flex-wrap gap-1">
+                  <div className="-mx-1 flex w-full shrink-0 flex-nowrap gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
                     <Button
+                      className="shrink-0 rounded-xl"
                       variant="ghost"
                       size="sm"
                       onClick={() => setRenomeando({ id: funil.id, nome: funil.name })}
@@ -623,7 +626,7 @@ export function FunisClient({
               )}
 
               {arquivandoAqui && (
-                <Card className="space-y-3 p-4" data-testid={`arquivar-painel-${funil.id}`}>
+                <Card className="space-y-3 rounded-2xl border-border/60 bg-muted/[0.08] p-4 shadow-none" data-testid={`arquivar-painel-${funil.id}`}>
                   {arquivandoAqui.erro ? (
                     // A recusa da rota, INTEIRA: é ela que diz qual formulário ou
                     // automação está no caminho, e o que fazer antes de tentar de novo.
