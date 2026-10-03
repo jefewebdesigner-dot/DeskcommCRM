@@ -102,7 +102,7 @@ export function taxaDeAjuda(rate: number, t: (texto: string) => string = (texto)
  * que muda é a frase que diz do que ele é feito.
  */
 const DESCRICAO_RESULTADO_SEM_ATIVIDADE =
-  "Não houve atendimento neste período, então os zeros abaixo querem dizer \"nada aconteceu\", e não \"foi mal\". Mude as datas acima para um período com movimento.";
+  'Não houve atendimento neste período, então os zeros abaixo querem dizer "nada aconteceu", e não "foi mal". Mude as datas acima para um período com movimento.';
 
 /**
  * A escolha da descrição olha SÓ `messages_received`, e recebe o `outcome`
@@ -147,7 +147,7 @@ function Bloco({
   testId: string;
 }) {
   return (
-    <section className="flex flex-col gap-3" data-testid={testId}>
+    <section className="flex flex-col gap-4" data-testid={testId}>
       <div>
         <h2 className="text-lg font-semibold tracking-tight">{titulo}</h2>
         <p className="text-sm text-text-muted">{descricao}</p>
@@ -168,9 +168,11 @@ function StatCard({
   significa: string;
 }) {
   return (
-    <Card className="flex flex-col p-4">
-      <p className="text-xs text-text-muted">{rotulo}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{valor}</p>
+    <Card className="flex min-h-[150px] flex-col rounded-2xl border-border/60 p-4 shadow-sm">
+      <p className="text-[10px] font-semibold tracking-[0.1em] text-text-muted uppercase">
+        {rotulo}
+      </p>
+      <p className="mt-3 text-2xl font-semibold tracking-[-0.04em]">{valor}</p>
       <p className="mt-2 text-xs leading-relaxed text-text-muted">{significa}</p>
     </Card>
   );
@@ -227,7 +229,7 @@ function GraficoDiario({
   const temDado = dados.some((p) => p.value > 0);
   const total = dados.reduce((acc, p) => acc + p.value, 0);
   return (
-    <Card className="p-4">
+    <Card className="rounded-2xl border-border/60 p-4 shadow-sm">
       <h3 className="text-sm font-medium">{titulo}</h3>
       <p className="mt-1 text-xs leading-relaxed text-text-muted">{significa}</p>
       {!temDado ? (
@@ -293,7 +295,7 @@ function Ranking({
     .slice(0, 8);
   const maior = linhas[0]?.[1] ?? 0;
   return (
-    <Card className="p-4">
+    <Card className="rounded-2xl border-border/60 p-4 shadow-sm">
       <h3 className="text-sm font-medium">{titulo}</h3>
       <p className="mt-1 text-xs leading-relaxed text-text-muted">{significa}</p>
       {linhas.length === 0 ? (
@@ -306,9 +308,7 @@ function Ranking({
                 <span className="truncate text-sm" title={nome}>
                   {nome}
                 </span>
-                <span className="shrink-0 text-sm tabular-nums text-text-muted">
-                  {num(qtd)}
-                </span>
+                <span className="shrink-0 text-sm text-text-muted tabular-nums">{num(qtd)}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-surface-elevated">
                 <div
@@ -349,7 +349,7 @@ export function EvolutionClient({ defaultRange }: { defaultRange: { from: string
 
   return (
     <div className="flex flex-col gap-8">
-      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:gap-4">
+      <Card className="flex flex-col gap-3 rounded-2xl border-border/60 p-4 shadow-sm sm:flex-row sm:items-end sm:gap-4">
         <div className="flex-1">
           <p className="text-sm font-medium">{t("Período analisado")}</p>
           <p className="text-xs text-text-muted">
@@ -442,10 +442,12 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
             )}
           />
         </div>
-        <Card className="p-4">
+        <Card className="rounded-2xl border-border/60 p-4 shadow-sm">
           <h3 className="text-sm font-medium">{t("Linha do tempo do aprendizado")}</h3>
           <p className="mt-1 text-xs text-text-muted">
-            {t("Cada linha é uma coisa nova que o agente passou a saber, na ordem em que aconteceu.")}
+            {t(
+              "Cada linha é uma coisa nova que o agente passou a saber, na ordem em que aconteceu.",
+            )}
           </p>
           <div className="mt-3">
             {learned.timeline.length === 0 ? (
@@ -473,7 +475,9 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
       <Bloco
         testId="bloco-fez"
         titulo={t("O que ele fez")}
-        descricao={t("O trabalho do dia a dia: quantas vezes ele usou cada recurso que você deu a ele.")}
+        descricao={t(
+          "O trabalho do dia a dia: quantas vezes ele usou cada recurso que você deu a ele.",
+        )}
       >
         <div className="grid gap-3 lg:grid-cols-3">
           <GraficoDiario
@@ -532,7 +536,9 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
             contagem={activity.by_skill}
             vazio={
               <Vazio
-                texto={t("Nenhuma habilidade foi usada neste período, então não há o que ranquear.")}
+                texto={t(
+                  "Nenhuma habilidade foi usada neste período, então não há o que ranquear.",
+                )}
                 acoes={[{ href: "/app/ai/skills", label: t("Ver habilidades disponíveis") }]}
               />
             }

@@ -228,10 +228,7 @@ export function MetaAdsClient({ contaPadrao }: Props) {
       </div>
 
       {erro && (
-        <div
-          role="alert"
-          className="rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm"
-        >
+        <div role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 p-4 text-sm">
           <p className="font-medium">{mensagemDeErro(erro)}</p>
           {erro instanceof ApiError && (
             // O id da requisição vai junto: é o que liga esta tela ao log do

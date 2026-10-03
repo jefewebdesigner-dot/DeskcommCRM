@@ -42,7 +42,7 @@ function MedidaLinha({ m }: { m: Medida }) {
 function ParCard({ par }: { par: Par }) {
   const t = useT();
   return (
-    <Card>
+    <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-normal text-muted-foreground">{t(par.titulo)}</CardTitle>
       </CardHeader>
@@ -57,8 +57,8 @@ function ParCard({ par }: { par: Par }) {
         </div>
 
         {/* O custo disso. Mesmo cartão, sempre. */}
-        <div className="min-w-0 flex-1 border-t pt-3 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
-          <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="min-w-0 flex-1 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+          <p className="mb-1 text-xs tracking-wide text-muted-foreground uppercase">
             {t("O que isso custou")}
           </p>
           {par.danos.map((d) => (
@@ -76,7 +76,15 @@ function ParCard({ par }: { par: Par }) {
  * com o número). Só manager+ edita — redefinir o que conta como perda é decisão
  * de quem responde pelo resultado, não de quem opera.
  */
-function ReguaAbandono({ horas, padrao, podeEditar }: { horas: number; padrao: number; podeEditar: boolean }) {
+function ReguaAbandono({
+  horas,
+  padrao,
+  podeEditar,
+}: {
+  horas: number;
+  padrao: number;
+  podeEditar: boolean;
+}) {
   const t = useT();
   const [valor, setValor] = useState(String(horas));
   const salvar = useSalvarReguaAbandono();
@@ -98,7 +106,7 @@ function ReguaAbandono({ horas, padrao, podeEditar }: { horas: number; padrao: n
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span>{t("Contar como perdida no silêncio após")}</span>
       <Input
-        className="h-7 w-20 text-xs"
+        className="h-8 w-20 rounded-lg text-xs"
         value={valor}
         inputMode="numeric"
         aria-label={t("Horas de silêncio até considerar a conversa perdida")}
@@ -109,7 +117,7 @@ function ReguaAbandono({ horas, padrao, podeEditar }: { horas: number; padrao: n
         <Button
           size="sm"
           variant="outline"
-          className="h-7"
+          className="h-8 rounded-lg"
           disabled={!valido || salvar.isPending}
           onClick={() => salvar.mutate(n)}
         >
@@ -148,9 +156,9 @@ export function AtritoPanel({ podeEditarRegua }: { podeEditarRegua: boolean }) {
   );
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4 rounded-[24px] border border-border/60 bg-muted/[0.05] p-4 shadow-sm sm:p-5">
       <div>
-        <h2 className="text-base font-medium">{t("Atrito")}</h2>
+        <h2 className="text-base font-semibold tracking-tight">{t("Atrito")}</h2>
         <p className="text-sm text-muted-foreground">
           {t("O que o resultado custou para os dois lados.")}{" "}
           {escopo.demandas === 0 ? (
@@ -185,7 +193,9 @@ export function AtritoPanel({ podeEditarRegua }: { podeEditarRegua: boolean }) {
           não está na tela é ruído, e ruído compete com o que importava. */}
       {temMedidaAusente ? (
         <p className="text-xs text-muted-foreground">
-          {t('"—" significa que não houve dado suficiente para medir, e não que o valor seja zero.')}
+          {t(
+            '"—" significa que não houve dado suficiente para medir, e não que o valor seja zero.',
+          )}
         </p>
       ) : null}
     </section>

@@ -62,10 +62,10 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {canCompare ? (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
           <span className="text-sm text-muted-foreground">{t("Atendente")}</span>
           <Select value={owner} onValueChange={setOwner}>
-            <SelectTrigger className="w-64">
+            <SelectTrigger className="w-64 rounded-xl">
               <SelectValue placeholder={t("Todos os atendentes")} />
             </SelectTrigger>
             <SelectContent>
@@ -89,7 +89,7 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
           por pessoa convida a otimização local que degrada o todo. */}
       <AtritoPanel podeEditarRegua={canCompare} />
 
-      <Card>
+      <Card className="rounded-[24px] border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">
             {t("Funil")} {selectedOwner ? t("do atendente") : ""} · {funnelTotal}{" "}
@@ -116,7 +116,7 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[24px] border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">
             {canCompare ? t("Performance por atendente") : t("Sua performance")}
@@ -124,7 +124,7 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
         </CardHeader>
         <CardContent>
           {metrics.attendants.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="rounded-2xl border border-dashed border-border/60 bg-muted/[0.05] p-5 text-sm text-muted-foreground">
               {t("Sem atividade no período (ganhos/perdidos, conversas ou respostas).")}
             </p>
           ) : (

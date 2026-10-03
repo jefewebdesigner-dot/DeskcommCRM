@@ -151,9 +151,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
 
   const estado = (valor: string | null) => {
     if (!valor) return <span className="text-muted-foreground">{TRACO}</span>;
-    return (
-      <span className={TOM_DO_ESTADO[valor] ?? ""}>{t(ESTADO_LEGIVEL[valor] ?? valor)}</span>
-    );
+    return <span className={TOM_DO_ESTADO[valor] ?? ""}>{t(ESTADO_LEGIVEL[valor] ?? valor)}</span>;
   };
 
   if (linhas.length === 0) {
@@ -222,9 +220,7 @@ export function TabelaDeCampanhas({ linhas, moeda, avisos }: Props) {
             */}
             <TableHead className="text-right" title={t("Reproduções de vídeo ÷ impressões")}>
               {t("Hook Rate")}
-              <span className="ml-1 font-normal text-muted-foreground">
-                {t("(reproduções)")}
-              </span>
+              <span className="ml-1 font-normal text-muted-foreground">{t("(reproduções)")}</span>
             </TableHead>
             <TableHead className="text-right">{t("ThruPlays")}</TableHead>
           </TableRow>

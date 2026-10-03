@@ -66,7 +66,7 @@ export function AuditClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="p-4">
+      <Card className="rounded-[24px] border-border/60 p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground">{t("Ação contém")}</label>
@@ -93,14 +93,14 @@ export function AuditClient() {
             <Input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button variant="outline" className="w-full" onClick={handleExport}>
+            <Button variant="outline" className="w-full rounded-xl" onClick={handleExport}>
               {t("Exportar CSV")}
             </Button>
           </div>
         </div>
       </Card>
 
-      <Card>
+      <Card className="overflow-hidden rounded-[24px] border-border/60 shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -124,7 +124,7 @@ export function AuditClient() {
                 </TableRow>
               ))
             ) : rows.length === 0 ? (
-              <TableRow>
+              <TableRow className="bg-muted/[0.05]">
                 <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   {t("Nenhum log no período.")}
                 </TableCell>
@@ -132,10 +132,10 @@ export function AuditClient() {
             ) : (
               rows.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap text-xs">
+                  <TableCell className="text-xs whitespace-nowrap">
                     {fmtDate(r.created_at, tagDoIdioma)}
                   </TableCell>
-                  <TableCell className="text-xs font-mono">
+                  <TableCell className="font-mono text-xs">
                     {r.acting_as_platform_admin
                       ? "platform_admin"
                       : r.actor_user_id
@@ -166,6 +166,7 @@ export function AuditClient() {
         <div className="flex justify-center">
           <Button
             variant="outline"
+            className="rounded-xl"
             onClick={() => q.fetchNextPage()}
             disabled={q.isFetchingNextPage}
           >

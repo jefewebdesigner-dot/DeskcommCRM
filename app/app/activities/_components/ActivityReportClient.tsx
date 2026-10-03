@@ -76,7 +76,7 @@ function SerieDiaria({ dias }: { dias: LinhaDoDia[] }) {
             data-dia={d.data}
             data-quantidade={d.quantidade}
           />
-          <span className="text-[10px] tabular-nums text-muted-foreground">{d.rotulo}</span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">{d.rotulo}</span>
         </div>
       ))}
     </div>
@@ -92,7 +92,7 @@ export function ActivityReportClient() {
 
   const seletor = (
     <Select value={String(dias)} onValueChange={(v) => setDias(Number(v))}>
-      <SelectTrigger className="w-44" aria-label={t("Período")}>
+      <SelectTrigger className="w-44 rounded-xl" aria-label={t("Período")}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -127,7 +127,7 @@ export function ActivityReportClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
         {seletor}
         <p className="text-sm text-muted-foreground" data-testid="total-de-atividades">
           {total} {total === 1 ? t("acontecimento") : t("acontecimentos")}
@@ -171,7 +171,7 @@ export function ActivityReportClient() {
             />
           </div>
 
-          <Card>
+          <Card className="rounded-[24px] border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">{t("Quando")}</CardTitle>
             </CardHeader>
@@ -181,7 +181,7 @@ export function ActivityReportClient() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="rounded-[24px] border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">{t("Quem fez")}</CardTitle>
               </CardHeader>
@@ -198,7 +198,7 @@ export function ActivityReportClient() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-[24px] border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">{t("O que foi feito")}</CardTitle>
               </CardHeader>
@@ -215,7 +215,7 @@ export function ActivityReportClient() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="rounded-[24px] border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">{t("Linha do tempo da operação")}</CardTitle>
             </CardHeader>
@@ -224,9 +224,9 @@ export function ActivityReportClient() {
                 {atividades.map((i: LinhaDeAtividade) => (
                   <li
                     key={i.id}
-                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md border border-border p-2 text-sm"
+                    className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-border/60 bg-muted/[0.04] p-3 text-sm transition-colors hover:bg-muted/[0.12]"
                   >
-                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                       {quandoLegivel(i.quando, "pt-BR")}
                     </span>
                     <MarcadorDeAtor forma={i.atorForma} />
@@ -283,7 +283,7 @@ function CartaoDeOrigem({
 }) {
   const fatia = total > 0 ? Math.round((valor / total) * 100) : 0;
   return (
-    <Card data-testid={`origem-${forma}`}>
+    <Card className="rounded-2xl border-border/60 shadow-sm" data-testid={`origem-${forma}`}>
       <CardContent className="flex flex-col gap-1 p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MarcadorDeAtor forma={forma} />
@@ -314,7 +314,7 @@ function LinhaComBarra({
           {forma && <MarcadorDeAtor forma={forma} />}
           <span className="truncate">{nome}</span>
         </span>
-        <span className="shrink-0 tabular-nums text-muted-foreground">{quantidade}</span>
+        <span className="shrink-0 text-muted-foreground tabular-nums">{quantidade}</span>
       </div>
       <BarraDeLinha fatia={fatia} />
     </div>

@@ -47,7 +47,8 @@ export default async function MetaAdsPage() {
   // Quem NÃO pode conectar não deve ler "vá em Configurações" — a tela lá é
   // `admin`, e mandar um manager para uma porta que devolve 403 é pior que
   // dizer a verdade: ele precisa pedir para alguém.
-  const podeConectar = (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
+  const podeConectar =
+    (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
 
   return (
     /*
@@ -57,21 +58,32 @@ export default async function MetaAdsPage() {
     */
     <div
       data-superficie="clara"
-      className="-m-6 flex min-h-[calc(100%+3rem)] flex-col gap-6 bg-bg p-6 text-text"
+      className="-m-6 flex min-h-[calc(100%+3rem)] flex-col gap-5 bg-bg p-4 text-text sm:p-6"
     >
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Meta Ads")}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          {t(
-            "O desempenho das campanhas que estão trazendo gente para cá. Os números vêm da plataforma no momento em que você clica em Atualizar — nada fica guardado aqui.",
-          )}
-        </p>
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-blue-500/[0.06] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            {t("Aquisição")}
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+            {t("Meta Ads")}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {t(
+              "O desempenho das campanhas que estão trazendo gente para cá. Os números vêm da plataforma no momento em que você clica em Atualizar — nada fica guardado aqui.",
+            )}
+          </p>
+        </div>
       </header>
 
       {conexao.conectada ? (
         <MetaAdsClient contaPadrao={conexao.contaPadrao} idioma={idioma} />
       ) : (
-        <div className="rounded-md border p-6 text-sm">
+        <div className="rounded-[24px] border border-border/60 bg-card p-6 text-sm shadow-sm">
           <p className="font-medium">{t("Nenhuma conta de anúncios conectada.")}</p>
           <p className="mt-1 text-muted-foreground">
             {podeConectar
@@ -84,7 +96,7 @@ export default async function MetaAdsPage() {
           </p>
           {podeConectar && (
             <a
-              className="mt-4 inline-block rounded-md border px-4 py-2 font-medium underline-offset-2 hover:bg-muted"
+              className="mt-4 inline-block rounded-xl border border-border/60 px-4 py-2 font-medium underline-offset-2 transition-colors hover:bg-muted"
               href="/app/settings/meta-ads"
             >
               {t("Conectar conta de anúncios")}
