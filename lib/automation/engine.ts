@@ -77,6 +77,22 @@ export async function buildContext(admin: SupabaseClient, row: EventRow): Promis
       .maybeSingle();
     if (appointment) {
       context.appointment = appointment;
+      // `appointment.starts_at` é ISO cru (`2026-10-10T14:00:00.000Z`) — exibir
+      // isso num WhatsApp de cliente é a mesma qualidade de "apareceu sozinho".
+      // `quando`/`dia`/`hora` ficam prontos no contexto, no fuso do COMPROMISSO
+      // (não o do servidor), mesma régua de `montarLembrete`
+      // (app/api/v1/cron/agenda-reminder/route.ts) — para quem escrever
+      // `{{quando}}`/`{{dia}}`/`{{hora}}` num template de automação ter a
+      // mesma qualidade que o lembrete já entrega.
+      if (appointment.starts_at) {
+        const tz = (appointment.time_zone as string | null) ?? "America/Sao_Paulo";
+        const quando = new Date(appointment.starts_at as string);
+        const dia = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, weekday: "long", day: "2-digit", month: "2-digit" }).format(quando);
+        const hora = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(quando);
+        context.dia = dia;
+        context.hora = hora;
+        context.quando = `${dia} às ${hora}`;
+      }
       // O contato sai do COMPROMISSO, não do payload: quem escreve a regra vai
       // querer `contact.name` no texto da mensagem, e a linha do banco é a
       // versão de agora — o payload é a de quando o evento nasceu.

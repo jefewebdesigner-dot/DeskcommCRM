@@ -43,6 +43,8 @@ import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { readServiceBoundarySupabase } from "@/lib/atendimento/origem";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
+import { drainEventLog } from "@/lib/event-log/drain";
+import { ensureHandlersRegistered } from "@/lib/event-log/register-handlers";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
@@ -307,6 +309,23 @@ export async function marcarAgendamentoHandler(
     transicao,
     fusoDoCompromisso: criado.time_zone,
     nomeDoTipo: tipo.name,
+  });
+
+  // Empurra o event_log agora — sem isto `appointment.created`/`.confirmed`
+  // fica `status: pending` até algum cron passar, e nesta instalação (Vercel
+  // Hobby, 2 crons diários já ocupados) isso podia ser nunca. O webhook do
+  // WAHA já faz exatamente isto (`lib/dev/kick-local-pipeline.ts`,
+  // `acelerarPipelineDeEventos`) — aqui é o mesmo problema, caminho diferente:
+  // quem marca reunião é a TELA, não um webhook, e a tela não tinha o mesmo
+  // empurrão. Fire-and-forget: a resposta "marcado" não pode esperar o motor
+  // de regras, e falhar aqui não desfaz o compromisso, que já está gravado.
+  ensureHandlersRegistered();
+  void drainEventLog(createAdminClient()).catch((err) => {
+    logger.warn("[agenda] drain pós-marcação falhou", {
+      organization_id: ctx.organization_id,
+      appointment_id: criado.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
   });
 
   void audit({

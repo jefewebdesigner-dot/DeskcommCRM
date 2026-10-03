@@ -132,12 +132,14 @@ export function RouterEditorClient({
     [router, members],
   );
 
-  const currentMembers = draftMembers.map(({ agent_id, intent_name, intent_description, examples }) => ({
-    agent_id,
-    intent_name,
-    intent_description,
-    examples,
-  }));
+  const currentMembers = draftMembers.map(
+    ({ agent_id, intent_name, intent_description, examples }) => ({
+      agent_id,
+      intent_name,
+      intent_description,
+      examples,
+    }),
+  );
 
   const dirty =
     name !== baseline.name ||
@@ -236,8 +238,8 @@ export function RouterEditorClient({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 p-4 shadow-sm sm:p-5">
         <div className="flex items-center gap-3">
           <Link
             href="/app/ai/routers"
@@ -250,16 +252,26 @@ export function RouterEditorClient({
           </Badge>
         </div>
         {canManage && (
-          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-destructive">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeleteOpen(true)}
+            className="text-destructive"
+          >
             <Trash /> {t("Excluir roteador")}
           </Button>
         )}
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-4">
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Identificação")}</h3>
+          <Card className="space-y-4 rounded-2xl border-border/60 p-4 shadow-sm sm:p-5">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("1 · Entrada")}
+              </p>
+              <h3 className="mt-1 text-sm font-semibold tracking-tight">{t("Identificação")}</h3>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="router-name">{t("Nome")}</Label>
               <Input
@@ -272,7 +284,7 @@ export function RouterEditorClient({
             </div>
             <div className="space-y-1">
               <Label>{t("Número de WhatsApp")}</Label>
-              <p className="rounded-md border border-border/60 px-3 py-2 text-sm text-muted-foreground">
+              <p className="rounded-xl border border-border/60 bg-muted/[0.14] px-3 py-2.5 text-sm text-muted-foreground">
                 {channel
                   ? `${channel.display_name}${channel.phone_number ? ` · ${channel.phone_number}` : ""}`
                   : t("Número removido")}
@@ -298,8 +310,15 @@ export function RouterEditorClient({
             </div>
           </Card>
 
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Modelo que identifica a intenção")}</h3>
+          <Card className="space-y-4 rounded-2xl border-border/60 p-4 shadow-sm sm:p-5">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("2 · Entendimento")}
+              </p>
+              <h3 className="mt-1 text-sm font-semibold tracking-tight">
+                {t("Modelo que identifica a intenção")}
+              </h3>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="router-classifier">{t("Modelo do classificador")}</Label>
               <Select
@@ -307,13 +326,18 @@ export function RouterEditorClient({
                 onValueChange={setClassifier}
                 disabled={!canManage || classifierModels.length === 0}
               >
-                <SelectTrigger id="router-classifier">
+                <SelectTrigger id="router-classifier" className="rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={AUTO}>{t("Automático — usa o provedor da organização")}</SelectItem>
+                  <SelectItem value={AUTO}>
+                    {t("Automático — usa o provedor da organização")}
+                  </SelectItem>
                   {classifierModels.map((m) => (
-                    <SelectItem key={`${m.provider}::${m.model_id}`} value={`${m.provider}::${m.model_id}`}>
+                    <SelectItem
+                      key={`${m.provider}::${m.model_id}`}
+                      value={`${m.provider}::${m.model_id}`}
+                    >
                       {m.display_name} · {m.provider}
                       {m.origem === "plataforma" ? ` (${t("chave desta instalação")})` : ""}
                     </SelectItem>
@@ -332,8 +356,15 @@ export function RouterEditorClient({
             </div>
           </Card>
 
-          <Card className="space-y-3 p-4">
-            <h3 className="text-sm font-medium">{t("Se nenhuma intenção casar")}</h3>
+          <Card className="space-y-4 rounded-2xl border-border/60 p-4 shadow-sm sm:p-5">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {t("4 · Segurança")}
+              </p>
+              <h3 className="mt-1 text-sm font-semibold tracking-tight">
+                {t("Se nenhuma intenção casar")}
+              </h3>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="router-fallback">{t("Agente de fallback")}</Label>
               <Select
@@ -341,11 +372,13 @@ export function RouterEditorClient({
                 onValueChange={(v) => setFallbackAgentId(v === NONE ? "" : v)}
                 disabled={!canManage}
               >
-                <SelectTrigger id="router-fallback">
+                <SelectTrigger id="router-fallback" className="rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>{t("Nenhum — responde com o atendimento padrão")}</SelectItem>
+                  <SelectItem value={NONE}>
+                    {t("Nenhum — responde com o atendimento padrão")}
+                  </SelectItem>
                   {agents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
@@ -373,10 +406,13 @@ export function RouterEditorClient({
         </div>
 
         <div className="space-y-4">
-          <Card className="space-y-3 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+          <Card className="space-y-4 rounded-2xl border-border/60 p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-sm font-medium">{t("Intenções")}</h3>
+                <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  {t("3 · Destino")}
+                </p>
+                <h3 className="mt-1 text-sm font-semibold tracking-tight">{t("Intenções")}</h3>
                 <p className="text-xs text-muted-foreground">
                   {t(
                     "Cada intenção descreve uma situação e diz qual agente deve assumir a conversa quando o cliente quer aquilo.",
@@ -384,14 +420,19 @@ export function RouterEditorClient({
                 </p>
               </div>
               {canManage && (
-                <Button variant="outline" size="sm" onClick={addMember} className="shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addMember}
+                  className="shrink-0 rounded-xl"
+                >
                   <Plus /> {t("Intenção")}
                 </Button>
               )}
             </div>
 
             {draftMembers.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+              <p className="rounded-xl border border-dashed border-border/60 bg-muted/[0.06] p-4 text-sm text-muted-foreground">
                 {t(
                   "Nenhuma intenção ainda. Sem intenções, toda conversa cai direto no agente de fallback (ou fica sem resposta automática, se você não escolher um).",
                 )}
@@ -399,7 +440,10 @@ export function RouterEditorClient({
             ) : (
               <ul className="flex flex-col gap-3">
                 {draftMembers.map((m, i) => (
-                  <li key={m.key} className="rounded-md border border-border/60 p-3">
+                  <li
+                    key={m.key}
+                    className="rounded-xl border border-border/60 bg-muted/[0.06] p-3.5"
+                  >
                     <IntentRow
                       member={m}
                       agents={agents}
@@ -417,7 +461,11 @@ export function RouterEditorClient({
 
           {canManage && (
             <div className="flex sm:justify-end">
-              <Button onClick={handleSave} disabled={!dirty || !isValid || saving} className="w-full sm:w-auto">
+              <Button
+                onClick={handleSave}
+                disabled={!dirty || !isValid || saving}
+                className="w-full rounded-xl sm:w-auto"
+              >
                 {saving ? t("Salvando…") : t("Salvar")}
               </Button>
             </div>
@@ -476,13 +524,18 @@ function IntentRow({
             placeholder={t("Ex.: quer comprar")}
             disabled={disabled}
             maxLength={120}
+            className="rounded-xl"
             aria-invalid={duplicate}
           />
         </div>
         <div className="flex-1 space-y-1">
           <Label>{t("Agente que atende")}</Label>
-          <Select value={member.agent_id || undefined} onValueChange={(v) => onChange({ agent_id: v })} disabled={disabled}>
-            <SelectTrigger>
+          <Select
+            value={member.agent_id || undefined}
+            onValueChange={(v) => onChange({ agent_id: v })}
+            disabled={disabled}
+          >
+            <SelectTrigger className="rounded-xl">
               <SelectValue placeholder={t("Selecione o agente")} />
             </SelectTrigger>
             <SelectContent>
@@ -517,6 +570,7 @@ function IntentRow({
           disabled={disabled}
           rows={2}
           maxLength={2000}
+          className="rounded-xl"
         />
       </div>
       <ExamplesInput
@@ -559,7 +613,7 @@ function ExamplesInput({
   return (
     <div className="space-y-1">
       <Label>{t("Frases de exemplo (opcional)")}</Label>
-      <div className="flex flex-wrap gap-1 rounded-md border border-border/60 p-2">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-border/60 bg-muted/[0.06] p-2.5">
         {value.map((ex) => (
           <button
             key={ex}
@@ -591,10 +645,11 @@ function ExamplesInput({
             placeholder={t("Ex.: quanto custa? (Enter)")}
             disabled={value.length >= 10}
             maxLength={200}
+            className="rounded-xl"
           />
           <button
             type="button"
-            className="rounded-md border border-border/60 px-3 text-xs hover:bg-muted"
+            className="rounded-xl border border-border/60 px-3 text-xs hover:bg-muted"
             onClick={() => add(draft)}
             disabled={draft.trim() === ""}
           >
@@ -634,9 +689,14 @@ function TestPanel({
   const t = useT();
   const belowThreshold = result?.intent_name != null && result.confidence < result.min_confidence;
   return (
-    <Card className="space-y-3 p-4">
+    <Card className="space-y-4 rounded-2xl border-border/60 p-4 shadow-sm sm:p-5">
       <CardHeader className="p-0">
-        <CardTitle className="text-sm">{t("Testar classificação")}</CardTitle>
+        <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+          {t("Validação")}
+        </p>
+        <CardTitle className="mt-1 text-sm font-semibold tracking-tight">
+          {t("Testar classificação")}
+        </CardTitle>
         <CardDescription>
           {t(
             "Escreva uma frase como um cliente escreveria e veja qual intenção e qual agente o roteador escolheria — sem afetar nenhuma conversa real.",
@@ -656,11 +716,13 @@ function TestPanel({
           placeholder={t("Ex.: oi, quero saber o preço do plano premium")}
           rows={2}
           maxLength={4000}
+          className="rounded-xl"
           disabled={!canTest || !isActive}
         />
         <Button
           variant="outline"
           size="sm"
+          className="rounded-xl"
           onClick={onTest}
           disabled={!canTest || !isActive || pending || !message.trim()}
         >
@@ -668,9 +730,10 @@ function TestPanel({
           {!pending && <ArrowRight />}
         </Button>
         {result && (
-          <div className="rounded-md border border-border/60 p-3 text-sm">
+          <div className="rounded-xl border border-border/60 bg-muted/[0.06] p-3 text-sm">
             <p>
-              {t("Intenção")}: <span className="font-medium">{result.intent_name ?? t("nenhuma casou")}</span>
+              {t("Intenção")}:{" "}
+              <span className="font-medium">{result.intent_name ?? t("nenhuma casou")}</span>
               {result.intent_name && (
                 <span className="ml-2 text-xs text-muted-foreground">
                   {t("confiança")} {(result.confidence * 100).toFixed(0)}%
@@ -679,8 +742,9 @@ function TestPanel({
             </p>
             {belowThreshold && (
               <p className="text-xs text-amber-600">
-                {t("Confiança")} {(result.confidence * 100).toFixed(0)}% — {t("abaixo do mínimo de")}{" "}
-                {(result.min_confidence * 100).toFixed(0)}%, {t("cairia no atendimento padrão em produção.")}
+                {t("Confiança")} {(result.confidence * 100).toFixed(0)}% —{" "}
+                {t("abaixo do mínimo de")} {(result.min_confidence * 100).toFixed(0)}%,{" "}
+                {t("cairia no atendimento padrão em produção.")}
               </p>
             )}
             <p>

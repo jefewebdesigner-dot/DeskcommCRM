@@ -58,22 +58,27 @@ export function RoutersClient({ initialState, channelSessions }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex sm:justify-end">
         {canManagePerm && (
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
+          <Button onClick={() => setCreateOpen(true)} className="w-full rounded-xl sm:w-auto">
             <Plus /> {t("Novo roteador")}
           </Button>
         )}
       </div>
 
       {routers.length === 0 ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <Signpost size={32} className="text-muted-foreground" aria-hidden />
+        <Card className="flex flex-col items-center gap-3 rounded-[24px] border-dashed border-border/60 bg-muted/[0.06] p-10 text-center shadow-sm">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <Signpost size={24} weight="duotone" />
+          </span>
           <p className="max-w-md text-sm text-muted-foreground">
             {t(
               "Um roteador entende o que o cliente quer e entrega a conversa para o agente certo — um número de vendas fala com quem quer comprar, um de suporte com quem já é cliente, tudo no mesmo WhatsApp. Crie um para o seu número e escolha quais agentes ele aciona.",
             )}
           </p>
           {canManagePerm && (
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => setCreateOpen(true)} className="rounded-xl">
               <Plus /> {t("Criar meu primeiro roteador")}
             </Button>
           )}
@@ -83,23 +88,31 @@ export function RoutersClient({ initialState, channelSessions }: Props) {
           {routers.map((r) => (
             <li key={r.id}>
               <Link href={`/app/ai/routers/${r.id}`}>
-                <Card className="flex h-full flex-col gap-2 p-4 transition-colors hover:border-accent">
+                <Card className="group flex h-full flex-col gap-3 rounded-2xl border-border/60 bg-card p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="truncate font-medium" title={r.name}>
+                    <h3
+                      className="truncate text-sm font-semibold tracking-[-0.015em]"
+                      title={r.name}
+                    >
                       {r.name}
                     </h3>
-                    <Badge variant={r.is_active ? "success" : "neutral"} className="shrink-0 text-xs">
+                    <Badge
+                      variant={r.is_active ? "success" : "neutral"}
+                      className="shrink-0 text-xs"
+                    >
                       {r.is_active ? t("ativo") : t("inativo")}
                     </Badge>
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {channelLabel(channelSessions, r.channel_session_id, t)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {r.member_count === 0
-                      ? t("Sem intenções configuradas")
-                      : `${r.member_count} ${r.member_count === 1 ? t("intenção") : t("intenções")}`}
-                  </p>
+                  <div className="rounded-xl bg-muted/[0.18] p-3">
+                    <p className="truncate text-xs font-medium text-foreground">
+                      {channelLabel(channelSessions, r.channel_session_id, t)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {r.member_count === 0
+                        ? t("Sem intenções configuradas")
+                        : `${r.member_count} ${r.member_count === 1 ? t("intenção") : t("intenções")}`}
+                    </p>
+                  </div>
                 </Card>
               </Link>
             </li>
@@ -151,7 +164,7 @@ function CreateRouterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle>{t("Novo roteador")}</DialogTitle>
           <DialogDescription>
@@ -169,6 +182,7 @@ function CreateRouterDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder={t("Ex.: Roteador de vendas")}
               maxLength={120}
+              className="rounded-xl"
               autoFocus
               required
             />
@@ -176,7 +190,7 @@ function CreateRouterDialog({
           <div className="space-y-1">
             <Label htmlFor="router-channel">{t("Número de WhatsApp")}</Label>
             <Select value={channelSessionId || undefined} onValueChange={setChannelSessionId}>
-              <SelectTrigger id="router-channel">
+              <SelectTrigger id="router-channel" className="rounded-xl">
                 <SelectValue placeholder={t("Selecione um número")} />
               </SelectTrigger>
               <SelectContent>
@@ -201,10 +215,15 @@ function CreateRouterDialog({
             </p>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => onOpenChange(false)}
+            >
               {t("Cancelar")}
             </Button>
-            <Button type="submit" disabled={!valid || create.isPending}>
+            <Button type="submit" className="rounded-xl" disabled={!valid || create.isPending}>
               {create.isPending ? t("Criando…") : t("Criar roteador")}
             </Button>
           </DialogFooter>
