@@ -50,13 +50,7 @@ function unwrap<T>(json: unknown): T {
   return (json as { data: T }).data;
 }
 
-export function AgendarNoDossie({
-  lead,
-  pipelineId,
-}: {
-  lead: Lead;
-  pipelineId: string;
-}) {
+export function AgendarNoDossie({ lead, pipelineId }: { lead: Lead; pipelineId: string }) {
   const amanha = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -79,8 +73,7 @@ export function AgendarNoDossie({
     staleTime: 60_000,
   });
 
-  const tipoSelecionado =
-    tipos.data?.find((tipo) => tipo.id === tipoId) ?? tipos.data?.[0] ?? null;
+  const tipoSelecionado = tipos.data?.find((tipo) => tipo.id === tipoId) ?? tipos.data?.[0] ?? null;
   const janela = dia ? janelaDoDia(dia) : null;
   const horarios = useHorariosLivres(
     aberto && tipoSelecionado && janela
@@ -94,8 +87,7 @@ export function AgendarNoDossie({
 
   async function confirmar(inicio: string) {
     if (!tipoSelecionado || !lead.contact_id) return;
-    const nome =
-      lead.contact?.display_name ?? lead.contact?.name ?? lead.title;
+    const nome = lead.contact?.display_name ?? lead.contact?.name ?? lead.title;
     await marcar.mutateAsync({
       event_type_id: tipoSelecionado.id,
       starts_at: inicio,
@@ -113,10 +105,21 @@ export function AgendarNoDossie({
 
   if (!lead.contact_id) {
     return (
-      <Button type="button" variant="outline" size="sm" disabled>
-        <CalendarPlus className="mr-1.5 h-4 w-4" />
-        Agendar reunião
-      </Button>
+      <div className="space-y-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled
+          title="Associe um contato ao negócio para poder agendar uma reunião."
+        >
+          <CalendarPlus className="mr-1.5 h-4 w-4" />
+          Agendar reunião
+        </Button>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Associe um contato ao negócio para liberar o agendamento.
+        </p>
+      </div>
     );
   }
 
@@ -144,10 +147,7 @@ export function AgendarNoDossie({
           ) : tipos.data?.length ? (
             <>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Select
-                  value={tipoSelecionado?.id ?? ""}
-                  onValueChange={setTipoId}
-                >
+                <Select value={tipoSelecionado?.id ?? ""} onValueChange={setTipoId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Tipo de reunião" />
                   </SelectTrigger>
@@ -170,10 +170,9 @@ export function AgendarNoDossie({
 
               {tipoSelecionado?.location_kind === "google_meet" ? (
                 <p className="flex items-start gap-1.5 rounded-md bg-primary/5 px-2.5 py-2 text-xs text-text-muted">
-                  <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                  O Google Meet será criado na Agenda. Se este lead tiver conversa ativa,
-                  o CRM entrega o link automaticamente pelo WhatsApp quando o Google
-                  liberar a sala.
+                  <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />O Google Meet será
+                  criado na Agenda. Se este lead tiver conversa ativa, o CRM entrega o link
+                  automaticamente pelo WhatsApp quando o Google liberar a sala.
                 </p>
               ) : null}
 
@@ -184,9 +183,7 @@ export function AgendarNoDossie({
                 </div>
               ) : horarios.data?.slots?.length ? (
                 <div>
-                  <p className="mb-2 text-xs font-medium text-text-muted">
-                    Horários livres
-                  </p>
+                  <p className="mb-2 text-xs font-medium text-text-muted">Horários livres</p>
                   <div className="grid grid-cols-4 gap-1.5">
                     {horarios.data.slots.slice(0, 12).map((slot) => (
                       <Button
@@ -203,9 +200,7 @@ export function AgendarNoDossie({
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-text-muted">
-                  Nenhum horário livre neste dia.
-                </p>
+                <p className="text-xs text-text-muted">Nenhum horário livre neste dia.</p>
               )}
 
               <Button asChild type="button" variant="ghost" size="sm" className="w-full">
