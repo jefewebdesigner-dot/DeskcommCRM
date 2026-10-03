@@ -127,22 +127,35 @@ export function PublishBar({
   const busy = save.isPending || publish.isPending || disable.isPending || rollback.isPending;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
-      <div className="flex items-center gap-2">
-        <h1 className="text-sm font-semibold text-text">{flow.name}</h1>
-        <FlowStatusBadge status={flow.status} />
-        {dirty && (
-          <Badge variant="warning" data-testid="dirty-indicator">
-            {t("Alterações não salvas")}
-          </Badge>
-        )}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-card/95 px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.035)] backdrop-blur-sm">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-sm font-semibold tracking-[-0.015em] text-text">
+            {flow.name}
+          </h1>
+          <FlowStatusBadge status={flow.status} />
+          {dirty && (
+            <Badge variant="warning" data-testid="dirty-indicator">
+              {t("Alterações não salvas")}
+            </Badge>
+          )}
+        </div>
+        <p className="mt-1 text-[10px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          {t("Construtor de follow-up")}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <TriggerConfigControl flowId={flowId} triggerConfig={flow.trigger_config} />
 
-        <Select value={flow.handoff_policy} onValueChange={(v) => handoffPolicy.mutate(v as FollowupFlowDetailRow["handoff_policy"])}>
-          <SelectTrigger className="w-56" aria-label={t("Política de handoff")}>
+        <Select
+          value={flow.handoff_policy}
+          onValueChange={(v) => handoffPolicy.mutate(v as FollowupFlowDetailRow["handoff_policy"])}
+        >
+          <SelectTrigger
+            className="h-9 w-56 rounded-xl border-border/60"
+            aria-label={t("Política de handoff")}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -154,16 +167,31 @@ export function PublishBar({
           </SelectContent>
         </Select>
 
-        <Button type="button" variant="secondary" size="sm" disabled={!dirty || busy} onClick={onSave}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="rounded-xl"
+          disabled={!dirty || busy}
+          onClick={onSave}
+        >
           {save.isPending ? t("Salvando…") : t("Salvar")}
         </Button>
-        <Button type="button" size="sm" disabled={busy} onClick={onPublish} data-testid="publish-button">
+        <Button
+          type="button"
+          size="sm"
+          className="rounded-xl"
+          disabled={busy}
+          onClick={onPublish}
+          data-testid="publish-button"
+        >
           {publish.isPending ? t("Publicando…") : t("Publicar")}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="rounded-xl"
           disabled={busy || flow.status === "disabled"}
           onClick={onDisable}
         >
@@ -173,6 +201,7 @@ export function PublishBar({
           type="button"
           variant="outline"
           size="sm"
+          className="rounded-xl"
           disabled={busy || !canRollback}
           onClick={onRollback}
           data-testid="rollback-button"
@@ -184,6 +213,7 @@ export function PublishBar({
             type="button"
             variant="outline"
             size="sm"
+            className="rounded-xl"
             disabled={!canAutoFit}
             onClick={onAutoFit}
             data-testid="auto-fit-flow"
@@ -198,7 +228,7 @@ export function PublishBar({
               type="button"
               variant="outline"
               size="sm"
-              className="text-destructive"
+              className="rounded-xl text-destructive"
               data-testid="delete-selection"
               onClick={() => setOpenDeleteSelection(true)}
             >
@@ -213,7 +243,9 @@ export function PublishBar({
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {selection === "node"
-                      ? t("Este nó e as arestas ligadas a ele são apagados. Não é possível desfazer.")
+                      ? t(
+                          "Este nó e as arestas ligadas a ele são apagados. Não é possível desfazer.",
+                        )
                       : t("A aresta entre os dois nós é apagada. Não é possível desfazer.")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>

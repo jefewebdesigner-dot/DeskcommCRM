@@ -70,7 +70,13 @@ const STATUS_OPTIONS: FollowupEnrollmentStatus[] = [
 // quem espera a data do retorno tem de aparecer na fila. Um acompanhamento que
 // some da tela por 28 dias é uma ilha — ninguém sabe que ele existe nem o
 // cancela quando a cliente já voltou por outro caminho.
-const LIVE_ENROLLMENT_STATUSES = new Set(["active", "waiting_reply", "dormente", "paused_handoff", "paused_manual"]);
+const LIVE_ENROLLMENT_STATUSES = new Set([
+  "active",
+  "waiting_reply",
+  "dormente",
+  "paused_handoff",
+  "paused_manual",
+]);
 
 /**
  * O que ainda dá para desmarcar.
@@ -90,7 +96,10 @@ function podeCancelar(row: FollowupQueueRow): boolean {
 function QueueStatusBadge({ status }: { status: string }) {
   const t = useT();
   return (
-    <Badge variant={tomDoStatus(status)} aria-label={`${t("status")}: ${rotuloDoStatus(status, t)}`}>
+    <Badge
+      variant={tomDoStatus(status)}
+      aria-label={`${t("status")}: ${rotuloDoStatus(status, t)}`}
+    >
       {rotuloDoStatus(status, t)}
     </Badge>
   );
@@ -132,7 +141,8 @@ export function QueueTab({ canWrite }: Props) {
     }),
     [status, pointerId, q],
   );
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useFollowupQueue(filters);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useFollowupQueue(filters);
   const cancelEnrollment = useCancelFollowupEnrollment();
   const cancelPromise = useCancelFollowupPromise();
 
@@ -140,24 +150,30 @@ export function QueueTab({ canWrite }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
         <div className="relative w-full sm:w-56">
           <MagnifyingGlass
             size={14}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-muted"
             aria-hidden
           />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder={t("Buscar contato…")}
-            className="h-9 w-full pl-8 text-sm"
+            className="h-9 w-full rounded-xl border-border/60 bg-muted/25 pl-8 text-[13px]"
             aria-label={t("Buscar contato")}
           />
         </div>
 
-        <Select value={status} onValueChange={(v) => setStatus(v as FollowupEnrollmentStatus | "all")}>
-          <SelectTrigger className="h-9 w-48 text-sm" aria-label={t("Filtrar por status")}>
+        <Select
+          value={status}
+          onValueChange={(v) => setStatus(v as FollowupEnrollmentStatus | "all")}
+        >
+          <SelectTrigger
+            className="h-9 w-48 rounded-xl border-border/60 bg-background text-sm"
+            aria-label={t("Filtrar por status")}
+          >
             <SelectValue placeholder={t("Todos os status")} />
           </SelectTrigger>
           <SelectContent>
@@ -171,7 +187,10 @@ export function QueueTab({ canWrite }: Props) {
         </Select>
 
         <Select value={pointerId} onValueChange={setPointerId}>
-          <SelectTrigger className="h-9 w-48 text-sm" aria-label={t("Filtrar por fluxo")}>
+          <SelectTrigger
+            className="h-9 w-48 rounded-xl border-border/60 bg-background text-sm"
+            aria-label={t("Filtrar por fluxo")}
+          >
             <SelectValue placeholder={t("Todos os fluxos")} />
           </SelectTrigger>
           <SelectContent>
@@ -186,17 +205,22 @@ export function QueueTab({ canWrite }: Props) {
       </div>
 
       {!isLoading && rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-md border border-border py-16 text-center">
-          <Clock size={36} className="text-text-muted" aria-hidden />
-          <h2 className="font-medium">{t("Nenhum item na fila")}</h2>
+        <div className="flex flex-col items-center gap-3 rounded-[24px] border border-dashed border-border/60 bg-muted/[0.06] px-6 py-16 text-center">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-text-muted"
+            aria-hidden="true"
+          >
+            <Clock size={24} weight="duotone" />
+          </span>
+          <h2 className="font-semibold tracking-tight">{t("Nenhum item na fila")}</h2>
           <p className="max-w-sm text-sm text-text-muted">
             {t("Enrollments ativos e promessas de retorno agendadas pela IA aparecem aqui.")}
           </p>
         </div>
       ) : (
-        <div className="rounded-md border border-border">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/25">
               <TableRow>
                 <TableHead>{t("Contato")}</TableHead>
                 <TableHead>{t("Fluxo / Promessa")}</TableHead>
@@ -210,7 +234,11 @@ export function QueueTab({ canWrite }: Props) {
               {rows.map((row) => {
                 const canCancel = canWrite && podeCancelar(row);
                 return (
-                  <TableRow key={`${row.source}:${row.id}`} data-testid="queue-row">
+                  <TableRow
+                    key={`${row.source}:${row.id}`}
+                    data-testid="queue-row"
+                    className="transition-colors hover:bg-muted/15"
+                  >
                     <TableCell className="font-medium">
                       {/*
                         A porta do dossiê. Só enrollment tem história para contar:
@@ -221,7 +249,7 @@ export function QueueTab({ canWrite }: Props) {
                       {row.source === "enrollment" ? (
                         <Link
                           href={`/app/ai/followups/enrollments/${row.id}`}
-                          className="underline-offset-2 hover:underline"
+                          className="font-semibold underline-offset-2 hover:underline"
                           data-testid="queue-abrir-dossie"
                         >
                           {row.contact.name}
@@ -232,13 +260,22 @@ export function QueueTab({ canWrite }: Props) {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>{row.flow_name ?? <span className="text-text-muted">{t("Promessa")}</span>}</span>
+                        <span>
+                          {row.flow_name ?? (
+                            <span className="text-text-muted">{t("Promessa")}</span>
+                          )}
+                        </span>
                         {row.agent_name && (
-                          <span className="text-xs text-text-muted">{t("agente")} {row.agent_name}</span>
+                          <span className="text-xs text-text-muted">
+                            {t("agente")} {row.agent_name}
+                          </span>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[280px] truncate text-sm" title={row.node_or_reason}>
+                    <TableCell
+                      className="max-w-[280px] truncate text-sm"
+                      title={row.node_or_reason}
+                    >
                       {row.node_or_reason}
                     </TableCell>
                     <TableCell>
@@ -253,13 +290,17 @@ export function QueueTab({ canWrite }: Props) {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="rounded-xl"
                             data-testid="cancelar-item-da-fila"
                             aria-label={
-                              row.source === "promise" ? t("Cancelar retorno") : t("Cancelar follow-up")
+                              row.source === "promise"
+                                ? t("Cancelar retorno")
+                                : t("Cancelar follow-up")
                             }
                             onClick={() => setPendingCancel(row)}
                           >
-                            <Trash size={14} aria-hidden className="mr-1 text-error" /> {t("Cancelar")}
+                            <Trash size={14} aria-hidden className="mr-1 text-error" />{" "}
+                            {t("Cancelar")}
                           </Button>
                         )}
                       </TableCell>
@@ -274,14 +315,23 @@ export function QueueTab({ canWrite }: Props) {
 
       {hasNextPage && (
         <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
             {isFetchingNextPage ? t("Carregando...") : t("Carregar mais")}
           </Button>
         </div>
       )}
 
-      <AlertDialog open={pendingCancel !== null} onOpenChange={(open) => !open && setPendingCancel(null)}>
-        <AlertDialogContent>
+      <AlertDialog
+        open={pendingCancel !== null}
+        onOpenChange={(open) => !open && setPendingCancel(null)}
+      >
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pendingCancel?.source === "promise"
@@ -290,8 +340,12 @@ export function QueueTab({ canWrite }: Props) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingCancel?.source === "promise"
-                ? t("O agente não voltará a falar com esta pessoa no horário combinado, e vai saber que você desmarcou.")
-                : t("O lead não receberá mais mensagens deste fluxo. Essa ação não pode ser desfeita.")}
+                ? t(
+                    "O agente não voltará a falar com esta pessoa no horário combinado, e vai saber que você desmarcou.",
+                  )
+                : t(
+                    "O lead não receberá mais mensagens deste fluxo. Essa ação não pode ser desfeita.",
+                  )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -304,7 +358,9 @@ export function QueueTab({ canWrite }: Props) {
                 setPendingCancel(null);
               }}
             >
-              {pendingCancel?.source === "promise" ? t("Cancelar retorno") : t("Cancelar follow-up")}
+              {pendingCancel?.source === "promise"
+                ? t("Cancelar retorno")
+                : t("Cancelar follow-up")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
