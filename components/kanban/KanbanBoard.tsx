@@ -60,7 +60,7 @@ function BoardSkeleton() {
       {[0, 1, 2].map((c) => (
         <div
           key={c}
-          className="flex w-80 shrink-0 flex-col gap-2 rounded-lg border border-border bg-surface-muted/40 p-3"
+          className="bg-surface-muted/40 flex w-80 shrink-0 flex-col gap-2 rounded-lg border border-border p-3"
         >
           <Skeleton className="h-5 w-32" />
           {[0, 1, 2, 3].map((i) => (
@@ -153,9 +153,7 @@ export function KanbanBoard({
   const isError = useExternal ? false : queryResult.isError;
   const error = useExternal ? null : queryResult.error;
 
-  const leadDoDossie = dossieId
-    ? (data?.leads.find((l) => l.id === dossieId) ?? null)
-    : null;
+  const leadDoDossie = dossieId ? (data?.leads.find((l) => l.id === dossieId) ?? null) : null;
 
   const grouped = useMemo(() => {
     if (!data) return null;
@@ -213,10 +211,7 @@ export function KanbanBoard({
       if (!data || !grouped) return;
       const { source, destination, draggableId } = result;
       if (!destination) return;
-      if (
-        source.droppableId === destination.droppableId &&
-        source.index === destination.index
-      ) {
+      if (source.droppableId === destination.droppableId && source.index === destination.index) {
         return;
       }
 
@@ -224,13 +219,10 @@ export function KanbanBoard({
       if (!lead) return;
 
       const destStageId = destination.droppableId;
-      const destList = (grouped.get(destStageId) ?? []).filter(
-        (l) => l.id !== draggableId,
-      );
+      const destList = (grouped.get(destStageId) ?? []).filter((l) => l.id !== draggableId);
 
       const before = destination.index > 0 ? destList[destination.index - 1] : null;
-      const after =
-        destination.index < destList.length ? destList[destination.index] : null;
+      const after = destination.index < destList.length ? destList[destination.index] : null;
 
       const newPosition = midpoint(
         before?.position_in_stage ?? null,
@@ -279,7 +271,7 @@ export function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="relative h-full">
+      <div className="relative h-full min-h-[420px] overflow-hidden rounded-[24px] border border-border/60 bg-muted/[0.10] shadow-sm">
         {podeRolarEsquerda ? (
           <Button
             type="button"
@@ -287,7 +279,7 @@ export function KanbanBoard({
             size="icon"
             aria-label={t("Ver etapas anteriores")}
             onClick={() => rolarQuadro(-1)}
-            className="absolute left-2 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-full bg-background/95 shadow-md backdrop-blur"
+            className="absolute top-1/2 left-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -299,7 +291,7 @@ export function KanbanBoard({
             size="icon"
             aria-label={t("Ver próximas etapas")}
             onClick={() => rolarQuadro(1)}
-            className="absolute right-2 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-full bg-background/95 shadow-md backdrop-blur"
+            className="absolute top-1/2 right-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -308,7 +300,7 @@ export function KanbanBoard({
         <div
           ref={boardScrollRef}
           onScroll={atualizarNavegacaoHorizontal}
-          className="flex h-full gap-3 overflow-x-auto p-4 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+          className="flex h-full [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] gap-3 overflow-x-auto p-3 sm:p-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
         >
           {data.stages.map((stage) => (
             <StageColumn
@@ -336,9 +328,7 @@ export function KanbanBoard({
           lead={leadDoDossie}
           pipelineId={pipelineId}
           fieldDefs={camposDoFunil(data.pipeline.settings ?? null)}
-          stageName={
-            data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"
-          }
+          stageName={data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"}
           ownerNames={ownerNames}
         />
       )}

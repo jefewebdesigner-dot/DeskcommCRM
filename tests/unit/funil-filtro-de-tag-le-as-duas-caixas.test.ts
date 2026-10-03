@@ -72,7 +72,11 @@ describe("marcadoresDoCard — as duas caixas numa lista só", () => {
   it("une também os marcadores das CONVERSAS do contato (decisão do dono, 19/09)", () => {
     expect(
       marcadoresDoCard(
-        card({ tags: ["recompra"], contact_tags: ["vip"], conversation_tags: ["reclamacao", "vip"] }),
+        card({
+          tags: ["recompra"],
+          contact_tags: ["vip"],
+          conversation_tags: ["reclamacao", "vip"],
+        }),
       ),
     ).toEqual(["recompra", "vip", "reclamacao"]);
   });
@@ -83,8 +87,7 @@ describe("marcadoresDoCard — as duas caixas numa lista só", () => {
 });
 
 describe("applyFilters — filtro por marcador", () => {
-  const filtrar = (leads: Lead[], tag: string) =>
-    applyFilters(leads, { tag }).map((l) => l.id);
+  const filtrar = (leads: Lead[], tag: string) => applyFilters(leads, { tag }).map((l) => l.id);
 
   it("acha o card pelo marcador do CONTATO — o defeito relatado", () => {
     const leads = [
@@ -124,8 +127,12 @@ describe("os pontos de chamada — a regra só vale se quem a usa a chama", () =
     expect(fonte, "withMarcadoresDoContato não é chamada na rota").toMatch(
       /leadsComMarcadores\s*=\s*await withMarcadoresDoContato\(/,
     );
-    expect(fonte, "o resultado de withMarcadoresDoContato não chega à resposta").toMatch(
-      /leads:\s*leadsComMarcadores\.leads/,
+    expect(
+      fonte,
+      "o resultado de withMarcadoresDoContato não segue para o próximo enriquecimento",
+    ).toMatch(/withNextOperations\([\s\S]*?leadsComMarcadores\.leads/);
+    expect(fonte, "a cadeia enriquecida não chega à resposta do quadro").toMatch(
+      /leads:\s*leadsComOperacao\.leads/,
     );
   });
 

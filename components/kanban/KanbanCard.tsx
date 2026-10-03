@@ -130,11 +130,7 @@ export function KanbanCard({
   // O título é o maior e mais natural alvo do card. Quem lê "Segurando Shift,
   // um clique seleciona tudo entre o card anterior e o que você clicou" e clica
   // no card clica no nome dele — e recebia o dossiê.
-  const decidirClique = (e: {
-    shiftKey: boolean;
-    metaKey: boolean;
-    ctrlKey: boolean;
-  }): void => {
+  const decidirClique = (e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }): void => {
     if (e.shiftKey) {
       onSelect?.(card.id, "intervalo");
       return;
@@ -164,11 +160,11 @@ export function KanbanCard({
           // Tags saem do card (Lei A): ficam a um hover, sem ocupar altura.
           title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
           className={cn(
-            "group relative overflow-hidden rounded-md border border-border bg-surface",
-            "py-2.5 pl-3 pr-3 shadow-xs transition-colors",
-            "hover:border-border-strong",
-            snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
-            isSelected && "ring-2 ring-accent",
+            "group relative overflow-hidden rounded-xl border border-border/70 bg-background",
+            "py-2.5 pr-3 pl-3 shadow-sm transition-[border-color,box-shadow]",
+            "hover:border-border-strong hover:shadow-md",
+            snapshot.isDragging && "rotate-1 shadow-lg ring-1 ring-accent/40",
+            isSelected && "border-accent/30 ring-2 ring-accent/70",
           )}
         >
           {/* key = contador: cada evento remoto monta um overlay NOVO, e é isso
@@ -222,9 +218,7 @@ export function KanbanCard({
                 className={cn(
                   "mt-1 h-4 w-4 shrink-0 cursor-pointer accent-accent transition-opacity",
                   "focus:opacity-100 focus-visible:outline-2 focus-visible:outline-accent",
-                  isSelected || isSelecting
-                    ? "opacity-100"
-                    : "opacity-0 group-hover:opacity-100",
+                  isSelected || isSelecting ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                 )}
               />
               {card.canonicalTag && (
@@ -244,7 +238,7 @@ export function KanbanCard({
                   acessibilidade; deixar só onKeyDown daria uma ação que existe
                   e NÃO É DESCOBERTA por leitor de tela. O título como button
                   atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
-              <h3 className="line-clamp-2 h-10 text-sm font-medium leading-5 text-text">
+              <h3 className="line-clamp-2 h-10 text-sm leading-5 font-medium text-text">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -255,7 +249,7 @@ export function KanbanCard({
                     e.stopPropagation();
                     decidirClique(e);
                   }}
-                  className="text-left hover:underline"
+                  className="text-left tracking-[-0.01em] hover:text-primary"
                 >
                   {card.title}
                 </button>
@@ -265,7 +259,7 @@ export function KanbanCard({
           </div>
 
           <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] text-text-muted">
-            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-medium text-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 bg-muted/55 px-2 py-0.5 font-medium text-foreground">
               {rotuloDaOrigem(card.source)}
             </span>
             {card.contactPhone || card.contactEmail ? (
@@ -282,10 +276,7 @@ export function KanbanCard({
 
           <div className="mt-1 flex h-5 items-center justify-between gap-2 text-xs">
             <span
-              className={cn(
-                "font-semibold tabular-nums",
-                value ? "text-text" : "text-text-muted",
-              )}
+              className={cn("font-semibold tabular-nums", value ? "text-text" : "text-text-muted")}
             >
               {value ?? t("Sem valor")}
             </span>
@@ -395,7 +386,7 @@ export function KanbanCard({
                 compacto
               />
             )}
-            <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
+            <span className="shrink-0 text-[11px] whitespace-nowrap text-text-muted tabular-nums">
               {state.showStageAge && age
                 ? `${age} ${t("em")} ${card.stageName}`
                 : `${t("em")} ${card.stageName}`}

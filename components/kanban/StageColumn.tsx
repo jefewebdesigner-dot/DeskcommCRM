@@ -95,8 +95,8 @@ export function StageColumn({
     : undefined;
 
   return (
-    <div className="flex w-80 shrink-0 flex-col rounded-lg border border-border bg-surface-muted/40">
-      <div className="group/etapa flex items-center gap-2 border-b border-border px-3 py-2.5">
+    <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      <div className="group/etapa flex items-center gap-2 border-b border-border/60 bg-gradient-to-br from-card to-muted/30 px-3.5 py-3">
         {/* "Selecionar a etapa inteira" é o gesto que faz a ação em lote valer a
             pena: sem ele, mover trinta cards deixa de ser trinta arrastes e vira
             trinta cliques com modificador. Fica no cabeçalho porque é ali que a
@@ -124,23 +124,20 @@ export function StageColumn({
           )}
         />
         <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            !stage.color && "bg-text-muted/40",
-          )}
+          className={cn("h-2 w-2 rounded-full", !stage.color && "bg-text-muted/40")}
           style={accentStyle}
           aria-hidden
         />
-        <h2 className="flex-1 truncate text-sm font-semibold text-text">
+        <h2 className="flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-text">
           {stage.name}
         </h2>
-        <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
+        <span className="rounded-full border border-border/50 bg-background px-2 py-0.5 text-[10px] font-semibold text-text-muted tabular-nums">
           {selecionadosAqui > 0 ? `${selecionadosAqui}/${leads.length}` : leads.length}
         </span>
       </div>
 
       {totalCents > 0 && (
-        <div className="border-b border-border px-3 py-1.5 text-[11px] tabular-nums text-text-muted">
+        <div className="border-b border-border/50 bg-muted/[0.12] px-3.5 py-1.5 text-[10px] font-medium text-text-muted tabular-nums">
           {formatCents(totalCents, moedaDoTotal)}
         </div>
       )}
@@ -151,7 +148,7 @@ export function StageColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-1 flex-col gap-2 p-2 transition-colors",
+              "flex flex-1 flex-col gap-2.5 bg-muted/[0.08] p-2.5 transition-colors",
               snapshot.isDraggingOver && "bg-accent/5",
             )}
           >

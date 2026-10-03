@@ -108,7 +108,7 @@ export function PipelinePageClient({
 
   return (
     <div
-      className="flex h-full flex-col gap-4"
+      className="flex h-full min-h-0 flex-col gap-5"
       // OBSERVÁVEL de propósito, e é a razão de existir desta linha: "a
       // assinatura morreu" e "nada aconteceu" produzem o MESMO silêncio na
       // tela, e sem este valor nem o produto nem o teste conseguem separar as
@@ -132,48 +132,56 @@ export function PipelinePageClient({
           limite curto) + botão na mesma linha sem quebra empurrava o botão pra
           fora da viewport em telas estreitas. De `sm:` pra cima volta a ser
           uma linha só, como sempre foi. */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="sr-only">{data?.pipeline.name ?? initialName}</h1>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t("Funil")}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={pipelineId} onValueChange={trocarFunil}>
-              <SelectTrigger
-                className="h-10 w-full min-w-[220px] text-base font-semibold sm:w-[320px]"
-                aria-label={t("Alterar funil")}
-                data-testid="seletor-funil"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {funisDisponiveis.map((funil) => {
-                  const tipo = tipoOperacionalDoFunil(funil.settings);
-                  const rotulo = rotuloDoTipoOperacional(tipo) ?? funil.name;
-                  return (
-                    <SelectItem key={funil.id} value={funil.id}>
-                      {t(rotulo)}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {rotuloOperacional ? (
-              <Badge variant="outline">{t(rotuloOperacional)}</Badge>
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="sr-only">{data?.pipeline.name ?? initialName}</h1>
+            <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Funil de operação")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={pipelineId} onValueChange={trocarFunil}>
+                <SelectTrigger
+                  className="h-11 w-full min-w-[220px] rounded-xl border-border/60 bg-background/75 text-[15px] font-semibold shadow-sm sm:w-[320px]"
+                  aria-label={t("Alterar funil")}
+                  data-testid="seletor-funil"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {funisDisponiveis.map((funil) => {
+                    const tipo = tipoOperacionalDoFunil(funil.settings);
+                    const rotulo = rotuloDoTipoOperacional(tipo) ?? funil.name;
+                    return (
+                      <SelectItem key={funil.id} value={funil.id}>
+                        {t(rotulo)}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {rotuloOperacional ? <Badge variant="outline">{t(rotuloOperacional)}</Badge> : null}
+            </div>
+            {data?.pipeline.description ? (
+              <p className="mt-1.5 text-sm text-muted-foreground">{data.pipeline.description}</p>
             ) : null}
           </div>
-          {data?.pipeline.description ? (
-            <p className="mt-1.5 text-sm text-muted-foreground">{data.pipeline.description}</p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild className="shrink-0">
-            <Link href="/app/kanban/gerenciar">{t("Gerenciar funis")}</Link>
-          </Button>
-          <Button onClick={() => setNewOpen(true)} disabled={!data} className="shrink-0">
-            <Plus size={16} className="mr-2" /> {t("Novo Lead")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild className="shrink-0 rounded-xl bg-background/70">
+              <Link href="/app/kanban/gerenciar">{t("Gerenciar funis")}</Link>
+            </Button>
+            <Button
+              onClick={() => setNewOpen(true)}
+              disabled={!data}
+              className="shrink-0 rounded-xl"
+            >
+              <Plus size={16} className="mr-2" /> {t("Novo Lead")}
+            </Button>
+          </div>
         </div>
       </header>
       {data && (

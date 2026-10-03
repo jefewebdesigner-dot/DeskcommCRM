@@ -18,11 +18,7 @@ import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import type { Lead, OwnerKind } from "@/lib/types/leads";
 import { marcadoresDoCard } from "@/lib/kanban/marcadores-do-card";
 import { OwnerBadge } from "./OwnerBadge";
-import {
-  agentOwnerFilter,
-  parseAgentOwnerFilter,
-  type LeadFilters,
-} from "@/lib/kanban/filters";
+import { agentOwnerFilter, parseAgentOwnerFilter, type LeadFilters } from "@/lib/kanban/filters";
 import { cn } from "@/lib/utils";
 
 interface FilterBarProps {
@@ -114,8 +110,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           ? (agents?.find((a) => a.agent_id === filteredAgentId)?.name ?? t("Agente"))
           : filters.owner === user.id
             ? t("Eu")
-            : (members?.find((m) => m.user_id === filters.owner)?.full_name ??
-              t("Responsável"));
+            : (members?.find((m) => m.user_id === filters.owner)?.full_name ?? t("Responsável"));
 
   const statusLabel = t(
     STATUS_OPTIONS.find((o) => o.value === (filters.status ?? "all"))?.label ?? "Todos",
@@ -124,18 +119,18 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const tagLabel = filters.tag ?? t("Tag: todas");
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
       <Input
         type="search"
         placeholder={t("Buscar por título…")}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
-        className="h-9 w-full sm:w-64"
+        className="h-9 w-full rounded-xl border-border/60 bg-muted/30 shadow-none focus-visible:bg-background sm:w-64"
       />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="rounded-xl border-border/60">
             {t("Responsável")}: {ownerLabel}
           </Button>
         </DropdownMenuTrigger>
@@ -165,12 +160,11 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
             <>
               <DropdownMenuSeparator />
               {assignees.map((a) => (
-                <DropdownMenuItem key={a.key} onClick={() => onChange({ ...filters, owner: a.owner })}>
-                  <OwnerBadge
-                    ownerKind={a.kind}
-                    ownerName={a.name}
-                    agentVersion={a.version}
-                  />
+                <DropdownMenuItem
+                  key={a.key}
+                  onClick={() => onChange({ ...filters, owner: a.owner })}
+                >
+                  <OwnerBadge ownerKind={a.kind} ownerName={a.name} agentVersion={a.version} />
                 </DropdownMenuItem>
               ))}
             </>
@@ -180,7 +174,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="rounded-xl border-border/60">
             {t("Status")}: {statusLabel}
           </Button>
         </DropdownMenuTrigger>
@@ -198,7 +192,12 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={tagOptions.length === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={tagOptions.length === 0}
+            className="rounded-xl border-border/60"
+          >
             {filters.tag ? <PontoDaEtiqueta tag={filters.tag} className="mr-2" /> : null}
             {tagLabel}
           </Button>
@@ -219,7 +218,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
       <label
         className={cn(
-          "flex cursor-pointer select-none items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm",
+          "flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-1.5 text-sm transition-colors select-none",
           filters.overdueOnly && "border-accent bg-accent/10",
         )}
       >

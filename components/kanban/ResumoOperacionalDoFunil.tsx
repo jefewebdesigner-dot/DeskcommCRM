@@ -43,8 +43,8 @@ export function resumirFunil(
     semResponsavel: abertos.filter(
       (lead) => lead.owner_user_id === null && lead.owner_agent_id === null,
     ).length,
-    prazoVencido: abertos.filter(
-      (lead) => Boolean(lead.expected_close_date && lead.expected_close_date < hoje),
+    prazoVencido: abertos.filter((lead) =>
+      Boolean(lead.expected_close_date && lead.expected_close_date < hoje),
     ).length,
     valores: [...porMoeda.entries()]
       .map(([moeda, centavos]) => ({ moeda, centavos }))
@@ -97,29 +97,50 @@ export function ResumoOperacionalDoFunil({
   const mostraValor = tipoOperacional !== "support";
 
   return (
-    <section className="space-y-2" aria-label={t("Visão operacional do funil")} data-testid="resumo-do-funil">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border border-border bg-surface p-3">
-          <p className="text-xs text-muted-foreground">{t(primeiroTitulo)}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{resumo.abertos}</p>
+    <section
+      className="space-y-2"
+      aria-label={t("Visão operacional do funil")}
+      data-testid="resumo-do-funil"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+            {t(primeiroTitulo)}
+          </p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
+            {resumo.abertos}
+          </p>
           <p className="mt-1 text-[11px] text-muted-foreground">{t(primeiroAjuda)}</p>
         </div>
 
         {mostraValor ? (
-          <div className="rounded-lg border border-border bg-surface p-3">
-            <p className="text-xs text-muted-foreground">{t(valorTitulo)}</p>
-            <p className="mt-1 truncate text-xl font-semibold tabular-nums" title={valorDoFunil(resumo.valores)}>
+          <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+            <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+              {t(valorTitulo)}
+            </p>
+            <p
+              className="mt-1 truncate text-xl font-semibold tabular-nums"
+              title={valorDoFunil(resumo.valores)}
+            >
               {valorDoFunil(resumo.valores)}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {t(tipoOperacional === "retention" ? "Valor financeiro dos casos ainda em recuperação." : "Soma dos negócios ainda abertos.")}
+              {t(
+                tipoOperacional === "retention"
+                  ? "Valor financeiro dos casos ainda em recuperação."
+                  : "Soma dos negócios ainda abertos.",
+              )}
             </p>
           </div>
         ) : null}
 
-        <div className="rounded-lg border border-border bg-surface p-3">
-          <p className="text-xs text-muted-foreground">{t("Em risco")}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{resumo.emRisco}</p>
+        <div className="rounded-2xl border border-warning/20 bg-warning-bg/35 p-4 shadow-sm">
+          <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+            {t("Em risco")}
+          </p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
+            {resumo.emRisco}
+          </p>
           <Button asChild variant="ghost" size="sm" className="mt-1 h-6 px-0 text-xs">
             <Link href="/app/radar">
               {t("Abrir Radar")} <ArrowRight size={12} aria-hidden />
@@ -130,21 +151,33 @@ export function ResumoOperacionalDoFunil({
         <button
           type="button"
           onClick={onSemResponsavel}
-          className="rounded-lg border border-border bg-surface p-3 text-left transition-colors hover:bg-muted/60"
+          className="rounded-2xl border border-border/60 bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] hover:border-border-strong hover:shadow-md"
         >
-          <p className="text-xs text-muted-foreground">{t("Sem responsável")}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{resumo.semResponsavel}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{t("Clique para filtrar e distribuir.")}</p>
+          <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+            {t("Sem responsável")}
+          </p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
+            {resumo.semResponsavel}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t("Clique para filtrar e distribuir.")}
+          </p>
         </button>
 
         <button
           type="button"
           onClick={onPrazoVencido}
-          className="rounded-lg border border-border bg-surface p-3 text-left transition-colors hover:bg-muted/60"
+          className="rounded-2xl border border-warning/20 bg-warning-bg/25 p-4 text-left shadow-sm transition-[border-color,box-shadow] hover:border-warning/35 hover:shadow-md"
         >
-          <p className="text-xs text-muted-foreground">{t("Prazo vencido")}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{resumo.prazoVencido}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{t("Clique para ver o que já passou da data.")}</p>
+          <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
+            {t("Prazo vencido")}
+          </p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
+            {resumo.prazoVencido}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t("Clique para ver o que já passou da data.")}
+          </p>
         </button>
       </div>
     </section>
