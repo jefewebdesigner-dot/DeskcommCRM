@@ -80,7 +80,7 @@ function Linha({
   return (
     <div
       className={cn(
-        "group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/40",
+        "group flex items-start gap-3 rounded-xl border border-transparent px-3 py-3 transition-[background,border-color,box-shadow] hover:border-border/50 hover:bg-muted/25 hover:shadow-sm",
         encerrada && "opacity-60",
       )}
     >
@@ -112,7 +112,7 @@ function Linha({
       >
         <p
           className={cn(
-            "text-sm font-medium",
+            "text-sm font-medium tracking-[-0.01em]",
             encerrada && "text-muted-foreground line-through",
           )}
         >
@@ -136,7 +136,9 @@ function Linha({
           >
             {rotuloDaPrioridade[tarefa.priority]}
           </span>
-          <span className={cn("text-muted-foreground", atrasada && "font-semibold text-destructive")}>
+          <span
+            className={cn("text-muted-foreground", atrasada && "font-semibold text-destructive")}
+          >
             {tarefa.due_date
               ? new Date(tarefa.due_date).toLocaleString(tag, {
                   day: "2-digit",
@@ -150,7 +152,7 @@ function Linha({
       </div>
 
       {podeEditar ? (
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <Button
             variant="ghost"
             size="icon"
@@ -218,7 +220,7 @@ export function ListaDeTarefas({
 
   if (grupos.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
+      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/[0.10] p-10 text-center">
         <p className="text-sm font-medium">{t("Nenhuma tarefa por aqui")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("Enquanto isto estiver vazio, o que foi combinado vive só na memória de alguém.")}
@@ -228,18 +230,18 @@ export function ListaDeTarefas({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {grupos.map((grupo) => (
         <section key={grupo.faixa}>
           <h2
             className={cn(
-              "mb-1 px-3 text-xs font-semibold uppercase tracking-wider",
+              "mb-2 px-1 text-[10px] font-semibold tracking-[0.12em] uppercase",
               grupo.faixa === "atrasada" ? "text-destructive" : "text-muted-foreground",
             )}
           >
             {rotuloDaFaixa[grupo.faixa]}
           </h2>
-          <div className="rounded-xl border bg-card py-1">
+          <div className="rounded-2xl border border-border/60 bg-card p-1 shadow-sm">
             {grupo.tarefas.map((tarefa) => (
               <Linha
                 key={tarefa.id}

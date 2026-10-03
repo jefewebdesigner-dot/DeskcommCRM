@@ -71,22 +71,22 @@ export function CalendarioDeTarefas({ tarefas, podeEditar, aoAbrirTarefa, aoClic
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-br from-card to-muted/25 px-4 py-3.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-9 w-9 rounded-xl"
           aria-label={t("Mês anterior")}
           onClick={() => mover(-1)}
         >
           <CaretLeft size={16} aria-hidden />
         </Button>
-        <h2 className="text-base font-semibold capitalize">{nomeDoMes}</h2>
+        <h2 className="text-base font-semibold tracking-[-0.02em] capitalize">{nomeDoMes}</h2>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-9 w-9 rounded-xl"
           aria-label={t("Próximo mês")}
           onClick={() => mover(1)}
         >
@@ -94,11 +94,11 @@ export function CalendarioDeTarefas({ tarefas, podeEditar, aoAbrirTarefa, aoClic
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 border-b bg-muted/40">
+      <div className="grid grid-cols-7 border-b border-border/60 bg-muted/25">
         {cabecalhos.map((rotulo) => (
           <div
             key={rotulo}
-            className="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="py-2 text-center text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
           >
             {rotulo}
           </div>
@@ -117,7 +117,7 @@ export function CalendarioDeTarefas({ tarefas, podeEditar, aoAbrirTarefa, aoClic
             <div
               key={chave}
               className={cn(
-                "flex min-h-[104px] flex-col gap-1 p-1.5",
+                "flex min-h-[108px] flex-col gap-1.5 p-2 transition-colors",
                 chave === diaDeHoje && "bg-primary/5",
                 podeEditar && "cursor-pointer transition-colors hover:bg-muted/30",
               )}
@@ -144,7 +144,7 @@ export function CalendarioDeTarefas({ tarefas, podeEditar, aoAbrirTarefa, aoClic
                     aoAbrirTarefa(tarefa);
                   }}
                   className={cn(
-                    "w-full truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium",
+                    "w-full truncate rounded-lg border border-transparent px-1.5 py-1 text-left text-[10px] font-medium",
                     estaEncerrada(tarefa)
                       ? "bg-muted text-muted-foreground line-through"
                       : estaAtrasada(tarefa)

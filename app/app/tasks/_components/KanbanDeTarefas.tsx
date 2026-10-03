@@ -5,11 +5,7 @@ import { Clock3 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type {
-  PerfilResponsavelTarefa,
-  SituacaoDaTarefa,
-  Tarefa,
-} from "@/lib/tarefas/tipos";
+import type { PerfilResponsavelTarefa, SituacaoDaTarefa, Tarefa } from "@/lib/tarefas/tipos";
 
 const COLUNAS: Array<{
   status: Extract<SituacaoDaTarefa, "pending" | "in_progress" | "done">;
@@ -21,7 +17,10 @@ const COLUNAS: Array<{
   { status: "done", titulo: "Concluída", subtitulo: "Ação finalizada" },
 ];
 
-const PRIORIDADE: Record<Tarefa["priority"], { label: string; variant: "neutral" | "info" | "warning" | "error" }> = {
+const PRIORIDADE: Record<
+  Tarefa["priority"],
+  { label: string; variant: "neutral" | "info" | "warning" | "error" }
+> = {
   low: { label: "Baixa", variant: "neutral" },
   medium: { label: "Média", variant: "info" },
   high: { label: "Alta", variant: "warning" },
@@ -72,15 +71,15 @@ export function KanbanDeTarefas({
           return (
             <div
               key={coluna.status}
-              className="flex min-h-[480px] flex-col rounded-xl border bg-muted/20"
+              className="flex min-h-[480px] flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
             >
-              <div className="border-b px-4 py-3">
+              <div className="border-b border-border/60 bg-gradient-to-br from-card to-muted/30 px-4 py-3.5">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-semibold">{coluna.titulo}</h2>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {coluna.subtitulo}
-                    </p>
+                    <h2 className="text-[13px] font-semibold tracking-[-0.01em]">
+                      {coluna.titulo}
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{coluna.subtitulo}</p>
                   </div>
                   <Badge variant="neutral">{itens.length}</Badge>
                 </div>
@@ -92,7 +91,7 @@ export function KanbanDeTarefas({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      "flex flex-1 flex-col gap-2 p-2 transition-colors",
+                      "flex flex-1 flex-col gap-2.5 bg-muted/[0.08] p-2.5 transition-colors",
                       snapshot.isDraggingOver && "bg-accent/5",
                     )}
                   >
@@ -116,15 +115,13 @@ export function KanbanDeTarefas({
                               type="button"
                               onClick={() => aoAbrir(tarefa)}
                               className={cn(
-                                "rounded-lg border bg-card p-3 text-left shadow-xs transition",
-                                "hover:border-border-strong hover:shadow-sm",
-                                dragState.isDragging && "rotate-1 shadow-lg",
+                                "rounded-xl border border-border/70 bg-background p-3 text-left shadow-sm transition-[border-color,box-shadow,transform]",
+                                "hover:border-border-strong hover:shadow-md",
+                                dragState.isDragging && "rotate-1 shadow-lg ring-1 ring-primary/20",
                               )}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <h3 className="line-clamp-2 text-sm font-medium">
-                                  {tarefa.title}
-                                </h3>
+                                <h3 className="line-clamp-2 text-sm font-medium">{tarefa.title}</h3>
                                 <Badge variant={prioridade.variant} className="shrink-0 px-2">
                                   {prioridade.label}
                                 </Badge>
@@ -158,7 +155,7 @@ export function KanbanDeTarefas({
                     })}
                     {provided.placeholder}
                     {itens.length === 0 && !snapshot.isDraggingOver ? (
-                      <div className="flex min-h-28 items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground">
+                      <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/40 text-xs text-muted-foreground">
                         Arraste uma tarefa para cá
                       </div>
                     ) : null}
