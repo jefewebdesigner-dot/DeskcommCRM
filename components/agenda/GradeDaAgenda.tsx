@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
-
 import {
   addDays,
   differenceInMinutes,
@@ -47,10 +46,7 @@ const ALTURA_DA_HORA = 48;
 const PRIMEIRA_HORA = 7;
 const ULTIMA_HORA = 21;
 
-const HORAS = Array.from(
-  { length: ULTIMA_HORA - PRIMEIRA_HORA + 1 },
-  (_, i) => PRIMEIRA_HORA + i,
-);
+const HORAS = Array.from({ length: ULTIMA_HORA - PRIMEIRA_HORA + 1 }, (_, i) => PRIMEIRA_HORA + i);
 
 /**
  * O que transforma a grade de DESENHO em AGENDA.
@@ -183,9 +179,7 @@ function repartirSobrepostos(agendamentos: Agendamento[]): Posicionado[] {
     if (grupo.length > 0 && comeca >= fimDoGrupo) fecharGrupo();
 
     const ocupadas = new Set(
-      grupo
-        .filter((g) => new Date(g.agendamento.termina).getTime() > comeca)
-        .map((g) => g.coluna),
+      grupo.filter((g) => new Date(g.agendamento.termina).getTime() > comeca).map((g) => g.coluna),
     );
     let coluna = 0;
     while (ocupadas.has(coluna)) coluna += 1;
@@ -239,9 +233,7 @@ function CamadaDeMarcacao({
         const fim = instanteDoMinuto(dia, minuto + PASSO_DA_CELULA_MIN);
         const ocupado = agendamentosDoDia.some(
           (a) =>
-            a.situacao !== "cancelled" &&
-            new Date(a.comeca) < fim &&
-            new Date(a.termina) > inicio,
+            a.situacao !== "cancelled" && new Date(a.comeca) < fim && new Date(a.termina) > inicio,
         );
         const passado = fim.getTime() <= agora.getTime();
         const rotulo = format(inicio, "HH:mm");
@@ -277,7 +269,10 @@ function CamadaDeMarcacao({
                   // mouse, no cursor e no motivo escrito.
                   "cursor-default",
             )}
-            style={{ top: pixelsDe(minuto - PRIMEIRA_HORA * 60), height: pixelsDe(PASSO_DA_CELULA_MIN) }}
+            style={{
+              top: pixelsDe(minuto - PRIMEIRA_HORA * 60),
+              height: pixelsDe(PASSO_DA_CELULA_MIN),
+            }}
           />
         );
       })}
@@ -353,7 +348,13 @@ function BlocoDeAgendamento({
       // arrastar um card para outro horário abriria o painel de remarcação por
       // cima da confirmação que o arraste acabou de pedir — duas perguntas na
       // tela ao mesmo tempo, e a de baixo é a que o usuário pediu.
-      onClick={doGoogle ? undefined : () => { if (!arraste?.moveu()) onAbrir?.(agendamento.id); }}
+      onClick={
+        doGoogle
+          ? undefined
+          : () => {
+              if (!arraste?.moveu()) onAbrir?.(agendamento.id);
+            }
+      }
       onPointerDown={
         arraste && !doGoogle && !cancelado ? (e) => arraste.aoApontar(e, agendamento) : undefined
       }
@@ -380,7 +381,7 @@ function BlocoDeAgendamento({
         // `grab` só quando remarcar é possível: o cursor é a única pista de que
         // o card se move, e prometê-la num card que não se move (ocupação do
         // Google, compromisso cancelado) é o controle decorativo de novo.
-        arraste && !doGoogle && !cancelado && "cursor-grab active:cursor-grabbing touch-none",
+        arraste && !doGoogle && !cancelado && "cursor-grab touch-none active:cursor-grabbing",
         // ⚠️ CANCELADO NÃO INTERCEPTA O PONTEIRO — e isto é conserto de produto,
         // achado pela spec em tela.
         //
@@ -424,11 +425,11 @@ function BlocoDeAgendamento({
         className="absolute inset-y-0 left-0 w-[3px] rounded-l-sm"
         style={{ backgroundColor: doGoogle ? "var(--color-border-strong)" : corDaTrilha(trilha) }}
       />
-      <span className="ml-1 truncate text-[11px] font-semibold leading-4 text-text">
+      <span className="ml-1 truncate text-[11px] leading-4 font-semibold text-text">
         {agendamento.titulo}
       </span>
       {duracao >= 45 && (
-        <span className="ml-1 truncate text-[10px] leading-3 tabular-nums text-text-muted">
+        <span className="ml-1 truncate text-[10px] leading-3 text-text-muted tabular-nums">
           {format(comeca, "HH:mm")}
           {agendamento.quemSeraAtendido ? ` · ${agendamento.quemSeraAtendido}` : ""}
         </span>
@@ -460,7 +461,7 @@ function ReguaDoAgora({ agora }: { agora: Date }) {
 
 function ColunaDeHoras() {
   return (
-    <div className="w-12 shrink-0 select-none border-r border-border" aria-hidden>
+    <div className="w-12 shrink-0 border-r border-border select-none" aria-hidden>
       <div className="h-8 border-b border-border" />
       {HORAS.map((h) => (
         <div
@@ -468,7 +469,7 @@ function ColunaDeHoras() {
           className="relative border-b border-border/50 text-right"
           style={{ height: ALTURA_DA_HORA }}
         >
-          <span className="absolute -top-1.5 right-1 text-[10px] tabular-nums text-text-subtle">
+          <span className="absolute -top-1.5 right-1 text-[10px] text-text-subtle tabular-nums">
             {String(h).padStart(2, "0")}h
           </span>
         </div>
@@ -515,7 +516,7 @@ function FantasmaDoArraste({
         height: Math.max(pixelsDe(duracaoMin) - 2, 18),
       }}
     >
-      <span className="truncate text-[10px] font-semibold leading-4 text-text">
+      <span className="truncate text-[10px] leading-4 font-semibold text-text">
         {valido
           ? format(new Date(proposta.instante!), "HH:mm", { locale: localeDaData })
           : t(proposta.razao)}
@@ -575,13 +576,13 @@ function ColunaDeDia({
           "sticky top-0 z-20 flex h-8 items-center justify-center gap-1.5 border-b border-border bg-surface px-2",
         )}
       >
-        <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+        <span className="truncate text-[11px] font-semibold tracking-wide text-text-muted uppercase">
           {format(dia, "EEE", { locale: localeDaData }).replace(".", "")}
         </span>
         <span
           className={cn(
             "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] tabular-nums",
-            ehHoje ? "bg-accent text-accent-foreground font-semibold" : "text-text",
+            ehHoje ? "bg-accent font-semibold text-accent-foreground" : "text-text",
           )}
         >
           {format(dia, "d")}
@@ -601,11 +602,7 @@ function ColunaDeDia({
         style={{ height: HORAS.length * ALTURA_DA_HORA }}
       >
         {HORAS.map((h) => (
-          <div
-            key={h}
-            className="border-b border-border/50"
-            style={{ height: ALTURA_DA_HORA }}
-          />
+          <div key={h} className="border-b border-border/50" style={{ height: ALTURA_DA_HORA }} />
         ))}
         {interacao && (
           <CamadaDeMarcacao
@@ -650,7 +647,6 @@ function VisaoDeMes({
   agendamentos: Agendamento[];
   pessoas: Pessoa[];
 }) {
-  const t = useT();
   const localeDaData = useLocaleDeData();
   const primeiro = startOfWeek(startOfMonth(ancora), { weekStartsOn: 0 });
   // SEIS semanas sempre, mesmo quando o mês cabe em cinco.
@@ -669,7 +665,7 @@ function VisaoDeMes({
         {semanas[0]?.map((d) => (
           <div
             key={`cab-${d.toISOString()}`}
-            className="px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted"
+            className="px-2 py-1.5 text-center text-[11px] font-semibold tracking-wide text-text-muted uppercase"
           >
             {format(d, "EEEEEE", { locale: localeDaData }).replace(".", "")}
           </div>
@@ -684,7 +680,7 @@ function VisaoDeMes({
               key={d.toISOString()}
               data-testid={`celula-mes-${format(d, "yyyy-MM-dd")}`}
               className={cn(
-                "min-h-20 border-b border-r border-border p-1",
+                "min-h-20 border-r border-b border-border p-1",
                 !doMes && "bg-surface-elevated/30",
               )}
             >
@@ -702,7 +698,7 @@ function VisaoDeMes({
                   {format(d, "d")}
                 </span>
                 {doDia.length > 2 && (
-                  <span className="text-[10px] tabular-nums text-text-subtle">
+                  <span className="text-[10px] text-text-subtle tabular-nums">
                     +{doDia.length - 2}
                   </span>
                 )}
@@ -851,7 +847,8 @@ export function GradeDaAgenda({
           return clientX >= r.left && clientX <= r.right;
         }) ??
         corpos.reduce((melhor, el) => {
-          const d = (r: DOMRect) => Math.min(Math.abs(clientX - r.left), Math.abs(clientX - r.right));
+          const d = (r: DOMRect) =>
+            Math.min(Math.abs(clientX - r.left), Math.abs(clientX - r.right));
           return d(el.getBoundingClientRect()) < d(melhor.getBoundingClientRect()) ? el : melhor;
         });
       const chave = escolhido.dataset.corpoDoDia;
@@ -897,7 +894,9 @@ export function GradeDaAgenda({
         window.removeEventListener("pointerup", soltar);
         window.removeEventListener("pointercancel", soltar);
         const houve = g.moveu;
-        const p = houve ? propostaSobPonto(g.id, ev.clientX, ev.clientY - g.deslocamentoNoCard) : null;
+        const p = houve
+          ? propostaSobPonto(g.id, ev.clientX, ev.clientY - g.deslocamentoNoCard)
+          : null;
         setProposta(null);
         // A ref só zera no tique seguinte: o `click` que o `pointerup` dispara
         // ainda não aconteceu, e é ele que precisa consultar `moveu()`.
@@ -954,7 +953,11 @@ export function GradeDaAgenda({
         const base = atual ? atual.minutoBruto : comeca.getHours() * 60 + comeca.getMinutes();
         const diaAtual = new Date(`${atual?.dia ?? chaveDoDia(comeca)}T12:00:00`);
         setProposta(
-          montarProposta(a.id, chaveDoDia(addDays(diaAtual, e.key === "ArrowRight" ? 1 : -1)), base),
+          montarProposta(
+            a.id,
+            chaveDoDia(addDays(diaAtual, e.key === "ArrowRight" ? 1 : -1)),
+            base,
+          ),
         );
         return;
       }
@@ -983,7 +986,7 @@ export function GradeDaAgenda({
       data-testid="grade-da-agenda"
       data-visao={visao}
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface",
+        "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm",
         className,
       )}
     >

@@ -393,7 +393,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full flex-col gap-4 p-6"
+      className="flex h-full min-h-0 flex-col gap-5 p-4 sm:p-6"
     >
       {/*
         Em Suspense porque `useSearchParams` obriga: sem a fronteira, o Next
@@ -405,26 +405,33 @@ export function AgendaClient({
         <EntradaDaAgenda onContext={onContext} />
       </React.Suspense>
 
-      <CartaoDaConexaoGoogle
-        configurado={googleConfigurado}
-        falta={faltaNoGoogle}
-        linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
-        contaConectada={contaConectada}
-        enderecoDeRetorno={enderecoDeRetorno}
-      />
-
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Agenda")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAncora(new Date())}>
-            {t("Hoje")}
-          </Button>
-          {/*
+      <header className="relative overflow-hidden rounded-[24px] border border-border/60 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_10px_32px_rgba(0,0,0,0.045)] sm:p-6">
+        <div
+          className="pointer-events-none absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/[0.045] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t("Rotina e compromissos")}
+            </p>
+            <h1 className="text-2xl font-semibold tracking-[-0.045em] sm:text-[2rem]">
+              {t("Agenda")}
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {t("O que está marcado, com quem, e quem atende — seu e da equipe.")}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl bg-background/70"
+              onClick={() => setAncora(new Date())}
+            >
+              {t("Hoje")}
+            </Button>
+            {/*
             DESABILITADO COM O MOTIVO À VISTA, e não ligado a um `onClick` vazio.
             Enquanto a frente 1 não expõe `/api/v1/agenda` não há o que marcar, e
             um botão primário, com cor de ação e sem `disabled`, que não faz nada
@@ -436,46 +443,56 @@ export function AgendaClient({
             hover não existe para quem usa toque, que é o dono de clínica no
             celular.
           */}
-          {podeMarcar && !tipo && (
-            // Sem NENHUM tipo de agendamento cadastrado não há o que marcar — e
-            // isto é diferente de "a API não existe": a ação faz sentido, falta
-            // configuração. Por isso o motivo à vista, e não um botão mudo.
-            //
-            // `podeMarcar` vem ANTES de `!tipo`, e a ordem é o ponto: para quem
-            // só lê não existe botão desabilitado a explicar, então o motivo
-            // seria conversa sobre um gesto que não está na tela dele.
-            <span
-              data-testid="motivo-novo-agendamento"
-              className="hidden text-xs text-text-subtle sm:inline"
-            >
-              {t("Cadastre um tipo de agendamento para começar")}
-            </span>
-          )}
-          {/* PRIMEIRA PORTA da escrita nesta tela. Quem só lê não vê o botão: o
+            {podeMarcar && !tipo && (
+              // Sem NENHUM tipo de agendamento cadastrado não há o que marcar — e
+              // isto é diferente de "a API não existe": a ação faz sentido, falta
+              // configuração. Por isso o motivo à vista, e não um botão mudo.
+              //
+              // `podeMarcar` vem ANTES de `!tipo`, e a ordem é o ponto: para quem
+              // só lê não existe botão desabilitado a explicar, então o motivo
+              // seria conversa sobre um gesto que não está na tela dele.
+              <span
+                data-testid="motivo-novo-agendamento"
+                className="hidden text-xs text-text-subtle sm:inline"
+              >
+                {t("Cadastre um tipo de agendamento para começar")}
+              </span>
+            )}
+            {/* PRIMEIRA PORTA da escrita nesta tela. Quem só lê não vê o botão: o
               403 da rota nunca chega a ser oferecido, e o rótulo segue igual (a
               spec e2e o acha por papel/rótulo, e não muda). */}
-          {podeMarcar && (
-            <Button
-              size="sm"
-              disabled={!tipo}
-              // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
-              // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
-              // por `getByRole("button", { name: /Novo agendamento/i })`. Com o
-              // texto passando por `t()`, casar por rótulo passa a depender do
-              // idioma da conta de teste — hoje passa porque a conta nasce em
-              // português, mas é acoplamento que não precisa existir. O testid é
-              // o caminho estável; trocar a spec para usá-lo é decisão de quem a
-              // escreveu, e vai anotada no PR.
-              data-testid="novo-agendamento"
-              title={tipo ? undefined : t("Cadastre um tipo de agendamento para começar")}
-              onClick={abrirMarcacao}
-            >
-              <CalendarPlus size={16} weight="bold" aria-hidden />
-              <span>{t("Novo agendamento")}</span>
-            </Button>
-          )}
+            {podeMarcar && (
+              <Button
+                size="sm"
+                className="rounded-xl"
+                disabled={!tipo}
+                // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
+                // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
+                // por `getByRole("button", { name: /Novo agendamento/i })`. Com o
+                // texto passando por `t()`, casar por rótulo passa a depender do
+                // idioma da conta de teste — hoje passa porque a conta nasce em
+                // português, mas é acoplamento que não precisa existir. O testid é
+                // o caminho estável; trocar a spec para usá-lo é decisão de quem a
+                // escreveu, e vai anotada no PR.
+                data-testid="novo-agendamento"
+                title={tipo ? undefined : t("Cadastre um tipo de agendamento para começar")}
+                onClick={abrirMarcacao}
+              >
+                <CalendarPlus size={16} weight="bold" aria-hidden />
+                <span>{t("Novo agendamento")}</span>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
+
+      <CartaoDaConexaoGoogle
+        configurado={googleConfigurado}
+        falta={faltaNoGoogle}
+        linkDeConfiguracao={linkDeConfiguracaoDoGoogle}
+        contaConectada={contaConectada}
+        enderecoDeRetorno={enderecoDeRetorno}
+      />
 
       <ResumoOperacionalDaAgenda
         agendamentos={
@@ -487,7 +504,7 @@ export function AgendaClient({
         onAbrirAgendamento={(id) => router.push(`/app/agenda?compromisso=${id}`)}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex items-center gap-0.5">
             <Button
@@ -533,7 +550,7 @@ export function AgendaClient({
           <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
           <div
             data-testid="alternador-de-visao"
-            className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+            className="flex items-center gap-0.5 rounded-xl border border-border/60 bg-muted/35 p-1"
           >
             {VISOES.map((v) => (
               <button
@@ -543,7 +560,7 @@ export function AgendaClient({
                 aria-pressed={visao === v.id}
                 onClick={() => setVisao(v.id)}
                 className={cn(
-                  "rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast ease-out",
+                  "rounded-lg px-2.5 py-1 text-xs transition-colors duration-fast ease-out",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500",
                   visao === v.id
                     ? "bg-accent font-semibold text-accent-foreground"
@@ -557,11 +574,6 @@ export function AgendaClient({
         </div>
       </div>
 
-      {/*
-        O HISTÓRICO na tela do produto, e não só na vitrine. Ele aparece mesmo
-        sem dado: as quatro abas com contador zero respondem "não há nada" sem
-        gastar um clique, e some-lo faria a tela parecer menor do que é.
-      */}
       <Sheet
         open={marcando}
         onOpenChange={(aberto) => {
@@ -652,11 +664,11 @@ export function AgendaClient({
           <div className="grid shrink-0 gap-3 rounded-lg border p-3 lg:grid-cols-2">
             {!remarcandoId ? (
               <div className="lg:col-span-2">
-              <VinculoDaMarcacao
-                contactId={contactId}
-                conversationId={conversationId}
-                onChange={(contact, conversation) => escolherVinculo({ contact, conversation })}
-              />
+                <VinculoDaMarcacao
+                  contactId={contactId}
+                  conversationId={conversationId}
+                  onChange={(contact, conversation) => escolherVinculo({ contact, conversation })}
+                />
               </div>
             ) : null}
             {tiposIniciais.length > 1 && (
@@ -735,10 +747,7 @@ export function AgendaClient({
             </div>
             {!remarcandoId ? (
               <>
-                <EnderecoDaMarcacao
-                  value={endereco}
-                  onChange={setEnderecoEditado}
-                />
+                <EnderecoDaMarcacao value={endereco} onChange={setEnderecoEditado} />
                 <div>
                   <label className="block" htmlFor="observacao-do-compromisso">
                     {t("Observação")}{" "}
@@ -965,6 +974,64 @@ export function AgendaClient({
         </SheetContent>
       </Sheet>
 
+      {/* ⚠️ O VAZIO NÃO ESCONDE MAIS A GRADE, e o achado veio do CI.
+          Isto era um ternário: com zero agendamentos, `EmptyAgenda` entrava NO
+          LUGAR de `GradeDaAgenda`. Numa instalação nova — que é o estado de
+          primeira impressão — a pessoa abria a Agenda e não via calendário
+          NENHUM: sem semana, sem horários, e com o alternador de visão ligado a
+          nada, que é controle decorativo.
+
+          A mensagem continua, porque ela é boa: diz de ONDE vem o próximo
+          agendamento em vez de constatar a ausência. Ela virou aviso ACIMA da
+          grade, e a grade fica.
+
+          Achado porque a cerca nova das três visões passou aqui (banco com
+          dados de execuções anteriores) e reprovou no CI, onde o banco nasce
+          limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
+          tinha pago: verde por banco sujo. */}
+      {agendamentos.length === 0 ? (
+        <div className="rounded-2xl border border-border/60 bg-muted/[0.14] p-4">
+          <EmptyAgenda />
+        </div>
+      ) : null}
+      {/* A GRADE INTERATIVA — clicar num bloco livre marca ali, arrastar um card
+          remarca. Toda a fiação (a consulta de horários da janela desenhada, a
+          proposta de remarcação, o otimismo com volta atrás) mora em
+          `AgendaInterativa`; aqui fica só o que esta tela já sabia. */}
+      <AgendaInterativa
+        visao={visao}
+        ancora={ancora}
+        agora={new Date()}
+        pessoas={pessoas}
+        agendamentos={agendamentosDaGrade}
+        recorte={recorteDaGrade}
+        tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
+        tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
+        onEscolherTipo={setTipoId}
+        // SEGUNDA PORTA: o clique num bloco livre da grade. Sem `onMarcarEm`, a
+        // `AgendaInterativa` não monta a interação, e a grade volta a ser o que
+        // ela é para quem só lê — uma leitura, sem bloco clicável.
+        onMarcarEm={
+          podeMarcar
+            ? (instante) => {
+                setHorarioEscolhido({ instante, rotulo: format(new Date(instante), "HH:mm") });
+                setRemarcandoId(null);
+                // `abrirMarcacao` e não `setMarcando(true)`: clicar num bloco
+                // livre abre uma marcação NOVA, e ela nasce com o vínculo da rota.
+                abrirMarcacao();
+              }
+            : undefined
+        }
+        /* Tocar num card abre o detalhe. A prop já atravessava `AgendaInterativa`
+           e `GradeDaAgenda` e chegava `undefined` aqui: o toque não fazia nada, e
+           o detalhe só abria por `?compromisso=`, que apenas o Histórico e o Radar
+           linkavam. Reusa o MESMO parâmetro que `EntradaDaAgenda` já lê — e `push`,
+           não `replace`, porque é o que o Histórico faz com `<Link>` e é o que faz
+           o botão voltar do celular fechar o detalhe. */
+        onAbrirAgendamento={(id) => router.push(`/app/agenda?compromisso=${id}`)}
+        className="min-h-[520px] flex-1"
+      />
+
       {/*
         ⚠️ A LISTA DAQUI NÃO É A MESMA DA GRADE, e a diferença é uma linha.
 
@@ -994,6 +1061,17 @@ export function AgendaClient({
         não informa nada que a grade — que O DESENHA no horário — já não diga
         melhor. A ocupação continua inteira onde ela serve.
       */}
+      <div>
+        <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {t("Acompanhamento")}
+        </p>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight">{t("Histórico e desfechos")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t(
+            "Próximos compromissos, confirmações pendentes, atendimentos realizados e cancelamentos.",
+          )}
+        </p>
+      </div>
       <HistoricoDaAgenda
         agendamentos={agendamentosAcionaveis}
         pessoas={pessoas}
@@ -1044,64 +1122,6 @@ export function AgendaClient({
             status: "no_show",
           })
         }
-      />
-
-      {/* ⚠️ O VAZIO NÃO ESCONDE MAIS A GRADE, e o achado veio do CI.
-          Isto era um ternário: com zero agendamentos, `EmptyAgenda` entrava NO
-          LUGAR de `GradeDaAgenda`. Numa instalação nova — que é o estado de
-          primeira impressão — a pessoa abria a Agenda e não via calendário
-          NENHUM: sem semana, sem horários, e com o alternador de visão ligado a
-          nada, que é controle decorativo.
-
-          A mensagem continua, porque ela é boa: diz de ONDE vem o próximo
-          agendamento em vez de constatar a ausência. Ela virou aviso ACIMA da
-          grade, e a grade fica.
-
-          Achado porque a cerca nova das três visões passou aqui (banco com
-          dados de execuções anteriores) e reprovou no CI, onde o banco nasce
-          limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
-          tinha pago: verde por banco sujo. */}
-      {agendamentos.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <EmptyAgenda />
-        </div>
-      ) : null}
-      {/* A GRADE INTERATIVA — clicar num bloco livre marca ali, arrastar um card
-          remarca. Toda a fiação (a consulta de horários da janela desenhada, a
-          proposta de remarcação, o otimismo com volta atrás) mora em
-          `AgendaInterativa`; aqui fica só o que esta tela já sabia. */}
-      <AgendaInterativa
-        visao={visao}
-        ancora={ancora}
-        agora={new Date()}
-        pessoas={pessoas}
-        agendamentos={agendamentosDaGrade}
-        recorte={recorteDaGrade}
-        tipos={tiposIniciais.map((t) => ({ id: t.id, nome: t.nome, duracaoMin: t.duracaoMin }))}
-        tipo={tipo ? { id: tipo.id, duracaoMin: tipo.duracaoMin } : null}
-        onEscolherTipo={setTipoId}
-        // SEGUNDA PORTA: o clique num bloco livre da grade. Sem `onMarcarEm`, a
-        // `AgendaInterativa` não monta a interação, e a grade volta a ser o que
-        // ela é para quem só lê — uma leitura, sem bloco clicável.
-        onMarcarEm={
-          podeMarcar
-            ? (instante) => {
-                setHorarioEscolhido({ instante, rotulo: format(new Date(instante), "HH:mm") });
-                setRemarcandoId(null);
-                // `abrirMarcacao` e não `setMarcando(true)`: clicar num bloco
-                // livre abre uma marcação NOVA, e ela nasce com o vínculo da rota.
-                abrirMarcacao();
-              }
-            : undefined
-        }
-        /* Tocar num card abre o detalhe. A prop já atravessava `AgendaInterativa`
-           e `GradeDaAgenda` e chegava `undefined` aqui: o toque não fazia nada, e
-           o detalhe só abria por `?compromisso=`, que apenas o Histórico e o Radar
-           linkavam. Reusa o MESMO parâmetro que `EntradaDaAgenda` já lê — e `push`,
-           não `replace`, porque é o que o Histórico faz com `<Link>` e é o que faz
-           o botão voltar do celular fechar o detalhe. */
-        onAbrirAgendamento={(id) => router.push(`/app/agenda?compromisso=${id}`)}
-        className="min-h-0 flex-1"
       />
     </div>
   );

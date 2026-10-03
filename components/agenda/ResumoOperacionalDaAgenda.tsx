@@ -12,10 +12,7 @@ import { ArrowRight, CalendarBlank, ClockCountdown, Warning } from "@/lib/ui/ico
 import type { Agendamento } from "./tipos";
 
 type MotivoDaPrioridade =
-  | "confirmacao_vencida"
-  | "resultado_pendente"
-  | "aguardando_confirmacao"
-  | "hoje";
+  "confirmacao_vencida" | "resultado_pendente" | "aguardando_confirmacao" | "hoje";
 
 export type PrioridadeDaAgenda = {
   agendamento: Agendamento;
@@ -63,7 +60,10 @@ export function resumirAgendaOperacional(agendamentos: Agendamento[], agora: Dat
         aguardando_confirmacao: 2,
         hoje: 3,
       };
-      return ordem[a.motivo] - ordem[b.motivo] || Date.parse(a.agendamento.comeca) - Date.parse(b.agendamento.comeca);
+      return (
+        ordem[a.motivo] - ordem[b.motivo] ||
+        Date.parse(a.agendamento.comeca) - Date.parse(b.agendamento.comeca)
+      );
     });
 
   return { hoje, proximosSeteDias, semConfirmacao, atrasados, prioridades };
@@ -89,44 +89,84 @@ export function ResumoOperacionalDaAgenda({
   const locale = useLocaleDeData();
   const resumo = resumirAgendaOperacional(agendamentos, agora);
   const cards = [
-    { titulo: "Hoje", valor: resumo.hoje, ajuda: "Compromissos ativos no dia." },
-    { titulo: "Próximos 7 dias", valor: resumo.proximosSeteDias, ajuda: "O que já está marcado para a semana." },
-    { titulo: "Pendências atrasadas", valor: resumo.atrasados, ajuda: "Horários passados ainda sem desfecho." },
-    { titulo: "Sem confirmação", valor: resumo.semConfirmacao, ajuda: "Pedidos que ainda precisam de confirmação." },
+    { titulo: "Hoje", valor: resumo.hoje, ajuda: "Compromissos ativos no dia.", destaque: false },
+    {
+      titulo: "Próximos 7 dias",
+      valor: resumo.proximosSeteDias,
+      ajuda: "O que já está marcado para a semana.",
+      destaque: false,
+    },
+    {
+      titulo: "Pendências atrasadas",
+      valor: resumo.atrasados,
+      ajuda: "Horários passados ainda sem desfecho.",
+      destaque: resumo.atrasados > 0,
+    },
+    {
+      titulo: "Sem confirmação",
+      valor: resumo.semConfirmacao,
+      ajuda: "Pedidos que ainda precisam de confirmação.",
+      destaque: resumo.semConfirmacao > 0,
+    },
   ];
 
   return (
-    <section aria-label={t("Agenda executiva")} className="space-y-3" data-testid="agenda-executiva">
+    <section
+      aria-label={t("Agenda executiva")}
+      className="space-y-3"
+      data-testid="agenda-executiva"
+    >
       <div>
-        <h2 className="font-semibold">{t("Meu dia")}</h2>
-        <p className="text-xs text-muted-foreground">
-          {t("O que precisa acontecer agora para nenhum cliente ou compromisso ficar sem próximo passo.")}
+        <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {t("Visão operacional")}
+        </p>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight">{t("Meu dia")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t(
+            "O que precisa acontecer agora para nenhum cliente ou compromisso ficar sem próximo passo.",
+          )}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.titulo} className="rounded-xl border border-border bg-surface p-4">
+          <div
+            key={card.titulo}
+            className={
+              card.destaque
+                ? "rounded-2xl border border-warning/20 bg-warning-bg/30 p-4 shadow-sm"
+                : "rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            }
+          >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">{t(card.titulo)}</p>
+              <p className="text-[10px] font-semibold tracking-[0.09em] text-muted-foreground uppercase">
+                {t(card.titulo)}
+              </p>
               <CalendarBlank size={16} className="text-muted-foreground" aria-hidden />
             </div>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">{card.valor}</p>
+            <p className="mt-3 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
+              {card.valor}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">{t(card.ajuda)}</p>
           </div>
         ))}
       </div>
 
       {resumo.prioridades.length > 0 ? (
-        <div className="rounded-xl border border-border bg-surface">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="overflow-hidden rounded-2xl border border-warning/20 bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border/60 bg-warning-bg/25 px-4 py-3">
             <Warning size={16} className="text-warning-fg" aria-hidden />
             <p className="text-sm font-medium">{t("Prioridades da agenda")}</p>
-            <Badge variant="warning" className="ml-auto">{resumo.prioridades.length}</Badge>
+            <Badge variant="warning" className="ml-auto">
+              {resumo.prioridades.length}
+            </Badge>
           </div>
           <ul className="divide-y divide-border">
             {resumo.prioridades.slice(0, 6).map(({ agendamento, motivo }) => (
-              <li key={agendamento.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center">
+              <li
+                key={agendamento.id}
+                className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-muted/25 sm:flex-row sm:items-center"
+              >
                 <button
                   type="button"
                   className="min-w-0 flex-1 text-left"
@@ -146,14 +186,22 @@ export function ResumoOperacionalDaAgenda({
                 <div className="flex shrink-0 items-center gap-2">
                   {agendamento.conversaId ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/app/inbox?id=${agendamento.conversaId}`}>{t("Abrir conversa")}</Link>
+                      <Link href={`/app/inbox?id=${agendamento.conversaId}`}>
+                        {t("Abrir conversa")}
+                      </Link>
                     </Button>
                   ) : agendamento.contatoId ? (
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/app/contacts/${agendamento.contatoId}`}>{t("Abrir contato")}</Link>
+                      <Link href={`/app/contacts/${agendamento.contatoId}`}>
+                        {t("Abrir contato")}
+                      </Link>
                     </Button>
                   ) : null}
-                  <Button variant="ghost" size="sm" onClick={() => onAbrirAgendamento(agendamento.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAbrirAgendamento(agendamento.id)}
+                  >
                     {t("Ver compromisso")}
                     <ArrowRight size={14} aria-hidden />
                   </Button>
@@ -163,7 +211,7 @@ export function ResumoOperacionalDaAgenda({
           </ul>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.025] p-4 text-sm text-muted-foreground">
           {t("Nenhuma pendência operacional na agenda agora.")}
         </div>
       )}
