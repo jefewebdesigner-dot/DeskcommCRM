@@ -67,7 +67,7 @@ export function ConexoesShell({
 
   return (
     <Tabs value={aba} onValueChange={(v) => irPara(v, sub)} className="flex flex-col gap-4">
-      <TabsList>
+      <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
         {/* Rótulos pelo que o usuário RECONHECE, não pelo nome técnico do motor por
             trás: ele sabe se leu um QR ou se tem conta na Meta; a sigla do provedor
             não diz nada a quem instalou o sistema para vender.
@@ -85,7 +85,9 @@ export function ConexoesShell({
             porque no dia em que houver um segundo parceiro esta aba não muda.
             Aqui fica o CONCEITO; lá dentro o cartão diz de quem se trata. */}
         <TabsTrigger value="parceiro">{t("Provedor parceiro")}</TabsTrigger>
-        <TabsTrigger value="voz">{t("Chamada de voz")}</TabsTrigger>
+        <TabsTrigger value="voz" className="rounded-lg px-4 text-xs">
+          {t("Chamada de voz")}
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="numeros" className="mt-0">
@@ -102,7 +104,11 @@ export function ConexoesShell({
             só faz a segunda sumir abaixo da dobra. O rótulo diz "do parceiro"
             para não colidir com "Templates" da barra lateral, que significa
             OUTRA coisa (respostas rápidas do atendente). */}
-        <Tabs value={sub} onValueChange={(v) => irPara("parceiro", v)} className="flex flex-col gap-4">
+        <Tabs
+          value={sub}
+          onValueChange={(v) => irPara("parceiro", v)}
+          className="flex flex-col gap-4"
+        >
           <TabsList>
             <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
             <TabsTrigger value="templates">{t("Modelos do parceiro")}</TabsTrigger>
@@ -117,7 +123,11 @@ export function ConexoesShell({
       </TabsContent>
 
       <TabsContent value="oficial" className="mt-0">
-        <Tabs value={sub} onValueChange={(v) => irPara("oficial", v)} className="flex flex-col gap-4">
+        <Tabs
+          value={sub}
+          onValueChange={(v) => irPara("oficial", v)}
+          className="flex flex-col gap-4"
+        >
           <TabsList>
             <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
             {/* "Templates da Meta", não "Templates": a barra lateral já tem um item

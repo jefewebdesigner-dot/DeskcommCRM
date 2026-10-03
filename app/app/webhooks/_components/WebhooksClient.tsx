@@ -36,16 +36,30 @@ export function WebhooksClient() {
 
   return (
     <Tabs defaultValue="sources" className="flex-1">
-      <TabsList>
-        <TabsTrigger value="sources">{t("Receber dados")}</TabsTrigger>
+      <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
+        <TabsTrigger value="sources" className="rounded-lg px-4 text-xs">
+          {t("Receber dados")}
+        </TabsTrigger>
         <TabsTrigger value="capturas">{t("Leads recebidos")}</TabsTrigger>
-        <TabsTrigger value="rules">{t("Automações")}</TabsTrigger>
-        <TabsTrigger value="activity">{t("Atividade")}</TabsTrigger>
+        <TabsTrigger value="rules" className="rounded-lg px-4 text-xs">
+          {t("Automações")}
+        </TabsTrigger>
+        <TabsTrigger value="activity" className="rounded-lg px-4 text-xs">
+          {t("Atividade")}
+        </TabsTrigger>
       </TabsList>
-      <TabsContent value="sources"><SourcesTab /></TabsContent>
-      <TabsContent value="capturas"><CapturasTab /></TabsContent>
-      <TabsContent value="rules"><RulesTab /></TabsContent>
-      <TabsContent value="activity"><ActivityTab /></TabsContent>
+      <TabsContent value="sources">
+        <SourcesTab />
+      </TabsContent>
+      <TabsContent value="capturas">
+        <CapturasTab />
+      </TabsContent>
+      <TabsContent value="rules">
+        <RulesTab />
+      </TabsContent>
+      <TabsContent value="activity">
+        <ActivityTab />
+      </TabsContent>
     </Tabs>
   );
 }
