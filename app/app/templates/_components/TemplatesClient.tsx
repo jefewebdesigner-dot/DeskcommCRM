@@ -109,7 +109,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
@@ -122,7 +122,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo das respostas rápidas")}>
+      <section className="grid grid-cols-3 gap-2 sm:gap-3" aria-label={t("Resumo das respostas rápidas")}>
         {[
           { label: t("Total"), value: atuais.length, helper: t("respostas disponíveis") },
           { label: t("Equipe"), value: compartilhadas, helper: t("visíveis para o time") },
@@ -130,14 +130,14 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            className="min-w-0 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:p-4"
           >
             <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
-              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground sm:text-right sm:text-[11px]">
                 {item.helper}
               </p>
             </div>
@@ -160,8 +160,8 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
             className="h-9 rounded-xl border-border/60 bg-muted/25 pl-9 shadow-none"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl bg-muted/45 p-1">
+        <div className="-mx-1 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden">
+          <div className="inline-flex shrink-0 rounded-xl bg-muted/45 p-1">
             {(
               [
                 ["all", "Todas"],
@@ -182,7 +182,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
               </Button>
             ))}
           </div>
-          <Button type="button" className="rounded-xl" onClick={openNew}>
+          <Button type="button" className="shrink-0 rounded-xl" onClick={openNew}>
             <Plus /> {t("Nova resposta rápida")}
           </Button>
         </div>
@@ -211,7 +211,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
             <Button
               type="button"
               variant="outline"
-              className="shrink-0 rounded-xl bg-background"
+              className="w-full rounded-xl bg-background sm:w-auto sm:shrink-0"
               disabled={pacote.isPending}
               onClick={() => pacote.mutate()}
             >
