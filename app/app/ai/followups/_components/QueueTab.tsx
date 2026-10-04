@@ -150,8 +150,8 @@ export function QueueTab({ canWrite }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
-        <div className="relative w-full sm:w-56">
+      <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm sm:flex sm:flex-wrap">
+        <div className="relative col-span-2 w-full sm:col-span-1 sm:w-56">
           <MagnifyingGlass
             size={14}
             className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-muted"
@@ -171,7 +171,7 @@ export function QueueTab({ canWrite }: Props) {
           onValueChange={(v) => setStatus(v as FollowupEnrollmentStatus | "all")}
         >
           <SelectTrigger
-            className="h-9 w-48 rounded-xl border-border/60 bg-background text-sm"
+            className="h-9 w-full rounded-xl border-border/60 bg-background text-sm sm:w-48"
             aria-label={t("Filtrar por status")}
           >
             <SelectValue placeholder={t("Todos os status")} />
