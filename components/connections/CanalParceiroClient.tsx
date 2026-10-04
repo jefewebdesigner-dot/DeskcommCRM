@@ -61,11 +61,12 @@ function ParaColar({ rotulo, valor }: { rotulo: string; valor: string }) {
       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {rotulo}
       </span>
-      <div className="flex items-center gap-2">
-        <code className="flex-1 overflow-x-auto rounded-md bg-muted px-2 py-1.5 text-xs">{valor}</code>
+      <div className="flex min-w-0 items-center gap-2">
+        <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-muted px-2 py-1.5 text-xs">{valor}</code>
         <Button
           size="sm"
           variant="outline"
+          className="shrink-0 rounded-xl"
           onClick={async () => {
             await copyToClipboard(valor);
             toast.success(t("Copiado."));
@@ -190,7 +191,7 @@ export function CanalParceiroClient() {
           </div>
 
           <div>
-            <Button onClick={conectar} disabled={salvando || !accountId || !apiKey}>
+            <Button className="w-full rounded-xl sm:w-auto" onClick={conectar} disabled={salvando || !accountId || !apiKey}>
               {salvando ? t("Verificando…") : conectado ? t("Reconectar") : t("Conectar")}
             </Button>
             <p className="mt-1.5 text-xs text-muted-foreground">
