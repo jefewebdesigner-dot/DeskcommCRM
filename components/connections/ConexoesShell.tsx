@@ -67,7 +67,7 @@ export function ConexoesShell({
 
   return (
     <Tabs value={aba} onValueChange={(v) => irPara(v, sub)} className="flex flex-col gap-4">
-      <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
+      <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-xl border border-border/50 bg-card p-1 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Rótulos pelo que o usuário RECONHECE, não pelo nome técnico do motor por
             trás: ele sabe se leu um QR ou se tem conta na Meta; a sigla do provedor
             não diz nada a quem instalou o sistema para vender.
@@ -78,14 +78,14 @@ export function ConexoesShell({
             a frase custou menos que abrir exceção no gate, e o gate continua
             estrito: o dia em que alguém escrever o nome do provider aqui DE VERDADE,
             ele reprova igual. */}
-        <TabsTrigger value="numeros">{t("Números por QR")}</TabsTrigger>
-        <TabsTrigger value="oficial">{t("API Oficial (Meta)")}</TabsTrigger>
+        <TabsTrigger value="numeros" className="shrink-0">{t("Números por QR")}</TabsTrigger>
+        <TabsTrigger value="oficial" className="shrink-0">{t("API Oficial (Meta)")}</TabsTrigger>
         {/* "Provedor parceiro" e não a marca: o rótulo da marca vem do servidor
             (`lib/channels/connect`), porque a tela não pode nomear provider — e
             porque no dia em que houver um segundo parceiro esta aba não muda.
             Aqui fica o CONCEITO; lá dentro o cartão diz de quem se trata. */}
-        <TabsTrigger value="parceiro">{t("Provedor parceiro")}</TabsTrigger>
-        <TabsTrigger value="voz" className="rounded-lg px-4 text-xs">
+        <TabsTrigger value="parceiro" className="shrink-0">{t("Provedor parceiro")}</TabsTrigger>
+        <TabsTrigger value="voz" className="shrink-0 rounded-lg px-4 text-xs">
           {t("Chamada de voz")}
         </TabsTrigger>
       </TabsList>
@@ -109,9 +109,9 @@ export function ConexoesShell({
           onValueChange={(v) => irPara("parceiro", v)}
           className="flex flex-col gap-4"
         >
-          <TabsList>
-            <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
-            <TabsTrigger value="templates">{t("Modelos do parceiro")}</TabsTrigger>
+          <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsTrigger value="conexao" className="shrink-0">{t("Conexão")}</TabsTrigger>
+            <TabsTrigger value="templates" className="shrink-0">{t("Modelos do parceiro")}</TabsTrigger>
           </TabsList>
           <TabsContent value="conexao" className="mt-0">
             <CanalParceiroClient />
@@ -128,15 +128,15 @@ export function ConexoesShell({
           onValueChange={(v) => irPara("oficial", v)}
           className="flex flex-col gap-4"
         >
-          <TabsList>
-            <TabsTrigger value="conexao">{t("Conexão")}</TabsTrigger>
+          <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsTrigger value="conexao" className="shrink-0">{t("Conexão")}</TabsTrigger>
             {/* "Templates da Meta", não "Templates": a barra lateral já tem um item
                 com esse nome que significa OUTRA coisa — respostas rápidas salvas
                 pelo atendente (`/app/templates`). Dois conceitos com o mesmo rótulo
                 fazem o operador clicar no errado e concluir que a tela está quebrada.
                 A colisão é anterior a esta mudança; o que dá para fazer aqui é não
                 agravá-la. */}
-            <TabsTrigger value="templates">{t("Templates da Meta")}</TabsTrigger>
+            <TabsTrigger value="templates" className="shrink-0">{t("Templates da Meta")}</TabsTrigger>
           </TabsList>
           <TabsContent value="conexao" className="mt-0">
             <CanalOficialClient />
