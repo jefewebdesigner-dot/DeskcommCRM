@@ -147,15 +147,15 @@ export function MetaAdsClient({ contaPadrao }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+        <div className="col-span-2 flex min-w-0 flex-col gap-1.5 sm:col-span-1">
           <Label htmlFor="conta">{t("Conta de anúncios")}</Label>
           <Select
             value={contaEfetiva ?? ""}
             onValueChange={setConta}
             disabled={listaDeContas.length === 0}
           >
-            <SelectTrigger id="conta" className="w-72">
+            <SelectTrigger id="conta" className="w-full sm:w-72">
               <SelectValue placeholder={t("Carregando…")} />
             </SelectTrigger>
             <SelectContent>
@@ -172,10 +172,10 @@ export function MetaAdsClient({ contaPadrao }: Props) {
           </Select>
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <Label htmlFor="periodo">{t("Período")}</Label>
           <Select value={preset} onValueChange={trocarPreset}>
-            <SelectTrigger id="periodo" className="w-52">
+            <SelectTrigger id="periodo" className="w-full sm:w-52">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -195,7 +195,7 @@ export function MetaAdsClient({ contaPadrao }: Props) {
               <Input
                 id="de"
                 type="date"
-                className="w-40"
+                className="w-full sm:w-40"
                 value={intervalo.de}
                 max={intervalo.ate}
                 onChange={(e) => setIntervalo((i) => ({ ...i, de: e.target.value }))}
@@ -206,7 +206,7 @@ export function MetaAdsClient({ contaPadrao }: Props) {
               <Input
                 id="ate"
                 type="date"
-                className="w-40"
+                className="w-full sm:w-40"
                 value={intervalo.ate}
                 min={intervalo.de}
                 max={comoData(ontem())}
@@ -222,7 +222,7 @@ export function MetaAdsClient({ contaPadrao }: Props) {
           `development_access`, cuja cota é justa. Um botão clicável durante a
           busca convida ao clique repetido que provoca o próprio rate limit.
         */}
-        <Button onClick={() => campanhas.refetch()} disabled={carregando || !contaEfetiva}>
+        <Button className="col-span-2 w-full rounded-xl sm:col-span-1 sm:w-auto" onClick={() => campanhas.refetch()} disabled={carregando || !contaEfetiva}>
           {carregando ? t("Atualizando…") : t("Atualizar")}
         </Button>
       </div>
