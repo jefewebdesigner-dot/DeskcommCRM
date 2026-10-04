@@ -29,22 +29,22 @@ export function WebhooksClient() {
     // estima a olho.
     return (
       <div className="flex-1">
-        <Skeleton className="h-9 w-[432px]" />
+        <Skeleton className="h-9 w-full max-w-[432px] rounded-xl" />
       </div>
     );
   }
 
   return (
     <Tabs defaultValue="sources" className="flex-1">
-      <TabsList className="h-10 rounded-xl border border-border/50 bg-card p-1 shadow-sm">
-        <TabsTrigger value="sources" className="rounded-lg px-4 text-xs">
+      <TabsList className="h-10 w-full justify-start overflow-x-auto rounded-xl border border-border/50 bg-card p-1 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabsTrigger value="sources" className="shrink-0 rounded-lg px-4 text-xs">
           {t("Receber dados")}
         </TabsTrigger>
-        <TabsTrigger value="capturas">{t("Leads recebidos")}</TabsTrigger>
-        <TabsTrigger value="rules" className="rounded-lg px-4 text-xs">
+        <TabsTrigger value="capturas" className="shrink-0">{t("Leads recebidos")}</TabsTrigger>
+        <TabsTrigger value="rules" className="shrink-0 rounded-lg px-4 text-xs">
           {t("Automações")}
         </TabsTrigger>
-        <TabsTrigger value="activity" className="rounded-lg px-4 text-xs">
+        <TabsTrigger value="activity" className="shrink-0 rounded-lg px-4 text-xs">
           {t("Atividade")}
         </TabsTrigger>
       </TabsList>
