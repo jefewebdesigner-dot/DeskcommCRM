@@ -67,7 +67,7 @@ export function AuditClient() {
   return (
     <div className="flex flex-col gap-4">
       <Card className="rounded-[24px] border-border/60 p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground">{t("Ação contém")}</label>
             <Input
@@ -92,7 +92,7 @@ export function AuditClient() {
             <label className="block text-xs text-muted-foreground">{t("Até")}</label>
             <Input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
-          <div className="flex items-end">
+          <div className="col-span-2 flex items-end md:col-span-1">
             <Button variant="outline" className="w-full rounded-xl" onClick={handleExport}>
               {t("Exportar CSV")}
             </Button>
