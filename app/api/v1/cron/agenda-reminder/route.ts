@@ -249,17 +249,25 @@ export function degrausPendentes(input: {
     .sort((a, b) => b - a);
 }
 
-async function handle(req: NextRequest): Promise<Response> {
-  const requestId = randomUUID();
+export interface ResultadoDaVarreduraDeLembretes {
+  examinados: number;
+  enviados: number;
+  pulados: number;
+  motivos: Record<string, number>;
+}
 
-  const auth = req.headers.get("authorization") ?? "";
-  const fornecido = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
-  const aceitos = [env.INTERNAL_CRON_SECRET, env.INTERNAL_SECRET].filter(Boolean);
-  if (aceitos.length === 0 || !fornecido || !aceitos.includes(fornecido)) {
-    return fail("forbidden", "Cron secret missing or invalid.", 403, { requestId });
-  }
-
-  const admin = createAdminClient();
+/**
+ * O corpo da varredura, sem o auth HTTP — para o watcher diário de agenda
+ * (único cron da instalação que já roda 1x/dia) poder chamar isto no mesmo
+ * slot, em vez de precisar de um 3º cron que o Hobby da Vercel não dá (só 2).
+ * `estaNaHora`/`degrausPendentes` toleram cadência de 1x/dia: um degrau
+ * vencido continua vencido na próxima rodada, até o compromisso começar —
+ * só perde precisão (o aviso pode saber até ~24h depois do degrau ideal).
+ */
+export async function executarVarreduraDeLembretes(
+  admin: ReturnType<typeof createAdminClient>,
+  requestId: string,
+): Promise<ResultadoDaVarreduraDeLembretes> {
   const agora = new Date();
 
   // `!inner` no tipo: só interessa compromisso cujo TIPO pede lembrete. O corte
@@ -291,7 +299,7 @@ async function handle(req: NextRequest): Promise<Response> {
 
   if (error) {
     logger.error("[agenda-reminder] consulta falhou", { error: error.message, requestId });
-    return fail("internal_error", "Falha ao buscar compromissos.", 500, { requestId });
+    throw new Error(`[agenda-reminder] consulta falhou: ${error.message}`);
   }
 
   const linhas = (data ?? []) as unknown as CompromissoAVencer[];
@@ -446,7 +454,27 @@ async function handle(req: NextRequest): Promise<Response> {
     });
   }
 
-  return ok({ examinados: linhas.length, enviados, pulados, motivos }, { requestId });
+  return { examinados: linhas.length, enviados, pulados, motivos };
+}
+
+async function handle(req: NextRequest): Promise<Response> {
+  const requestId = randomUUID();
+
+  const auth = req.headers.get("authorization") ?? "";
+  const fornecido = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+  const aceitos = [env.INTERNAL_CRON_SECRET, env.INTERNAL_SECRET].filter(Boolean);
+  if (aceitos.length === 0 || !fornecido || !aceitos.includes(fornecido)) {
+    return fail("forbidden", "Cron secret missing or invalid.", 403, { requestId });
+  }
+
+  const admin = createAdminClient();
+  try {
+    const resultado = await executarVarreduraDeLembretes(admin, requestId);
+    return ok(resultado, { requestId });
+  } catch (err) {
+    const mensagem = err instanceof Error ? err.message : String(err);
+    return fail("internal_error", mensagem, 500, { requestId });
+  }
 }
 
 export const GET = handle;
