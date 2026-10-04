@@ -488,6 +488,18 @@ export async function alterarAgendamentoHandler(
       outcome: {revision:salvo.revision,source_kind:salvo.outcome_source_kind,message_id:salvo.outcome_message_id,recorded_at:salvo.outcome_recorded_at},
     });
 
+    // Mesmo empurrão de marcarAgendamentoHandler: sem isto, appointment.confirmed/
+    // .rescheduled/.cancelled ficam pending até algum cron passar — e nesta
+    // instalação isso pode ser nunca.
+    ensureHandlersRegistered();
+    void drainEventLog(createAdminClient()).catch((err) => {
+      logger.warn("[agenda] drain pós-transição falhou", {
+        organization_id: ctx.organization_id,
+        appointment_id: atual.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
     void audit({action: transicao === "rescheduled" ? "agenda.appointment_rescheduled" : transicao === "completed" || transicao === "no_show" ? "agenda.appointment_outcome_recorded" : "agenda.appointment_updated",
       actorUserId:ctx.actor.type === "user" ? ctx.actor.id : null,organizationId:ctx.organization_id,
       resourceType:"calendar_appointment",resourceId:input.id,requestId:ctx.requestId,
@@ -543,6 +555,15 @@ export async function cancelarAgendamentoHandler(
     transicao: "cancelled",
     fusoDoCompromisso: atual.time_zone as string,
     nomeDoTipo: await nomeDoTipoDoCompromisso(supabase, ctx, atual.event_type_id as string | null),
+  });
+
+  ensureHandlersRegistered();
+  void drainEventLog(createAdminClient()).catch((err) => {
+    logger.warn("[agenda] drain pós-cancelamento falhou", {
+      organization_id: ctx.organization_id,
+      appointment_id: atual.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
   });
 
   void audit({
