@@ -32,9 +32,8 @@ import { CaretLeft, ChatCircle, IdentificationCard } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { comandosDaFila } from "@/lib/inbox/comando-da-conversa";
+import { tabToFilter } from "@/lib/inbox/filtros-do-inbox";
 import { buscaValeConsulta } from "@/lib/inbox/termo-de-busca";
-import { useAutomaticoAtivo } from "@/hooks/ai/useAutomaticoAtivo";
 
 /**
  * QUAL COLUNA APARECE NO CELULAR — as duas saem da MESMA pergunta.
@@ -61,65 +60,17 @@ export function colunasDoCelular(temSelecao: boolean): { lista: string; conversa
   };
 }
 
-/**
- * O QUE CADA ABA SIGNIFICA. Exportada porque é a definição em si — o defeito
- * que este mapa já teve (Minhas mostrando tudo que o atendente fechou) não
- * aparece em nenhuma tela até alguém reclamar, então vale prender por teste.
- */
-export function tabToFilter(
-  tab: InboxFiltersValue["tab"],
-  automaticoDaOrg?: boolean,
-): Partial<ConversationsFilters> {
-  switch (tab) {
-    case "unassigned":
-      // A FILA PERGUNTA POR QUEM MANDA, NÃO POR STATUS.
-      //
-      // Antes ela pedia `assigned_to=unassigned` + os dois estados de espera. Só
-      // que "sem dono e aberta" é também a conversa que o robô está atendendo
-      // agora — medido na VPS em 2026-08-30, a aba dizia 83 e 47 daquelas tinham
-      // o automático no comando. O atendente abria a Fila e via como trabalho
-      // dele quase tudo que já estava sendo respondido.
-      //
-      // `comandosDaFila` é quem cruza isso com o fato org-wide: numa instalação
-      // sem nenhum agente no ar, `automatico` também é "esperando gente".
-      return { comando: comandosDaFila(automaticoDaOrg) };
-    case "mine":
-      // Sem `exclude_finished` a aba mostra tudo que o atendente JÁ atendeu —
-      // `Fechar` muda o status mas não solta o dono (de propósito: quem atendeu
-      // é histórico). O lugar de "minhas fechadas" é a aba Fechadas.
-      return { assigned_to: "me", exclude_finished: true };
-    case "closed":
-      return { status: "closed" };
-    case "archived":
-      // O ARQUIVO É UM ESTADO SÓ ELE, não `in(terminais)`.
-      //
-      // `CONVERSATION_TERMINAL_STATUSES` responde outra pergunta ("o que sai do
-      // fluxo vivo", usada pelo `exclude_finished` de Minhas). Reaproveitá-la
-      // aqui faria a aba Arquivadas listar também as fechadas — duas abas com a
-      // mesma lista e badges diferentes, que é a mentira de tela que o mapa
-      // abaixo existe para impedir.
-      return { status: "archived" };
-    case "ai":
-      // `ai_handling` é escrito por UM caminho só em produção (a volta pelo botão
-      // "Devolver ao automático"), então a aba vivia mostrando 2 enquanto o robô
-      // atendia 47. Agora ela pergunta a régua do MOTOR.
-      return { comando: ["automatico"] };
-    case "all":
-    default:
-      return {};
-  }
-}
-
-const FILTER_TABS: InboxTab[] = ["unassigned", "mine", "all", "closed", "archived", "ai"];
+/** Filtro puro em lib/inbox/filtros-do-inbox.ts; reexport para compatibilidade. */
+export { tabToFilter };
 
 /**
- * Lê ?filter= (G4-02, deep-link). O Inbox é a tela operacional do WhatsApp,
- * então sem filtro explícito abre em "Todas". A Fila continua disponível para
- * o recorte de atendimento pendente, mas histórico importado não some da tela
- * inicial só por estar fechado.
+ * Deep-links antigos continuam abrindo a caixa equivalente. A interface deixa
+ * de expor Fila/Minhas/Todas/Automático/Arquivadas, mas links já salvos não
+ * quebram durante a migração visual.
  */
 function parseFilterParam(v: string | null): InboxTab {
-  return v && FILTER_TABS.includes(v as InboxTab) ? (v as InboxTab) : "all";
+  if (v === "ended" || v === "closed" || v === "archived") return "ended";
+  return "open";
 }
 
 interface InboxLayoutProps {
@@ -141,6 +92,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   const [aux, setAux] = useState<Omit<InboxFiltersValue, "tab">>({
     search: "",
     onlyUnread: false,
+    categoria: "all",
   });
   const filterValue: InboxFiltersValue = { tab, ...aux };
   const setFilterValue = useCallback(
@@ -159,7 +111,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
   // Desliga só os AUXILIARES e mantém a aba: a aba é onde a pessoa está, e
   // limpá-la junto a tiraria do lugar sem ela ter pedido.
   const limparFiltrosAuxiliares = useCallback(() => {
-    setFilterValue({ tab, search: "", onlyUnread: false });
+    setFilterValue({ tab, search: "", onlyUnread: false, categoria: "all" });
   }, [tab, setFilterValue]);
 
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
@@ -177,22 +129,11 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
    */
   const [respondendo, setRespondendo] = useState<ConversationMensagem | null>(null);
 
-  /**
-   * A ORG tem automático de pé? Sobe para cá porque agora é a ABA que precisa —
-   * `ConversationList` e `ConversationHeader` continuam lendo o mesmo hook, e o
-   * react-query dedupa: segue sendo uma requisição só.
-   *
-   * `undefined` enquanto carrega, e `comandosDaFila` trata isso como "assume que
-   * há" — a mesma convenção da regra. Numa org SEM automático a Fila nasce menor
-   * e completa quando a resposta chega; a janela é de ~200ms e o rótulo nunca
-   * discorda do filtro, porque os dois usam a mesma convenção.
-   */
-  const { data: automaticoDaOrg } = useAutomaticoAtivo();
   const composerRef = useRef<ComposerHandle | null>(null);
 
   const filters: ConversationsFilters = useMemo(
     () => ({
-      ...tabToFilter(filterValue.tab, automaticoDaOrg),
+      ...tabToFilter(filterValue.tab),
       // A tela NÃO pede o que a rota recusa: o hook trata falha com
       // `showApiError`, então digitar a primeira letra de qualquer busca faria
       // piscar um erro na cara de quem digita. A regra é a MESMA que o schema
@@ -200,14 +141,18 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       search: buscaValeConsulta(filterValue.search) ? filterValue.search : undefined,
       channel_session_id: filterValue.channel_session_id,
       tag: filterValue.tag,
+      categoria:
+        filterValue.tab === "open" && filterValue.categoria !== "all"
+          ? filterValue.categoria
+          : undefined,
       unread: filterValue.onlyUnread || undefined,
     }),
     [
       filterValue.tab,
-      automaticoDaOrg,
       filterValue.search,
       filterValue.channel_session_id,
       filterValue.tag,
+      filterValue.categoria,
       filterValue.onlyUnread,
     ],
   );
@@ -374,7 +319,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     <OpenConversationProvider conversationId={selectedId}>
       <div
         className={cn(
-          "-m-6 grid h-[calc(100dvh-3.5rem)] w-[calc(100%+3rem)] grid-cols-1 overflow-hidden bg-background md:grid-cols-[252px_minmax(0,1fr)]",
+          "-m-6 grid h-[calc(100dvh-3.5rem)] w-[calc(100%+3rem)] grid-cols-1 overflow-hidden bg-background md:grid-cols-[292px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]",
           modoFoco && "md:grid-cols-1",
         )}
         /*
@@ -541,7 +486,7 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
                 conversationId={selectedConversation.id}
                 blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
                 janelaFechada={motivoDaJanela}
-                disabled={selectedConversation.status === "closed"}
+                disabled={["closed", "resolved", "archived"].includes(selectedConversation.status)}
                 contactName={selectedConversation.contacts?.name ?? null}
                 organizationName={activeOrg?.name ?? null}
                 respondendo={respondendo}

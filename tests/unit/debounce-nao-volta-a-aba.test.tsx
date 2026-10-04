@@ -48,7 +48,7 @@ afterEach(() => {
 
 describe("o debounce da busca não desfaz a troca de aba", () => {
   it("⭐ digitar e trocar de aba em <250 ms preserva a ABA NOVA", () => {
-    let atual: Valor = { tab: "unassigned", search: "", onlyUnread: false };
+    let atual: Valor = { tab: "open", categoria: "all", search: "", onlyUnread: false };
     const onChange = vi.fn((next: Valor) => {
       atual = next;
     });
@@ -60,7 +60,7 @@ describe("o debounce da busca não desfaz a troca de aba", () => {
 
     // o operador troca de aba ANTES de o debounce fechar
     act(() => {
-      onChange({ ...atual, tab: "all" });
+      onChange({ ...atual, tab: "ended" });
     });
     rerender(<InboxFilters value={atual} onChange={onChange} />);
 
@@ -68,12 +68,12 @@ describe("o debounce da busca não desfaz a troca de aba", () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(atual.tab, "a aba nova foi desfeita pelo timer do debounce").toBe("all");
+    expect(atual.tab, "a aba nova foi desfeita pelo timer do debounce").toBe("ended");
   });
 
   it("CONTROLE: a busca digitada CHEGA — o conserto não pode calar o debounce", () => {
     // Sem este caso, "nunca propagar nada" passaria no de cima.
-    let atual: Valor = { tab: "unassigned", search: "", onlyUnread: false };
+    let atual: Valor = { tab: "open", categoria: "all", search: "", onlyUnread: false };
     const onChange = vi.fn((next: Valor) => {
       atual = next;
     });
@@ -95,7 +95,7 @@ describe("o debounce da busca não desfaz a troca de aba", () => {
     // Guarda de vacuidade: um efeito que propagasse a cada render manteria os dois
     // casos de cima verdes e encheria a lista de requisições iguais.
     const onChange = vi.fn();
-    const valor: Valor = { tab: "unassigned", search: "", onlyUnread: false };
+    const valor: Valor = { tab: "open", categoria: "all", search: "", onlyUnread: false };
     render(<InboxFilters value={valor} onChange={onChange} />);
     act(() => {
       vi.advanceTimersByTime(300);

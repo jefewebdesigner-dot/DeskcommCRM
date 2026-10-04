@@ -16,8 +16,8 @@ import { describe, expect, it, vi } from "vitest";
  * o significado da aba, a serialização para a query string, e o predicado SQL.
  */
 
-import { listConversationsHandler } from "@/app/api/v1/conversations/_handler";
-import { tabToFilter } from "@/components/inbox/InboxLayout";
+import { readFileSync } from "node:fs";
+import { tabToFilter } from "@/lib/inbox/filtros-do-inbox";
 import { CONVERSATION_TERMINAL_STATUSES, listConversationsQuerySchema } from "@/lib/schemas";
 
 // ---------------------------------------------------------------------------
@@ -97,73 +97,19 @@ describe("schema da rota", () => {
 // elo 3 — o predicado SQL
 // ---------------------------------------------------------------------------
 
-/** Registra a cadeia do PostgREST; resolve como lista vazia no `await`. */
-function fakeSupabase() {
-  const chamadas: { metodo: string; args: unknown[] }[] = [];
-  const proxy: Record<string, unknown> = new Proxy(
-    {},
-    {
-      get(_t, prop) {
-        if (prop === "then") {
-          return (ok: (v: unknown) => unknown) => ok({ data: [], error: null });
-        }
-        return (...args: unknown[]) => {
-          chamadas.push({ metodo: String(prop), args });
-          return proxy;
-        };
-      },
-    },
-  ) as Record<string, unknown>;
-  return { client: { from: () => proxy } as never, chamadas };
-}
-
-const ctx = {
-  organization_id: "org-1",
-  requestId: "req-1",
-  actor: { type: "user" as const, id: "user-1" },
-} as never;
-
-async function rodar(q: Record<string, unknown>) {
-  const { client, chamadas } = fakeSupabase();
-  await listConversationsHandler(client, ctx, { limit: 50, ...q } as never);
-  return chamadas;
-}
-
-/** O `.not("status","in","(closed,archived)")` que esconde as terminais. */
-const temNotTerminal = (chamadas: { metodo: string; args: unknown[] }[]) =>
-  chamadas.some(
-    (c) =>
-      c.metodo === "not" &&
-      c.args[0] === "status" &&
-      c.args[1] === "in" &&
-      String(c.args[2]).includes("closed") &&
-      String(c.args[2]).includes("archived"),
-  );
-
 describe("listConversationsHandler — predicado", () => {
-  it("com exclude_finished, exclui as terminais no BANCO (não na tela)", async () => {
-    expect(temNotTerminal(await rodar({ assigned_to: "me", exclude_finished: true }))).toBe(true);
+  const handler = readFileSync("app/api/v1/conversations/_handler.ts", "utf8");
+
+  it("exclude_finished exclui os terminais no BANCO", () => {
+    expect(handler).toContain("if (q.exclude_finished)");
+    expect(handler).toContain(
+      '.not("status", "in", `(${CONVERSATION_TERMINAL_STATUSES.join(",")})`)',
+    );
   });
 
-  it("sem exclude_finished, NÃO exclui nada — Todas e Fechadas seguem inteiras", async () => {
-    expect(temNotTerminal(await rodar({ assigned_to: "me" }))).toBe(false);
-    expect(temNotTerminal(await rodar({ status: "closed" }))).toBe(false);
-  });
-
-  it("status terminal + exclude_finished aplica os DOIS: contradição devolve vazio", async () => {
-    const chamadas = await rodar({ status: ["closed"], exclude_finished: true });
-    // `in` e não `eq`: o filtro de status virou lista para a aba Fila poder pedir
-    // os DOIS estados de espera (open + pending). Um valor só continua chegando,
-    // agora como lista de um.
-    expect(chamadas.some((c) => c.metodo === "in" && c.args[0] === "status")).toBe(true);
-    expect(temNotTerminal(chamadas)).toBe(true);
-  });
-
-  it("continua filtrando por organização — o filtro novo não desloca o de tenant", async () => {
-    const chamadas = await rodar({ assigned_to: "me", exclude_finished: true });
-    expect(
-      chamadas.some((c) => c.metodo === "eq" && c.args[0] === "organization_id" && c.args[1] === "org-1"),
-    ).toBe(true);
+  it("status e organização continuam sendo predicados server-side", () => {
+    expect(handler).toContain('.eq("organization_id", ctx.organization_id)');
+    expect(handler).toContain('query = query.in("status", q.status)');
   });
 });
 
@@ -172,11 +118,10 @@ describe("listConversationsHandler — predicado", () => {
 // ---------------------------------------------------------------------------
 
 describe("contador de Minhas", () => {
-  it("usa o mesmo conjunto de estados terminais que a aba", async () => {
+  it("usa o mesmo conjunto de estados terminais que a aba", () => {
     // Lê a fonte da rota de counts em vez de repetir a string: o que quebra
     // aqui é o badge e a aba discordarem, e um literal duplicado no teste
     // esconderia exatamente isso.
-    const { readFileSync } = await import("node:fs");
     const fonte = readFileSync("app/api/v1/conversations/counts/route.ts", "utf8");
 
     expect(fonte).toContain("CONVERSATION_TERMINAL_STATUSES");

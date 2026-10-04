@@ -67,13 +67,7 @@ export type ConversationWithContact = Conversation & {
 
 /** O vocabulário de LEITURA (7), que inclui os dois estados que só o motor escreve. */
 export type StatusDeConversa =
-  | "open"
-  | "pending"
-  | "resolved"
-  | "claimed"
-  | "ai_handling"
-  | "closed"
-  | "archived";
+  "open" | "pending" | "resolved" | "claimed" | "ai_handling" | "closed" | "archived";
 
 export interface ConversationsFilters {
   /** Um status ou vários — a aba Fila precisa de dois (open + pending). */
@@ -94,6 +88,8 @@ export interface ConversationsFilters {
    */
   unread?: boolean;
   channel_session_id?: string;
+  /** Lead / cliente / suporte, calculado e persistido no banco. */
+  categoria?: "lead" | "client" | "support";
   tag?: string;
 }
 
@@ -102,10 +98,7 @@ interface ListResponse {
   meta?: { cursor?: string | null; has_more?: boolean };
 }
 
-export function useConversationsRealtime(
-  filters: ConversationsFilters,
-  orgId: string | null,
-) {
+export function useConversationsRealtime(filters: ConversationsFilters, orgId: string | null) {
   const qc = useQueryClient();
   const queryKey = ["conversations", filters] as const;
 
@@ -131,6 +124,7 @@ export function useConversationsRealtime(
       if (filters.search) qs.set("search", filters.search);
       if (filters.unread) qs.set("unread", "true");
       if (filters.channel_session_id) qs.set("channel_session_id", filters.channel_session_id);
+      if (filters.categoria) qs.set("categoria", filters.categoria);
       if (filters.tag) qs.set("tag", filters.tag);
       if (pageParam) qs.set("cursor", pageParam);
       qs.set("limit", "50");

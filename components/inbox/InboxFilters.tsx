@@ -21,38 +21,34 @@ import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags"
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
 import type { Role, VisibilityMode } from "@/lib/auth/types";
 
-export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "archived" | "ai";
+export type InboxTab = "open" | "ended";
+export type InboxCategory = "all" | "lead" | "client" | "support";
 
 const INBOX_TABS: { value: InboxTab; label: string }[] = [
-  { value: "unassigned", label: "Fila" },
-  { value: "mine", label: "Minhas" },
-  { value: "all", label: "Todas" },
-  { value: "closed", label: "Fechadas" },
-  // "Arquivadas" fica ao lado de "Fechadas" porque as duas são passado — e
-  // separada dela porque são passados diferentes (#923): fechada é atendimento
-  // encerrado, arquivada é o que saiu da fila de trabalho sem ser destruído.
-  { value: "archived", label: "Arquivadas" },
-  // "Automático", não "IA": a palavra deste ator já é contrato em quatro arquivos
-  // e no dicionário, e `handoff-por-orcamento.test.ts` usa literalmente "Voltar
-  // para a IA" como a sabotagem que deve reprovar. A aba era a última fora do
-  // padrão — e ela mudou de significado junto (deixou de filtrar `ai_handling` e
-  // passou a perguntar a régua do motor), então o rótulo velho descreveria outra
-  // coisa.
-  { value: "ai", label: "Automático" },
+  { value: "open", label: "Em atendimento" },
+  { value: "ended", label: "Encerrados" },
+];
+
+const INBOX_CATEGORIES: { value: InboxCategory; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "lead", label: "Leads" },
+  { value: "client", label: "Clientes" },
+  { value: "support", label: "Suporte" },
 ];
 
 /**
- * Visões visíveis por papel + escopo (G4-02, acceptance 1). 'Todas' fica oculta
- * para `agent` quando visibility_mode ≠ 'all'; viewer/manager/admin sempre veem.
- * É apenas cosmético — a RLS (G4-01) é quem garante o escopo mesmo via ?filter=all.
+ * Estado do atendimento não depende do papel. O escopo de quais conversas a
+ * pessoa pode ver continua sendo decidido pela RLS; a barra só escolhe aberto
+ * ou encerrado.
  */
-export function visibleInboxTabs(role: Role, mode: VisibilityMode | undefined): InboxTab[] {
-  const hideAll = role === "agent" && mode !== "all";
-  return INBOX_TABS.filter((t) => !(t.value === "all" && hideAll)).map((t) => t.value);
+export function visibleInboxTabs(_role: Role, _mode: VisibilityMode | undefined): InboxTab[] {
+  return ["open", "ended"];
 }
 
 export interface InboxFiltersValue {
   tab: InboxTab;
+  /** Recorte operacional dentro de Em atendimento. */
+  categoria: InboxCategory;
   search: string;
   onlyUnread: boolean;
   channel_session_id?: string;
@@ -129,20 +125,16 @@ export function InboxFilters({ value, onChange }: Props) {
     ? visibleInboxTabs(activeOrg.role, activeOrg.visibility_mode)
     : INBOX_TABS.map((t) => t.value);
   const countFor: Partial<Record<InboxTab, number>> = {
-    // `fila` é o nome novo; `unassigned` é o alias que a rota versionada mantém.
-    // O `??` cobre a janela em que a página ainda lê um cache de react-query
-    // gravado antes do deploy — sem ele o badge sumiria por alguns segundos.
-    unassigned: counts?.fila ?? counts?.unassigned,
-    // A aba do automático ganhou contador junto com o significado: ela deixou de
-    // filtrar `ai_handling` (2 conversas) e passou a mostrar o que o robô conduz
-    // (47, na instalação onde isto foi medido). Um número que existe na API e não
-    // aparece na tela é trabalho feito que ninguém vê.
-    ai: counts?.automatico,
-    mine: counts?.mine,
-    all: counts?.all,
-    closed: counts?.closed,
-    archived: counts?.archived,
+    open: counts?.open ?? counts?.all,
+    ended: counts?.ended ?? (counts?.closed ?? 0) + (counts?.archived ?? 0),
   };
+  const countForCategory: Partial<Record<InboxCategory, number>> = {
+    all: counts?.open ?? counts?.all,
+    lead: counts?.leads,
+    client: counts?.clients,
+    support: counts?.support,
+  };
+
   // Filtrar por um número que saiu da lista (o operador acabou de excluir o
   // canal) deixa o inbox mostrando um subconjunto — às vezes vazio — sem nada na
   // tela dizendo que há filtro. O número some do dropdown junto com o canal, e o
@@ -329,9 +321,9 @@ export function InboxFilters({ value, onChange }: Props) {
       <Tabs
         value={value.tab}
         onValueChange={(v) => onChange({ ...value, tab: v as InboxTab })}
-        className="[scrollbar-width:none] overflow-x-auto px-2.5"
+        className="px-2.5"
       >
-        <TabsList className="h-auto w-max min-w-full justify-start gap-3 rounded-none bg-transparent p-0">
+        <TabsList className="grid h-9 w-full grid-cols-2 rounded-lg bg-muted/55 p-1">
           {tabs.map((tab) => {
             const meta = INBOX_TABS.find((t) => t.value === tab)!;
             const count = countFor[tab];
@@ -339,11 +331,11 @@ export function InboxFilters({ value, onChange }: Props) {
               <TabsTrigger
                 key={tab}
                 value={tab}
-                className="-mb-px shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2 text-[10.5px] font-semibold text-text-muted transition-colors data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
+                className="h-7 min-w-0 gap-1 rounded-md px-2 text-[11px] font-semibold text-text-muted data-[state=active]:bg-background data-[state=active]:text-text data-[state=active]:shadow-sm"
               >
-                {t(meta.label)}
+                <span className="truncate">{t(meta.label)}</span>
                 {typeof count === "number" && count > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-subtle tabular-nums">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-text-subtle tabular-nums">
                     {count}
                   </span>
                 )}
@@ -352,6 +344,36 @@ export function InboxFilters({ value, onChange }: Props) {
           })}
         </TabsList>
       </Tabs>
+
+      {value.tab === "open" && (
+        <div className="px-2.5 pt-2 pb-2.5">
+          <div className="grid grid-cols-4 gap-1 rounded-lg border border-border/50 bg-background p-1">
+            {INBOX_CATEGORIES.map((categoria) => {
+              const ativo = value.categoria === categoria.value;
+              const count = countForCategory[categoria.value];
+              return (
+                <button
+                  key={categoria.value}
+                  type="button"
+                  aria-pressed={ativo}
+                  onClick={() => onChange({ ...value, categoria: categoria.value })}
+                  className={cn(
+                    "flex h-7 min-w-0 items-center justify-center gap-1 rounded-md px-1 text-[10px] font-medium transition-colors",
+                    ativo
+                      ? "bg-accent-soft text-accent shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <span className="truncate">{t(categoria.label)}</span>
+                  {typeof count === "number" && count > 0 && (
+                    <span className="text-[9px] tabular-nums opacity-75">{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

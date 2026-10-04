@@ -15,6 +15,8 @@ export interface Conversation {
   service_closed_at?: string | null;
   service_started_at?: string | null;
   current_demanda_id?: string | null;
+  /** Classificação operacional do Inbox (migration 0355). */
+  inbox_category?: "lead" | "client" | "support";
   assigned_to_user_id: string | null;
   /**
    * Cópia desnormalizada do nome de quem atende (migration 0202), escrita por

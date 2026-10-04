@@ -45,9 +45,7 @@ export type FiltroDeContagem = readonly [coluna: string, valor: string | boolean
  * e a segunda régua sempre diverge. Enquanto isso, o badge sob busca fica maior
  * que a lista, e isso está declarado, não esquecido.
  */
-export function filtrosAuxiliaresDaContagem(
-  sp: URLSearchParams,
-): FiltroDeContagem[] {
+export function filtrosAuxiliaresDaContagem(sp: URLSearchParams): FiltroDeContagem[] {
   const filtros: FiltroDeContagem[] = [];
   const canal = sp.get("channel_session_id");
   if (canal) filtros.push(["channel_session_id", canal]);
@@ -122,45 +120,70 @@ export async function GET(req: NextRequest): Promise<Response> {
   // convenção da regra: assume que há automático.
   const automaticoDaOrg = await orgTemAutomatico(supabase, org);
 
-  const [fila, automatico, mine, all, closed, archived] = await Promise.all([
-    // A FILA DEIXOU DE SER "sem dono + status de espera".
-    //
-    // Aquele par contava como trabalho humano pendente tudo que o robô estava
-    // atendendo: medido na VPS em 2026-08-30, o badge dizia 83 enquanto 47
-    // daquelas conversas tinham o automático no comando. Agora ele conta o mesmo
-    // predicado que a aba pede — e o espelhamento entre badge e aba é vigiado
-    // por `tests/e2e/inbox-abas-espelham-o-comando.spec.ts`,
-    // `tests/unit/fila-tem-uma-definicao-so.test.ts` e
-    // `tests/invariants/gov-5b-inbox-scope-counts.test.ts`, porque um badge que conta o
-    // que a aba não mostra manda o atendente procurar trabalho que não existe.
-    countExact().in("comando_da_conversa", comandosDaFila(automaticoDaOrg)),
-    // A aba "Automático". Antes ela pedia `status='ai_handling'`, escrito por UM
-    // caminho só em produção — por isso vivia quase vazia.
-    countExact().eq("comando_da_conversa", "automatico"),
-    countExact()
-      .eq("assigned_to_user_id", user.id)
-      .not("status", "in", `(${CONVERSATION_TERMINAL_STATUSES.join(",")})`),
-    countExact(),
-    // A aba "Fechadas" existia SEM número nenhum. Num inbox antigo, é o número
-    // que diz o tamanho do arquivo — e a sua ausência fazia a aba parecer um
-    // lugar vazio. Mesma fábrica: herda organização e filtros.
-    //
-    // ⚠️ `eq("closed")`, e NÃO `in(TERMINAIS)` como antes. O par
-    // fechada/arquivada agora tem DUAS abas, e cada badge tem de contar
-    // exatamente a lista da sua aba: `in(TERMINAIS)` somava arquivadas (e, antes
-    // da 0222, resolvidas) no número de "Fechadas", que lista só
-    // `status='closed'` — o badge dizia 120 e a lista mostrava 40. Era a mesma
-    // classe de defeito que este arquivo já conserta desde a Fila, encontrada
-    // aqui no caminho (#923).
-    countExact().eq("status", "closed"),
-    // A aba "Arquivadas" (#923): a pasta do histórico, separada de "Fechadas"
-    // para que arquivar seja reversível e auditável sem se confundir com o
-    // encerramento do atendimento.
-    countExact().eq("status", "archived"),
-  ]);
+  const [fila, automatico, mine, all, closed, archived, open, ended, leads, clients, support] =
+    await Promise.all([
+      // A FILA DEIXOU DE SER "sem dono + status de espera".
+      //
+      // Aquele par contava como trabalho humano pendente tudo que o robô estava
+      // atendendo: medido na VPS em 2026-08-30, o badge dizia 83 enquanto 47
+      // daquelas conversas tinham o automático no comando. Agora ele conta o mesmo
+      // predicado que a aba pede — e o espelhamento entre badge e aba é vigiado
+      // por `tests/e2e/inbox-abas-espelham-o-comando.spec.ts`,
+      // `tests/unit/fila-tem-uma-definicao-so.test.ts` e
+      // `tests/invariants/gov-5b-inbox-scope-counts.test.ts`, porque um badge que conta o
+      // que a aba não mostra manda o atendente procurar trabalho que não existe.
+      countExact().in("comando_da_conversa", comandosDaFila(automaticoDaOrg)),
+      // A aba "Automático". Antes ela pedia `status='ai_handling'`, escrito por UM
+      // caminho só em produção — por isso vivia quase vazia.
+      countExact().eq("comando_da_conversa", "automatico"),
+      countExact()
+        .eq("assigned_to_user_id", user.id)
+        .not("status", "in", `(${CONVERSATION_TERMINAL_STATUSES.join(",")})`),
+      countExact(),
+      // A aba "Fechadas" existia SEM número nenhum. Num inbox antigo, é o número
+      // que diz o tamanho do arquivo — e a sua ausência fazia a aba parecer um
+      // lugar vazio. Mesma fábrica: herda organização e filtros.
+      //
+      // ⚠️ `eq("closed")`, e NÃO `in(TERMINAIS)` como antes. O par
+      // fechada/arquivada agora tem DUAS abas, e cada badge tem de contar
+      // exatamente a lista da sua aba: `in(TERMINAIS)` somava arquivadas (e, antes
+      // da 0222, resolvidas) no número de "Fechadas", que lista só
+      // `status='closed'` — o badge dizia 120 e a lista mostrava 40. Era a mesma
+      // classe de defeito que este arquivo já conserta desde a Fila, encontrada
+      // aqui no caminho (#923).
+      countExact().eq("status", "closed"),
+      // A aba "Arquivadas" (#923): a pasta do histórico, separada de "Fechadas"
+      // para que arquivar seja reversível e auditável sem se confundir com o
+      // encerramento do atendimento.
+      countExact().eq("status", "archived"),
+      // Nova leitura operacional: só duas caixas de ciclo de vida.
+      countExact().in("status", ["open", "pending", "claimed", "ai_handling"]),
+      countExact().in("status", ["closed", "resolved", "archived"]),
+      // A categoria só conta trabalho VIVO. Suporte vence cliente na classificação
+      // persistida, então estes três números são mutuamente exclusivos.
+      countExact()
+        .in("status", ["open", "pending", "claimed", "ai_handling"])
+        .eq("inbox_category", "lead"),
+      countExact()
+        .in("status", ["open", "pending", "claimed", "ai_handling"])
+        .eq("inbox_category", "client"),
+      countExact()
+        .in("status", ["open", "pending", "claimed", "ai_handling"])
+        .eq("inbox_category", "support"),
+    ]);
 
   const firstErr =
-    fila.error ?? automatico.error ?? mine.error ?? all.error ?? closed.error ?? archived.error;
+    fila.error ??
+    automatico.error ??
+    mine.error ??
+    all.error ??
+    closed.error ??
+    archived.error ??
+    open.error ??
+    ended.error ??
+    leads.error ??
+    clients.error ??
+    support.error;
   if (firstErr) {
     return fail("internal_error", firstErr.message, 500, { requestId });
   }
@@ -178,6 +201,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       all: all.count ?? 0,
       closed: closed.count ?? 0,
       archived: archived.count ?? 0,
+      open: open.count ?? 0,
+      ended: ended.count ?? 0,
+      leads: leads.count ?? 0,
+      clients: clients.count ?? 0,
+      support: support.count ?? 0,
     },
     { requestId },
   );

@@ -188,8 +188,10 @@ export function ConversationListItem({
   // respondendo. Cai no nome do canal quando não há número (canal recém-criado).
   const canal = conversation.channel_sessions ?? null;
   const rotuloCanal = canal?.phone_number ?? canal?.display_name ?? null;
+  const categoria = conversation.inbox_category ?? "lead";
 
   const temSelos =
+    categoria !== "lead" ||
     visibleTags.length > 0 ||
     (mostrarAtendente && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
@@ -292,6 +294,22 @@ export function ConversationListItem({
 
         {temSelos && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {categoria === "support" && (
+              <Badge
+                variant="outline"
+                className="h-4 border-sky-500/25 bg-sky-500/10 px-1.5 text-[10px] font-medium text-sky-700 dark:text-sky-300"
+              >
+                {t("Suporte")}
+              </Badge>
+            )}
+            {categoria === "client" && (
+              <Badge
+                variant="outline"
+                className="h-4 border-emerald-500/25 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+              >
+                {t("Cliente")}
+              </Badge>
+            )}
             {visibleTags.map((t) => (
               <ChipDeEtiqueta key={t} tag={t} className="h-4 px-1.5 text-[10px]" />
             ))}

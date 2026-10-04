@@ -19,6 +19,12 @@ export interface ConversationCounts {
   closed?: number;
   /** A aba "Arquivadas" (#923). Opcional pelo mesmo motivo: cache antigo não tem. */
   archived?: number;
+  /** Nova leitura operacional do Inbox. Campos opcionais para cache pré-deploy. */
+  open?: number;
+  ended?: number;
+  leads?: number;
+  clients?: number;
+  support?: number;
 }
 
 /** Os filtros auxiliares ligados na barra, que a contagem tem de aplicar junto. */
@@ -32,10 +38,7 @@ export interface FiltrosDaContagem {
  * Contagens por visão do inbox (G4-02). O endpoint usa o client RLS-scoped —
  * um agent em modo own* recebe a contagem do seu escopo, não o total da org.
  */
-export function useConversationCounts(
-  orgId: string | null,
-  filtros: FiltrosDaContagem = {},
-) {
+export function useConversationCounts(orgId: string | null, filtros: FiltrosDaContagem = {}) {
   const qs = new URLSearchParams();
   if (filtros.unread) qs.set("unread", "true");
   if (filtros.tag) qs.set("tag", filtros.tag);

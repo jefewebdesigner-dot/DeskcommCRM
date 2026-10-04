@@ -60,7 +60,8 @@ const { InboxFilters } = await import("@/components/inbox/InboxFilters");
  */
 function Arnes() {
   const [value, setValue] = useState<InboxFiltersValue>({
-    tab: "all",
+    tab: "open",
+    categoria: "all",
     search: "",
     onlyUnread: false,
   });

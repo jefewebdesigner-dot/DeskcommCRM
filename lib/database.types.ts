@@ -3576,6 +3576,7 @@ export type Database = {
           current_demanda_id: string | null
           group_chat_id: string | null
           id: string
+          inbox_category: string
           is_group: boolean
           last_handoff_at: string | null
           last_handoff_reason: string | null
@@ -3620,6 +3621,7 @@ export type Database = {
           current_demanda_id?: string | null
           group_chat_id?: string | null
           id?: string
+          inbox_category?: string
           is_group?: boolean
           last_handoff_at?: string | null
           last_handoff_reason?: string | null
@@ -3664,6 +3666,7 @@ export type Database = {
           current_demanda_id?: string | null
           group_chat_id?: string | null
           id?: string
+          inbox_category?: string
           is_group?: boolean
           last_handoff_at?: string | null
           last_handoff_reason?: string | null
