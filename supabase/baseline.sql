@@ -33053,3 +33053,64 @@ grant execute on function public.fn_install_billing_export_module() to service_r
 -- a lista de erros benignos do update.sh, então a atualização não diz
 -- "atualizado" com módulo fora do ar. Instalação nova não tem módulo: no-op.
 do $f$ begin perform public.fn_conferir_modulos_instalados(); end $f$;
+
+-- ---- fn_service_begin ganha EXECUTE para authenticated + guarda de identidade de serviço (migration 0356) ----
+--
+-- Arquitetura Neon: a identidade técnica (createAdminClient()) sempre se
+-- apresenta como `authenticated`, nunca como `service_role` (que não existe
+-- aqui). fn_service_begin só tinha GRANT para service_role (dump acima,
+-- migration 0222 original) e todo caminho que chama
+-- beginServiceAtOrigin/ensureConversation (automações, lembrete de agenda,
+-- qualquer envio iniciado por worker) falhava com 42501. Mesma causa raiz do
+-- bloco de fn_service_status (migration 0354) um pouco acima — aqui a chamada
+-- vem sempre de worker/cron sem sessão de usuário, então a guarda certa é a
+-- mesma de emit_event (migration 0017 do runbook de prontidão): exigir a
+-- identidade de serviço, não um papel de organização.
+create or replace function public.fn_service_begin(p_org uuid,p_contact uuid,p_session uuid default null,p_observed jsonb default null)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  c public.conversations;
+  sid uuid;
+  v_service_identity constant uuid := '713c70ed-4d34-4e91-8d44-f7b1bbc47140';
+begin
+ if auth.uid() is distinct from v_service_identity then
+   raise exception 'service_caller_required' using errcode='42501';
+ end if;
+ perform public.fn_service_lock(p_org,p_contact);
+ if not exists(select 1 from public.contacts where id=p_contact and organization_id=p_org and not is_anonymized and is_merged_into is null) then
+  raise exception 'service_contact_not_found' using errcode='P0002'; end if;
+ select * into c from public.conversations where organization_id=p_org and contact_id=p_contact and not is_group
+  and (p_session is null or channel_session_id=p_session) order by last_message_at desc nulls last,created_at desc limit 1 for no key update;
+ if p_observed is not null then
+   if p_observed->>'organization_id' is distinct from p_org::text or p_observed->>'contact_id' is distinct from p_contact::text then
+     raise exception 'service_scope_mismatch' using errcode='23503'; end if;
+   if c.id is null then
+     if p_observed->>'absent' is distinct from 'true' then raise exception 'service_stale' using errcode='40001'; end if;
+   elsif public.fn_service_boundary(p_org,c.id) is distinct from p_observed then
+     raise exception 'service_stale' using errcode='40001';
+   end if;
+ end if;
+ if c.id is not null then
+   if c.status in ('closed','resolved','archived') then
+     c:=public.fn_service_status(p_org,c.id,'open',c.service_revision);
+   end if;
+   if exists(select 1 from public.demandas where id=c.current_demanda_id and organization_id=p_org and fechada_em is not null) then
+     update public.conversations set service_revision=service_revision+1,current_demanda_id=null,service_started_at=clock_timestamp()
+      where id=c.id and organization_id=p_org returning * into c;
+   end if;
+   if c.service_started_at is null then
+     update public.conversations set service_revision=service_revision+1,service_started_at=clock_timestamp()
+      where id=c.id and organization_id=p_org returning * into c;
+   end if;
+   return public.fn_service_boundary(p_org,c.id);
+ end if;
+ select id into sid from public.channel_sessions where organization_id=p_org and archived_at is null
+  and (p_session is null or id=p_session) order by (status='WORKING') desc,created_at limit 1;
+ if sid is null then raise exception 'service_channel_not_found' using errcode='P0002'; end if;
+ insert into public.conversations(organization_id,contact_id,channel_session_id,status,is_group,channel,service_started_at)
+  values(p_org,p_contact,sid,'open',false,'whatsapp',clock_timestamp()) returning * into c;
+ return public.fn_service_boundary(p_org,c.id);
+end; $$;
+
+revoke execute on function public.fn_service_begin(uuid,uuid,uuid,jsonb) from public, anon;
+grant execute on function public.fn_service_begin(uuid,uuid,uuid,jsonb) to authenticated, service_role;
