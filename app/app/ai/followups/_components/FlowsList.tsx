@@ -113,7 +113,7 @@ export function FlowsList({ initialData, canWrite }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo dos follow-ups")}>
+      <section className="grid grid-cols-3 gap-2 sm:gap-3" aria-label={t("Resumo dos follow-ups")}>
         {[
           { label: t("Ativos"), value: resumo.ativos, helper: t("em operação") },
           { label: t("Rascunhos"), value: resumo.rascunhos, helper: t("aguardando publicação") },
@@ -121,14 +121,14 @@ export function FlowsList({ initialData, canWrite }: Props) {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            className="min-w-0 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:p-4"
           >
             <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
-              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground sm:text-right sm:text-[11px]">
                 {item.helper}
               </p>
             </div>
