@@ -52,6 +52,8 @@ const NAV_ITEMS: NavItem[] = [
   // A porta da tela do app OAuth do Google — mesma razão da de cima: é
   // configuração da INSTALAÇÃO, e /admin tem navegação própria.
   { href: "/admin/google", label: "Google Agenda", icon: CalendarBlank },
+  // Token global do PJe: configuração da instalação, nunca do tenant.
+  { href: "/admin/pje", label: "PJe", icon: Key },
   // A porta da tela do App da Meta (chave secreta e token de verificação do
   // webhook) — mesma razão da de cima: é da INSTALAÇÃO. O rótulo é o da aba de
   // Conexões, para quem vem de lá reconhecer o mesmo nome.
