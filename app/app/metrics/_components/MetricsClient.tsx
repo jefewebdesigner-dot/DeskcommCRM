@@ -62,10 +62,10 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {canCompare ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:gap-3">
           <span className="text-sm text-muted-foreground">{t("Atendente")}</span>
           <Select value={owner} onValueChange={setOwner}>
-            <SelectTrigger className="w-64 rounded-xl">
+            <SelectTrigger className="w-full rounded-xl sm:w-64">
               <SelectValue placeholder={t("Todos os atendentes")} />
             </SelectTrigger>
             <SelectContent>
@@ -102,7 +102,7 @@ export function MetricsClient({ canCompare, currentUserId }: Props) {
           ) : (
             metrics.funnel.map((s) => (
               <div key={s.stage_id} className="flex items-center gap-3">
-                <span className="w-40 shrink-0 truncate text-sm">{s.stage_name}</span>
+                <span className="w-28 shrink-0 truncate text-xs sm:w-40 sm:text-sm">{s.stage_name}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-primary transition-[width]"
