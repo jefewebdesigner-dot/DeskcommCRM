@@ -62,60 +62,47 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   };
 
   try {
-    let resultado;
-    try {
-      resultado = await listMessagesHandler(
-        supabase,
-        handlerCtx,
-        conversationId,
-        qsParsed.data,
-      );
-    } catch (err) {
-      // Neon Data API aplica a RLS do usuário. Em algumas instalações a leitura
-      // aninhada de `messages -> conversations` pode falhar mesmo quando a
-      // conversa é visível. NÃO caímos direto no cliente técnico: primeiro a
-      // própria RLS do usuário precisa provar que ESTA conversa está visível e
-      // pertence à organização ativa. Só então repetimos a mesma leitura com a
-      // identidade técnica, ainda filtrada por organization_id + conversation_id
-      // dentro de listMessagesHandler. Assim o fallback não amplia acesso.
-      if (!(err instanceof ApiError) || err.code !== "internal_error") throw err;
+    // A autorização mora na CONVERSA, não na tabela de mensagens.
+    //
+    // No Neon Data API, messages_select depende de uma subconsulta em
+    // conversations. Essa composição de RLS é mais frágil que a própria regra
+    // de visibilidade da conversa e foi a causa de históricos que retornavam
+    // 500 mesmo com a conversa visível no Inbox. Fazemos uma única prova com a
+    // identidade do usuário e, só depois dela, usamos a identidade técnica para
+    // ler o histórico — sempre preso a organization_id + conversation_id pelo
+    // listMessagesHandler. O cliente técnico nunca decide autorização.
+    const { data: visivel, error: visibilityError } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("organization_id", activeOrg.orgId)
+      .maybeSingle();
 
-      const { data: visivel, error: visibilityError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("id", conversationId)
-        .eq("organization_id", activeOrg.orgId)
-        .maybeSingle();
-
-      if (visibilityError || !visivel) {
-        logger.error("[inbox.messages] leitura falhou e fallback não foi autorizado", {
-          request_id: requestId,
-          organization_id: activeOrg.orgId,
-          conversation_id: conversationId,
-          code: err.code,
-          data_api_error: err.message,
-          visibility_error: visibilityError?.message ?? null,
-        });
-        if (!visivel && !visibilityError) {
-          return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
-        }
-        throw err;
-      }
-
-      logger.warn("[inbox.messages] leitura RLS falhou; usando fallback técnico autorizado", {
+    if (visibilityError) {
+      logger.error("[inbox.messages] não foi possível provar visibilidade da conversa", {
         request_id: requestId,
         organization_id: activeOrg.orgId,
         conversation_id: conversationId,
-        data_api_error: err.message,
+        visibility_error: visibilityError.message,
       });
-
-      resultado = await listMessagesHandler(
-        createAdminClient(),
-        handlerCtx,
-        conversationId,
-        qsParsed.data,
+      return fail(
+        "internal_error",
+        t("Não foi possível carregar as mensagens agora."),
+        500,
+        { requestId },
       );
     }
+
+    if (!visivel) {
+      return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+    }
+
+    const resultado = await listMessagesHandler(
+      createAdminClient(),
+      handlerCtx,
+      conversationId,
+      qsParsed.data,
+    );
 
     return ok(resultado.messages, {
       requestId,

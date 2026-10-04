@@ -7,27 +7,40 @@ const rota = fs.readFileSync(
   "utf8",
 );
 
-describe("histórico do Inbox — fallback Neon sem ampliar acesso", () => {
-  it("só usa cliente técnico depois de provar a conversa com a RLS do usuário", () => {
+describe("histórico do Inbox — autorização separada da leitura técnica", () => {
+  it("prova a conversa com a RLS do usuário antes de criar o cliente técnico", () => {
     const prova = rota.indexOf('.from("conversations")');
-    const org = rota.indexOf('.eq("organization_id", activeOrg.orgId)', prova);
-    const visivel = rota.indexOf("if (visibilityError || !visivel)", org);
-    const tecnico = rota.indexOf("createAdminClient()", visivel);
+    const id = rota.indexOf('.eq("id", conversationId)', prova);
+    const org = rota.indexOf('.eq("organization_id", activeOrg.orgId)', id);
+    const autorizado = rota.indexOf("if (!visivel)", org);
+    const tecnico = rota.indexOf("createAdminClient()", autorizado);
 
     expect(prova).toBeGreaterThan(-1);
-    expect(org).toBeGreaterThan(prova);
-    expect(visivel).toBeGreaterThan(org);
-    expect(tecnico).toBeGreaterThan(visivel);
+    expect(id).toBeGreaterThan(prova);
+    expect(org).toBeGreaterThan(id);
+    expect(autorizado).toBeGreaterThan(org);
+    expect(tecnico).toBeGreaterThan(autorizado);
   });
 
-  it("o fallback só acontece para falha interna da leitura, nunca para 401/403/404", () => {
-    expect(rota).toContain('err.code !== "internal_error"');
+  it("não consulta messages com a identidade do usuário antes da prova de acesso", () => {
+    const prova = rota.indexOf('.from("conversations")');
+    const handler = rota.indexOf("listMessagesHandler(", prova);
+    const tecnico = rota.indexOf("createAdminClient()", handler);
+
+    expect(prova).toBeGreaterThan(-1);
+    expect(handler).toBeGreaterThan(prova);
+    expect(tecnico).toBeGreaterThan(handler);
+    expect(rota.slice(0, handler)).not.toContain("listMessagesHandler(\n        supabase");
+  });
+
+  it("nega conversa invisível e não transforma falha de autorização em bypass", () => {
     expect(rota).toContain('return fail("not_found"');
+    expect(rota).toContain("if (visibilityError)");
+    expect(rota).toContain("não foi possível provar visibilidade da conversa");
   });
 
-  it("registra request id e erro original para o próximo incidente ser diagnosticável", () => {
-    expect(rota).toContain("[inbox.messages] leitura RLS falhou");
-    expect(rota).toContain("request_id: requestId");
-    expect(rota).toContain("data_api_error: err.message");
+  it("mantém organization_id + conversation_id no contexto da leitura", () => {
+    expect(rota).toContain("organization_id: activeOrg.orgId");
+    expect(rota).toContain("conversationId,");
   });
 });
