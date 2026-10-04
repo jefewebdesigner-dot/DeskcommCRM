@@ -11,6 +11,7 @@ import {
   estadoTokenPje,
   salvarTokenPje,
 } from "@/lib/pje/config";
+import { propagarTokenPjeParaLegado } from "@/lib/pje/legacy-admin";
 
 const entrada = z.object({
   // Tokens PJe podem ser JWTs longos. Não imponha formato que o sistema antigo
@@ -19,7 +20,11 @@ const entrada = z.object({
 });
 
 export type AtualizarTokenPjeResult =
-  | { ok: true; last4: string | null }
+  | {
+      ok: true;
+      last4: string | null;
+      sincronizacaoLegado: "ok" | "nao_configurada" | "falhou";
+    }
   | { ok: false; erro: string };
 
 export async function atualizarTokenPje(
@@ -61,7 +66,21 @@ export async function atualizarTokenPje(
     },
   });
 
+  // O cofre novo é a fonte da migração. Enquanto o PeríciaIA antigo ainda
+  // atende os clientes, propagamos o mesmo Token Ouro pela sessão administrativa
+  // legada. Falhar aqui NÃO desfaz o cofre novo: a UI mostra que a ponte precisa
+  // de atenção, sem perder a credencial que acabou de ser colada.
+  const legado = await propagarTokenPjeParaLegado(parsed.data.token);
+
   revalidatePath("/admin/pje");
   const estado = await estadoTokenPje();
-  return { ok: true, last4: estado.last4 };
+  return {
+    ok: true,
+    last4: estado.last4,
+    sincronizacaoLegado: legado.ok
+      ? "ok"
+      : legado.motivo === "nao_configurada"
+        ? "nao_configurada"
+        : "falhou",
+  };
 }
