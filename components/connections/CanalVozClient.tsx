@@ -202,7 +202,7 @@ export function CanalVozClient({ wacallsConfigured }: { wacallsConfigured: boole
           <img
             src={qrDataUrl}
             alt={t("QR Code para parear chamada de voz")}
-            className="h-64 w-64 rounded-md border bg-white p-2"
+            className="aspect-square h-auto w-full max-w-64 rounded-xl border bg-white p-2"
           />
         </div>
       ) : pareando ? (
@@ -212,7 +212,7 @@ export function CanalVozClient({ wacallsConfigured }: { wacallsConfigured: boole
         </div>
       ) : !conectado ? (
         <div>
-          <Button size="sm" onClick={parear} disabled={pareando}>
+          <Button size="sm" className="w-full rounded-xl sm:w-auto" onClick={parear} disabled={pareando}>
             <Phone size={14} aria-hidden />
             {t("Parear chamada de voz")}
           </Button>
