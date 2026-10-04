@@ -170,14 +170,14 @@ export function PipelinePageClient({
               <p className="mt-1.5 text-sm text-muted-foreground">{data.pipeline.description}</p>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild className="shrink-0 rounded-xl bg-background/70">
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap">
+            <Button variant="outline" asChild className="w-full rounded-xl bg-background/70 sm:w-auto sm:shrink-0">
               <Link href="/app/kanban/gerenciar">{t("Gerenciar funis")}</Link>
             </Button>
             <Button
               onClick={() => setNewOpen(true)}
               disabled={!data}
-              className="shrink-0 rounded-xl"
+              className="w-full rounded-xl sm:w-auto sm:shrink-0"
             >
               <Plus size={16} className="mr-2" /> {t("Novo Lead")}
             </Button>
