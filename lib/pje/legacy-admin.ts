@@ -39,6 +39,9 @@ export type ResultadoPonte =
         | "payload_recusado";
     };
 
+type FalhaPonte = Extract<ResultadoPonte, { ok: false }>;
+type SessaoLegada = { ok: true; cookie: string } | FalhaPonte;
+
 function origemLegada(): string {
   const bruto =
     process.env.PERICIAIA_BILLING_EXPORT_BASE_URL?.trim() ||
@@ -120,7 +123,7 @@ function cookieDe(resposta: Response): string | null {
 async function criarSessaoLegada(
   email: string,
   senha: string,
-): Promise<{ ok: true; cookie: string } | ResultadoPonte> {
+): Promise<SessaoLegada> {
   const origem = origemLegada();
   try {
     const resposta = await fetch(`${origem}/api/admin/master-login`, {
