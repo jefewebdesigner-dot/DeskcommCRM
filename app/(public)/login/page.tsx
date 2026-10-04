@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { LoginForm } from "@/components/auth/LoginForm";
 import { branding } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
@@ -101,21 +99,15 @@ export default async function LoginPage({
       <LoginForm next={next} />
       <div className="space-y-2 text-center text-sm">
         <p>
-          <Link
+          <a
             href="/login/forgot"
             className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
           >
             {t("Esqueci minha senha")}
-          </Link>
+          </a>
         </p>
-        <p className="text-muted-foreground">
-          {t("Não tem conta?")}{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-foreground underline underline-offset-4"
-          >
-            {t("Criar conta")}
-          </Link>
+        <p className="text-xs text-muted-foreground">
+          {t("Acesso interno da equipe PeríciaIA. Novas contas não são abertas ao público.")}
         </p>
       </div>
     </div>

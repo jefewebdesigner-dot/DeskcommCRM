@@ -96,7 +96,7 @@ export const MODOS_DE_CADASTRO: readonly ModoDeCadastro[] = ["aberto", "so_convi
  */
 export function padraoDaInstalacao(): ModoDeCadastro {
   const declarado = (env.SIGNUP_MODE ?? "").trim();
-  if (declarado === "") return "aberto";
+  if (declarado === "") return "so_convite";
   if (ehModoDeCadastro(declarado)) return declarado;
   avisarUmaVez(`env|${declarado}`, { SIGNUP_MODE: declarado }, "erro");
   return "aberto";

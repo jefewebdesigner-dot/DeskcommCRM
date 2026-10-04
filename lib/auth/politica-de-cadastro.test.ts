@@ -64,9 +64,9 @@ beforeEach(() => {
 });
 
 describe("modoDeCadastro", () => {
-  it("sem linha na tabela vale 'aberto' — o comportamento anterior à 0233", async () => {
+  it("sem linha na tabela vale 'so_convite' — padrão seguro desta instalação", async () => {
     bancoQue(ok(null));
-    await expect(modoDeCadastro()).resolves.toBe("aberto");
+    await expect(modoDeCadastro()).resolves.toBe("so_convite");
   });
 
   it("lê 'so_convite' quando é o que está gravado", async () => {
@@ -74,9 +74,9 @@ describe("modoDeCadastro", () => {
     await expect(modoDeCadastro()).resolves.toBe("so_convite");
   });
 
-  it("tabela inexistente (42P01) vale 'aberto': quem não aplicou a migration não é fechado", async () => {
+  it("tabela inexistente (42P01) mantém 'so_convite': cold start não reabre cadastro público", async () => {
     bancoQue(falha("42P01"));
-    await expect(modoDeCadastro()).resolves.toBe("aberto");
+    await expect(modoDeCadastro()).resolves.toBe("so_convite");
   });
 
   it("uma instalação FECHADA continua fechada quando o banco para de responder", async () => {
@@ -119,7 +119,7 @@ describe("modoDeCadastro", () => {
     vi.mocked(createAdminClient).mockImplementation(() => {
       throw new Error("sem conexão");
     });
-    await expect(modoDeCadastro()).resolves.toBe("aberto");
+    await expect(modoDeCadastro()).resolves.toBe("so_convite");
   });
 });
 
@@ -154,9 +154,9 @@ describe("SIGNUP_MODE — o piso declarado no .env", () => {
     await expect(modoDeCadastro()).resolves.toBe("aberto");
   });
 
-  it("vazio é o padrão do produto — instalação que não declarou nada segue aberta", async () => {
+  it("vazio é o padrão seguro — instalação sem declaração exige convite", async () => {
     bancoQue(ok(null));
-    await expect(modoDeCadastro()).resolves.toBe("aberto");
+    await expect(modoDeCadastro()).resolves.toBe("so_convite");
   });
 });
 
