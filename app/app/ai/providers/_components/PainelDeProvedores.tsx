@@ -330,7 +330,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
       </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
-        <div className="min-w-48">
+        <div className="w-full sm:min-w-48 sm:w-auto">
           <Label className="text-xs">{t("Provedor")}</Label>
           <Select
             value={provider}
@@ -355,7 +355,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
           </Select>
         </div>
 
-        <div className="min-w-64">
+        <div className="w-full sm:min-w-64 sm:w-auto">
           <Label className="text-xs">{t("Modelo")}</Label>
           {/*
             AQUI VALE A MESMA REGRA DO `CartaoDoPonto`, e pelo mesmo motivo: o
@@ -401,7 +401,7 @@ function CartaoDoPadrao({ dados, aoSalvar }: { dados: Dados; aoSalvar: () => Pro
         {dados.podeEditar && (
           <Button
             size="sm"
-            className="rounded-xl"
+            className="w-full rounded-xl sm:w-auto"
             disabled={salvando || !mudou || modelId === ""}
             onClick={() => void salvar()}
             data-testid="salvar-padrao"
@@ -679,7 +679,7 @@ function CartaoDoPonto({
           <div className="sm:col-span-3">
             <Button
               size="sm"
-              className="rounded-xl"
+              className="w-full rounded-xl sm:w-auto"
               disabled={salvando || !modelId}
               onClick={() => void salvar()}
               data-testid={`salvar-${ponto.id}`}
