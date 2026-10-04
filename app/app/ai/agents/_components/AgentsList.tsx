@@ -78,7 +78,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("Resumo dos agentes")}>
+      <section className="grid grid-cols-3 gap-2 sm:gap-3" aria-label={t("Resumo dos agentes")}>
         {[
           { label: t("No ar"), value: resumo.published, helper: t("atendendo agora") },
           { label: t("Em preparação"), value: resumo.draft, helper: t("ainda não publicados") },
@@ -86,14 +86,14 @@ export function AgentsList({ initialData, canWrite }: Props) {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            className="min-w-0 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:p-4"
           >
             <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               {item.label}
             </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <p className="text-2xl font-semibold tracking-[-0.04em] tabular-nums">{item.value}</p>
-              <p className="text-right text-[11px] leading-snug text-muted-foreground">
+              <p className="text-[10px] leading-snug text-muted-foreground sm:text-right sm:text-[11px]">
                 {item.helper}
               </p>
             </div>
@@ -101,7 +101,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
         ))}
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
+      <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <AgentsListFilters
           status={status}
           onStatusChange={setStatus}
@@ -112,7 +112,7 @@ export function AgentsList({ initialData, canWrite }: Props) {
         />
         {canWrite && (
           <Link href="/app/ai/agents/new">
-            <Button className="rounded-xl">
+            <Button className="w-full rounded-xl sm:w-auto">
               <Plus size={14} aria-hidden className="mr-2" /> {t("Novo agente")}
             </Button>
           </Link>
