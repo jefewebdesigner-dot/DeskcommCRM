@@ -25,6 +25,14 @@ export const PUBLIC_PATHS: RegExp[] = [
   // redirect pro WhatsApp. Âncorado num segmento só (`[^/]+$`): um sub-path
   // futuro sob `/google/` não nasce público de carona.
   /^\/api\/v1\/anuncios\/google\/[^/]+$/,
+  // Agendamento público sem login (substitui o link do Calendly). Quem chama
+  // é o navegador de quem está marcando reunião — nunca tem cookie de
+  // organização, e o `eventTypeId` na URL é o único identificador (não é
+  // segredo: devolve só nome/duração do tipo e horários livres). Auth não
+  // existe aqui de propósito — rate limit mora dentro da rota. Âncora num
+  // segmento só, igual à landing do Google Ads acima.
+  /^\/api\/v1\/public\/agenda\/[^/]+$/,
+  /^\/agendar\/[^/]+$/,
   // Heartbeat do agente do host (bearer INTERNAL_SECRET/INTERNAL_CRON_SECRET,
   // checado dentro da própria rota) — sem cookie de sessão, igual /cron/.
   /^\/api\/v1\/system\/agent$/,
