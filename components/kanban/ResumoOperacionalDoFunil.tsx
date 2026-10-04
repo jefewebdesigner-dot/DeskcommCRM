@@ -102,15 +102,15 @@ export function ResumoOperacionalDoFunil({
       aria-label={t("Visão operacional do funil")}
       data-testid="resumo-do-funil"
     >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-5">
+        <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-3.5 shadow-sm sm:p-4">
           <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
             {t(primeiroTitulo)}
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] tabular-nums">
             {resumo.abertos}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{t(primeiroAjuda)}</p>
+          <p className="mt-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">{t(primeiroAjuda)}</p>
         </div>
 
         {mostraValor ? (
@@ -134,7 +134,7 @@ export function ResumoOperacionalDoFunil({
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-warning/20 bg-warning-bg/35 p-4 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-warning/20 bg-warning-bg/35 p-3.5 shadow-sm sm:p-4">
           <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
             {t("Em risco")}
           </p>
@@ -151,7 +151,7 @@ export function ResumoOperacionalDoFunil({
         <button
           type="button"
           onClick={onSemResponsavel}
-          className="rounded-2xl border border-border/60 bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] hover:border-border-strong hover:shadow-md"
+          className="min-w-0 rounded-2xl border border-border/60 bg-card p-3.5 text-left shadow-sm transition-[border-color,box-shadow] hover:border-border-strong hover:shadow-md sm:p-4"
         >
           <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
             {t("Sem responsável")}
@@ -167,7 +167,7 @@ export function ResumoOperacionalDoFunil({
         <button
           type="button"
           onClick={onPrazoVencido}
-          className="rounded-2xl border border-warning/20 bg-warning-bg/25 p-4 text-left shadow-sm transition-[border-color,box-shadow] hover:border-warning/35 hover:shadow-md"
+          className="min-w-0 rounded-2xl border border-warning/20 bg-warning-bg/25 p-3.5 text-left shadow-sm transition-[border-color,box-shadow] hover:border-warning/35 hover:shadow-md sm:p-4"
         >
           <p className="text-[10px] font-semibold tracking-[0.10em] text-muted-foreground uppercase">
             {t("Prazo vencido")}
