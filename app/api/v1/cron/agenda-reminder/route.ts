@@ -438,7 +438,7 @@ export async function executarVarreduraDeLembretes(
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : String(err);
       logger.error("[agenda-reminder] envio falhou", { appointmentId: linha.id, error: mensagem, requestId });
-      pular("erro_no_envio");
+      pular(`erro_no_envio: ${mensagem}`);
     }
   }
 
