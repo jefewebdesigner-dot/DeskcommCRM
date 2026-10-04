@@ -8,6 +8,10 @@ import {
   pendenciaOperacionalDaAgenda,
   type TipoDePendenciaDaAgenda,
 } from "@/lib/agenda/pendencias-operacionais";
+import {
+  executarVarreduraDeLembretes,
+  type ResultadoDaVarreduraDeLembretes,
+} from "@/app/api/v1/cron/agenda-reminder/route";
 import { env } from "@/lib/env";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/active-lead";
@@ -56,6 +60,20 @@ async function handle(req: NextRequest): Promise<Response> {
   const agora = new Date();
   const desde = new Date(agora.getTime() - JANELA_MS).toISOString();
 
+  // Lembrete de compromisso roda aqui, não em cron próprio: o Hobby da Vercel
+  // só dá 2 slots diários, e este é o único que já existe para agenda. Falha
+  // na varredura de lembrete não pode derrubar a parte operacional abaixo —
+  // por isso capturada e só logada.
+  let lembretes: ResultadoDaVarreduraDeLembretes = { examinados: 0, enviados: 0, pulados: 0, motivos: {} };
+  try {
+    lembretes = await executarVarreduraDeLembretes(admin, requestId);
+  } catch (err) {
+    logger.error("[agenda-operational-watcher] varredura de lembretes falhou", {
+      error: err instanceof Error ? err.message : String(err),
+      requestId,
+    });
+  }
+
   const { data, error } = await admin
     .from("calendar_appointments")
     .select(
@@ -75,7 +93,7 @@ async function handle(req: NextRequest): Promise<Response> {
 
   const compromissos = (data ?? []) as Compromisso[];
   if (compromissos.length === 0) {
-    return ok({ examinados: 0, criadas: 0, resultados_fechados: 0 }, { requestId });
+    return ok({ examinados: 0, criadas: 0, resultados_fechados: 0, lembretes }, { requestId });
   }
 
   const idsDeResultadoResolvido = compromissos
@@ -209,7 +227,7 @@ async function handle(req: NextRequest): Promise<Response> {
 
   if (linhas.length === 0) {
     return ok(
-      { examinados: compromissos.length, criadas: 0, resultados_fechados: resultadosFechados },
+      { examinados: compromissos.length, criadas: 0, resultados_fechados: resultadosFechados, lembretes },
       { requestId },
     );
   }
@@ -261,6 +279,7 @@ async function handle(req: NextRequest): Promise<Response> {
       examinados: compromissos.length,
       criadas: novas.length,
       resultados_fechados: resultadosFechados,
+      lembretes,
     },
     { requestId },
   );
