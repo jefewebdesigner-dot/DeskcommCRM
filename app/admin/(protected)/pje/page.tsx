@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Card } from "@/components/ui/card";
 import { loadAuthUser } from "@/lib/auth/server";
-import { estadoTokenPje } from "@/lib/pje/config";
+import { estadoTokenPje, statusTokenPje } from "@/lib/pje/config";
 import { estadoPontePje } from "@/lib/pje/legacy-admin";
 
 import { FormularioTokenPje } from "./_form";
@@ -14,8 +14,9 @@ export default async function Page() {
   const usuario = await loadAuthUser();
   if (!usuario?.is_platform_admin) notFound();
 
-  const [estado, ponte] = await Promise.all([
+  const [estado, status, ponte] = await Promise.all([
     estadoTokenPje(),
+    statusTokenPje(),
     estadoPontePje(),
   ]);
 
@@ -37,6 +38,8 @@ export default async function Page() {
         <FormularioTokenPje
           configuradoInicial={estado.configurado}
           last4Inicial={estado.last4}
+          expiraEmInicial={status.expiraEm}
+          expiradoInicial={status.expirado}
           ponteConfiguradaInicial={ponte.configurada}
           emailLegadoInicial={ponte.email}
         />

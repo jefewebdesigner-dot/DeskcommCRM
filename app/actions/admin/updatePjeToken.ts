@@ -10,6 +10,7 @@ import {
   CHAVE_TOKEN_PJE,
   estadoTokenPje,
   salvarTokenPje,
+  statusTokenPje,
 } from "@/lib/pje/config";
 import { propagarTokenPjeParaLegado } from "@/lib/pje/legacy-admin";
 
@@ -23,6 +24,8 @@ export type AtualizarTokenPjeResult =
   | {
       ok: true;
       last4: string | null;
+      expiraEm: string | null;
+      expirado: boolean | null;
       sincronizacaoLegado: "ok" | "nao_configurada" | "falhou";
     }
   | { ok: false; erro: string };
@@ -73,10 +76,15 @@ export async function atualizarTokenPje(
   const legado = await propagarTokenPjeParaLegado(parsed.data.token);
 
   revalidatePath("/admin/pje");
-  const estado = await estadoTokenPje();
+  const [estado, status] = await Promise.all([
+    estadoTokenPje(),
+    statusTokenPje(),
+  ]);
   return {
     ok: true,
     last4: estado.last4,
+    expiraEm: status.expiraEm,
+    expirado: status.expirado,
     sincronizacaoLegado: legado.ok
       ? "ok"
       : legado.motivo === "nao_configurada"

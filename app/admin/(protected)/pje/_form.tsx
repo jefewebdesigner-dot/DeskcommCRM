@@ -13,20 +13,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function formatarValidade(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
 export function FormularioTokenPje({
   configuradoInicial,
   last4Inicial,
+  expiraEmInicial,
+  expiradoInicial,
   ponteConfiguradaInicial,
   emailLegadoInicial,
 }: {
   configuradoInicial: boolean;
   last4Inicial: string | null;
+  expiraEmInicial: string | null;
+  expiradoInicial: boolean | null;
   ponteConfiguradaInicial: boolean;
   emailLegadoInicial: string | null;
 }) {
   const [token, setToken] = useState("");
   const [configurado, setConfigurado] = useState(configuradoInicial);
   const [last4, setLast4] = useState(last4Inicial);
+  const [expiraEm, setExpiraEm] = useState(expiraEmInicial);
+  const [expirado, setExpirado] = useState(expiradoInicial);
   const [ponteConfigurada, setPonteConfigurada] = useState(
     ponteConfiguradaInicial,
   );
@@ -46,6 +61,8 @@ export function FormularioTokenPje({
       setToken("");
       setConfigurado(true);
       setLast4(resultado.last4);
+      setExpiraEm(resultado.expiraEm);
+      setExpirado(resultado.expirado);
 
       if (resultado.sincronizacaoLegado === "ok") {
         toast.success("Token Ouro atualizado no CRM e no PeríciaIA.");
@@ -121,6 +138,25 @@ export function FormularioTokenPje({
             {configurado ? `Configurado ••••${last4 ?? ""}` : "Não configurado"}
           </span>
         </div>
+        {configurado && (
+          <div className="mt-3 border-t pt-3">
+            {expirado === true ? (
+              <p className="text-xs font-medium text-red-600 dark:text-red-400">
+                Token expirado
+                {expiraEm ? ` em ${formatarValidade(expiraEm)}` : ""}. Atualize
+                antes de importar processos.
+              </p>
+            ) : expirado === false ? (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                Validade informada pelo token: até {formatarValidade(expiraEm)}.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                O token está salvo, mas não expõe uma data de expiração legível.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

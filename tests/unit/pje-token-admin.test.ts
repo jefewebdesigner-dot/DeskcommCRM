@@ -8,7 +8,7 @@ describe("PJe global — passo 1", () => {
   it("possui uma única porta server-only que resolve a credencial global", () => {
     const cfg = read("lib", "pje", "config.ts");
     expect(cfg).toContain('import "server-only"');
-    expect(cfg).toContain('valorDaInstalacao("PJE_GLOBAL_TOKEN")');
+    expect(cfg).toContain("valorDaInstalacao(CHAVE_TOKEN_PJE)");
     expect(cfg).toContain("estadoParaTela(CHAVE_TOKEN_PJE, true)");
     expect(cfg).toContain("ehSegredo: true");
   });
@@ -29,6 +29,19 @@ describe("PJe global — passo 1", () => {
     expect(action).toContain('action: "platform.config_changed"');
     expect(action).toContain("last4: parsed.data.token.slice(-4)");
     expect(action).not.toContain("metadata: { token");
+  });
+
+  it("mostra expiração JWT sem devolver o token para a UI", () => {
+    const cfg = read("lib", "pje", "config.ts");
+    const page = read("app", "admin", "(protected)", "pje", "page.tsx");
+    const form = read("app", "admin", "(protected)", "pje", "_form.tsx");
+
+    expect(cfg).toContain("statusTokenPje");
+    expect(cfg).toContain('Buffer.from(partes[1], "base64url")');
+    expect(page).toContain("statusTokenPje()");
+    expect(form).toContain("Token expirado");
+    expect(form).toContain("Validade informada pelo token");
+    expect(page).not.toContain("tokenPjeGlobal()");
   });
 
   it("fica acessível pela navegação administrativa", () => {
