@@ -286,11 +286,12 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
               ? t("Nenhum número conectado ainda.")
               : `${list.length} ${list.length === 1 ? t("número conectado") : t("números conectados")}.`}
         </p>
-        <div className="flex gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex">
           {list.length > 0 && (
             <Button
               variant="outline"
               size="sm"
+              className="w-full rounded-xl sm:w-auto"
               disabled={checking || !wahaConfigured}
               onClick={() => void runHealthCheck(list)}
             >
@@ -302,7 +303,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
               {t("Atualizar saúde")}
             </Button>
           )}
-          <Button size="sm" disabled={creating || !wahaConfigured} onClick={handleConnectNew}>
+          <Button size="sm" className="col-span-2 w-full rounded-xl sm:col-span-1 sm:w-auto" disabled={creating || !wahaConfigured} onClick={handleConnectNew}>
             {creating ? (
               <CircleNotch size={14} className="animate-spin" aria-hidden />
             ) : (
@@ -441,7 +442,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                           : "Somente as pessoas selecionadas recebem este número.",
                   )}
                 </p>
-                <div className="mt-auto flex flex-wrap gap-2">
+                <div className="-mx-1 mt-auto flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
                   {/* Some no canal oficial em vez de aparecer desabilitado: não é
                       indisponibilidade passageira (como o Excluir sem o serviço no
                       ar), é uma ação que não existe para esse canal — e o clique
@@ -451,6 +452,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       <Button
                         variant="outline"
                         size="sm"
+                        className="shrink-0 rounded-xl"
                         disabled={!wahaConfigured}
                         onClick={() =>
                           setQr({
@@ -470,6 +472,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                       <Button
                         variant="outline"
                         size="sm"
+                        className="shrink-0 rounded-xl"
                         disabled={busyId === c.id || !wahaConfigured}
                         onClick={() => handleReconnect(c)}
                       >
@@ -481,13 +484,14 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                         {t("Reconectar")}
                       </Button>
                     ) : null)}
-                  <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
+                  <Button variant="outline" size="sm" className="shrink-0 rounded-xl" onClick={() => setAntiBanId(c.id)}>
                     <ShieldCheck size={14} aria-hidden />
                     {t("Proteção de envio")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="shrink-0 rounded-xl"
                     disabled={!podeExcluir}
                     aria-label={
                       podeExcluir
