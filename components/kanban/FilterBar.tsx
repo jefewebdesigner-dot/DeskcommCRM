@@ -119,19 +119,19 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const tagLabel = filters.tag ?? t("Tag: todas");
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
+    <div className="grid grid-cols-2 items-center gap-2 rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm sm:flex sm:flex-wrap">
       <Input
         type="search"
         placeholder={t("Buscar por título…")}
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
-        className="h-9 w-full rounded-xl border-border/60 bg-muted/30 shadow-none focus-visible:bg-background sm:w-64"
+        className="col-span-2 h-9 w-full rounded-xl border-border/60 bg-muted/30 shadow-none focus-visible:bg-background sm:col-span-1 sm:w-64"
       />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="rounded-xl border-border/60">
-            {t("Responsável")}: {ownerLabel}
+          <Button variant="outline" size="sm" className="w-full min-w-0 rounded-xl border-border/60 sm:w-auto">
+            <span className="truncate">{t("Responsável")}: {ownerLabel}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -174,8 +174,8 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="rounded-xl border-border/60">
-            {t("Status")}: {statusLabel}
+          <Button variant="outline" size="sm" className="w-full min-w-0 rounded-xl border-border/60 sm:w-auto">
+            <span className="truncate">{t("Status")}: {statusLabel}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -196,10 +196,10 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
             variant="outline"
             size="sm"
             disabled={tagOptions.length === 0}
-            className="rounded-xl border-border/60"
+            className="w-full min-w-0 rounded-xl border-border/60 sm:w-auto"
           >
-            {filters.tag ? <PontoDaEtiqueta tag={filters.tag} className="mr-2" /> : null}
-            {tagLabel}
+            {filters.tag ? <PontoDaEtiqueta tag={filters.tag} className="mr-2 shrink-0" /> : null}
+            <span className="truncate">{tagLabel}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -218,7 +218,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
 
       <label
         className={cn(
-          "flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-1.5 text-sm transition-colors select-none",
+          "col-span-2 flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-1.5 text-sm transition-colors select-none sm:col-span-1",
           filters.overdueOnly && "border-accent bg-accent/10",
         )}
       >
@@ -238,6 +238,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         <Button
           variant="ghost"
           size="sm"
+          className="col-span-2 justify-center rounded-xl sm:col-span-1"
           onClick={() => {
             setSearchInput("");
             onChange({ status: "all" });
