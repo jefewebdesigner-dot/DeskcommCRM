@@ -150,7 +150,7 @@ export function ActivityReportClient() {
         <>
           {/* A PERGUNTA, respondida em três números: quanto foi gente, quanto
               foi agente, quanto não foi nem um nem outro. */}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <CartaoDeOrigem
               rotulo={t("A equipe")}
               valor={resumo.pessoas}
@@ -284,8 +284,8 @@ function CartaoDeOrigem({
   const fatia = total > 0 ? Math.round((valor / total) * 100) : 0;
   return (
     <Card className="rounded-2xl border-border/60 shadow-sm" data-testid={`origem-${forma}`}>
-      <CardContent className="flex flex-col gap-1 p-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <CardContent className="flex min-w-0 flex-col gap-1 p-3 sm:p-4">
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground sm:gap-2 sm:text-sm">
           <MarcadorDeAtor forma={forma} />
           {rotulo}
         </div>
