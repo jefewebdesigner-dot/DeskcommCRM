@@ -545,6 +545,10 @@ Este arquivo é escrito automaticamente pelo Project Brain do Gravity.
 Ele preserva decisões e estado do projeto sem reenviar conversas inteiras.
 **Leia antes de agir e não recomece o que já está feito.**
 
+## Última validação automática
+
+- Status: passed · score 100/100
+
 ## O que já foi feito
 
 - Motor trocado de claude para codex. O trabalho anterior continua valendo — continue de onde parou. _(zheus)_ — 2026-09-24

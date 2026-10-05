@@ -66,6 +66,12 @@ const listaSchema = z.object({
   due_to: z.string().datetime({ offset: true }).optional(),
   /** "abertas" = o que ainda pede ação. É o default da tela. */
   aberto: z.enum(["true", "false"]).optional(),
+  /**
+   * Teto da "fila do dia" — as N mais urgentes (atrasada mais antiga primeiro,
+   * depois a que vence mais perto), não as N últimas criadas. Opcional: sem
+   * ele, o comportamento de sempre (até 500) continua valendo.
+   */
+  limite: z.coerce.number().int().min(1).max(200).optional(),
 });
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -94,7 +100,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     .eq("organization_id", authz.org.orgId)
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(filtros.limite ?? 500);
 
   if (filtros.status) query = query.eq("status", filtros.status);
   if (filtros.priority) query = query.eq("priority", filtros.priority);
