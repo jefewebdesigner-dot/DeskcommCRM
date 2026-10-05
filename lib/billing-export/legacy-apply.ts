@@ -119,7 +119,6 @@ export interface PatchDeContato {
   client_recognized_at?: string;
   client_tag_by_system?: string;
   email?: string;
-  email_normalized?: string;
   phone_number?: string;
 }
 
@@ -336,7 +335,10 @@ export function planejar(
         valores: {
           name: e.name ?? email ?? null,
           email,
-          email_normalized: email,
+          // `email_normalized` é `generated always as (lower(trim(email)))` —
+          // escrevê-la aqui derruba o INSERT inteiro (Postgres recusa valor
+          // não-DEFAULT em coluna gerada). O banco calcula sozinho a partir
+          // de `email`.
           phone_number: telefone,
           tags: ativo ? unica([...tags, "cliente"]) : tags,
           source: modo === "importacao" ? ORIGEM_IMPORTACAO_LEGADO : "periciaia_billing",
@@ -372,8 +374,10 @@ export function planejar(
       }
       // completa o que falta (só se ninguém mais já usa) — nunca troca o que existe
       if (!atual.email_normalized && email && !idx.porEmail.has(email) && !emailsNovos.has(email)) {
+        // Mesma razão do insert acima: `email_normalized` é coluna gerada,
+        // nunca escrita direto — o UPDATE a derivaria errado (`"column
+        // email_normalized can only be updated to DEFAULT"`).
         patch.email = email;
-        patch.email_normalized = email;
         emailsNovos.add(email);
       }
       if (!atual.phone_number && telefone && !idx.porTelefone.has(telefone) && !telefonesNovos.has(telefone)) {
