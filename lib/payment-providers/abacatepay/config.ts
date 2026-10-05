@@ -80,6 +80,12 @@ async function withOrganization<T>(
   let discard = false;
   try {
     await client.query("BEGIN");
+    // A policy de RLS (migration 0359) só libera a linha cujo organization_id
+    // bate com este config, setado LOCAL à transação — sem isto, toda escrita
+    // nesta tabela cai em "new row violates row-level security policy" mesmo
+    // com o GRANT de tabela concedido (RLS filtra silenciosamente em SELECT,
+    // mas recusa alto em INSERT/UPDATE sem WITH CHECK satisfeito).
+    await client.query("select set_config('app.abacatepay_org', $1, true)", [organizationId]);
     const result = await action(client);
     await client.query("COMMIT");
     return result;
