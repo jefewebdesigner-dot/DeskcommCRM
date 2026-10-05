@@ -33114,3 +33114,214 @@ end; $$;
 
 revoke execute on function public.fn_service_begin(uuid,uuid,uuid,jsonb) from public, anon;
 grant execute on function public.fn_service_begin(uuid,uuid,uuid,jsonb) to authenticated, service_role;
+
+-- ---- Perfis operacionais de tarefas (migration 0347) ----
+--
+-- GAP pré-existente achado ao escrever o apêndice da 0357 (fila do dia): esta
+-- migration nunca tinha sido refletida aqui. `crm_task_responsibles` é
+-- dependência direta de `crm_task_daily_queue` (0357, logo abaixo) — sem ela,
+-- um self-host fresh (que só aplica `baseline.sql`) quebraria na FK da fila do
+-- dia, e o recurso "perfis que compartilham login" (já em produção) também
+-- nunca chegaria a clone nenhum. Backfill mínimo: só o que `crm_tasks`
+-- precisa (a tabela, a coluna, a FK, as duas funções de leitura privada). As
+-- migrations 0348/0349 (responsável operacional em `crm_leads`) ficam de fora
+-- de propósito — não são dependência de nada aqui, e misturar os dois
+-- backfills num apêndice só complicaria a prova de qual parte cobre o quê.
+create table if not exists public.crm_task_responsibles (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  code text not null,
+  name text not null,
+  linked_user_id uuid,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint crm_task_responsibles_code_nonempty check (length(btrim(code)) > 0),
+  constraint crm_task_responsibles_name_nonempty check (length(btrim(name)) > 0),
+  constraint crm_task_responsibles_org_code_unique unique (organization_id, code),
+  constraint crm_task_responsibles_id_org_unique unique (id, organization_id)
+);
+
+create index if not exists crm_task_responsibles_org_active_idx
+  on public.crm_task_responsibles (organization_id, is_active, name);
+
+alter table public.crm_task_responsibles enable row level security;
+
+drop policy if exists crm_task_responsibles_select on public.crm_task_responsibles;
+create policy crm_task_responsibles_select on public.crm_task_responsibles
+  for select using (
+    organization_id in (select public.fn_user_org_ids())
+    or public.fn_is_platform_admin()
+  );
+
+drop policy if exists crm_task_responsibles_write on public.crm_task_responsibles;
+create policy crm_task_responsibles_write on public.crm_task_responsibles
+  using (
+    public.fn_is_platform_admin()
+    or (
+      organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'manager')
+    )
+  )
+  with check (
+    public.fn_is_platform_admin()
+    or (
+      organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'manager')
+    )
+  );
+
+revoke all on public.crm_task_responsibles from anon;
+grant select on public.crm_task_responsibles to authenticated;
+grant all on public.crm_task_responsibles to service_role;
+
+drop trigger if exists trg_crm_task_responsibles_updated_at on public.crm_task_responsibles;
+create trigger trg_crm_task_responsibles_updated_at
+  before update on public.crm_task_responsibles
+  for each row execute function public.fn_set_updated_at();
+
+alter table public.crm_tasks
+  add column if not exists responsible_profile_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'crm_tasks_responsible_profile_org_fk'
+  ) then
+    alter table public.crm_tasks
+      add constraint crm_tasks_responsible_profile_org_fk
+      foreign key (responsible_profile_id, organization_id)
+      references public.crm_task_responsibles(id, organization_id)
+      on delete set null;
+  end if;
+end
+$$;
+
+create index if not exists crm_tasks_org_responsible_due_idx
+  on public.crm_tasks (organization_id, responsible_profile_id, due_date);
+
+create or replace function public.fn_task_responsibles_for_org(p_org uuid)
+returns table (
+  id uuid,
+  organization_id uuid,
+  code text,
+  name text,
+  linked_user_id uuid,
+  is_active boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if session_user !~ '^gravity_app_' then
+    raise exception 'server role required' using errcode = '42501';
+  end if;
+
+  return query
+  select r.id, r.organization_id, r.code, r.name, r.linked_user_id, r.is_active
+  from public.crm_task_responsibles r
+  where r.organization_id = p_org
+    and r.is_active = true
+  order by r.name asc;
+end;
+$$;
+
+create or replace function public.fn_task_responsible_exists(p_org uuid, p_profile uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if session_user !~ '^gravity_app_' then
+    raise exception 'server role required' using errcode = '42501';
+  end if;
+
+  return exists (
+    select 1
+    from public.crm_task_responsibles r
+    where r.organization_id = p_org
+      and r.id = p_profile
+      and r.is_active = true
+  );
+end;
+$$;
+
+revoke all on function public.fn_task_responsibles_for_org(uuid) from public, anon, authenticated;
+revoke all on function public.fn_task_responsible_exists(uuid,uuid) from public, anon, authenticated;
+
+do $grants$
+declare r record;
+begin
+  for r in select rolname from pg_roles where rolname ~ '^gravity_app_'
+  loop
+    execute format('grant execute on function public.fn_task_responsibles_for_org(uuid) to %I', r.rolname);
+    execute format('grant execute on function public.fn_task_responsible_exists(uuid,uuid) to %I', r.rolname);
+  end loop;
+end
+$grants$;
+
+-- ---- Fila do dia de tarefas (migration 0357) ----
+--
+-- As 20 tarefas mais urgentes (prioridade primeiro, prazo em segundo) do
+-- responsável, TRAVADAS pelo dia local da organização: a primeira leitura do
+-- dia materializa a seleção aqui; leituras seguintes devolvem o MESMO
+-- conjunto, mesmo que tarefas sejam concluídas nesse meio tempo. Ver o
+-- cabeçalho da migration para o raciocínio completo.
+create table if not exists public.crm_task_daily_queue (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  responsible_profile_id uuid not null,
+  queue_date date not null,
+  task_id uuid not null references public.crm_tasks(id) on delete cascade,
+  position smallint not null,
+  created_at timestamptz not null default now(),
+
+  constraint crm_task_daily_queue_position_range check (position between 1 and 20),
+  constraint crm_task_daily_queue_profile_org_fk
+    foreign key (responsible_profile_id, organization_id)
+    references public.crm_task_responsibles(id, organization_id)
+    on delete cascade,
+  constraint crm_task_daily_queue_unique_task
+    unique (organization_id, responsible_profile_id, queue_date, task_id),
+  constraint crm_task_daily_queue_unique_position
+    unique (organization_id, responsible_profile_id, queue_date, position)
+);
+
+create index if not exists crm_task_daily_queue_lookup_idx
+  on public.crm_task_daily_queue (organization_id, responsible_profile_id, queue_date);
+
+alter table public.crm_task_daily_queue enable row level security;
+
+drop policy if exists crm_task_daily_queue_select on public.crm_task_daily_queue;
+create policy crm_task_daily_queue_select on public.crm_task_daily_queue
+  for select using (
+    organization_id in (select public.fn_user_org_ids())
+    or public.fn_is_platform_admin()
+  );
+
+drop policy if exists crm_task_daily_queue_write on public.crm_task_daily_queue;
+create policy crm_task_daily_queue_write on public.crm_task_daily_queue
+  using (
+    public.fn_is_platform_admin()
+    or (
+      organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'agent')
+    )
+  )
+  with check (
+    public.fn_is_platform_admin()
+    or (
+      organization_id in (select public.fn_user_org_ids())
+      and public.fn_role_at_least(organization_id, 'agent')
+    )
+  );
+
+revoke all on public.crm_task_daily_queue from anon;
+grant select, insert on public.crm_task_daily_queue to authenticated;
+grant all on public.crm_task_daily_queue to service_role;
