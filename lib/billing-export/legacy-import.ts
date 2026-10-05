@@ -226,7 +226,8 @@ function currentKind(status: string): EvidenceKind {
   return "billing_canceled";
 }
 
-function evidencesFromOther(data: OtherExport): Evidence[] {
+/** Exportada: qualquer provedor que produza o contrato `OtherExport` (ex.: AbacatePay direta) reaproveita a mesma classificação. */
+export function evidencesFromOther(data: OtherExport): Evidence[] {
   const customerKey = (provider: string, id: string) => `${provider}:${id}`;
   const customers = new Map(
     data.customers.map((customer) => [customerKey(customer.provider, customer.externalId), customer]),
