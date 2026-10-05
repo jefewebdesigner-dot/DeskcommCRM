@@ -33338,3 +33338,53 @@ create table if not exists public.abacatepay_connections (
 alter table public.abacatepay_connections enable row level security;
 revoke all on public.abacatepay_connections from public, anon, authenticated;
 grant select, insert, update, delete on public.abacatepay_connections to service_role;
+
+-- ---- RLS de runtime para as duas tabelas de conexão de billing (migration 0359) ----
+--
+-- RLS ligada sem NENHUMA policy bloqueia até a própria role da aplicação —
+-- medido em produção (INSERT em abacatepay_connections recusado com "new row
+-- violates row-level security policy" mesmo com GRANT de tabela concedido).
+-- A policy de billing_export_connections já rodava em produção mas nunca
+-- tinha virado migration; esta migration formaliza as duas de uma vez, pra
+-- qualquer role `gravity_app_*` viva no banco de destino — sem hardcode de
+-- nome, que muda a cada instalação.
+do $$
+declare
+  r record;
+begin
+  for r in select rolname from pg_roles where rolname ~ '^gravity_app_'
+  loop
+    if to_regclass('public.abacatepay_connections') is not null
+      and not exists (
+        select 1 from pg_policies
+        where tablename = 'abacatepay_connections'
+          and policyname = 'abacatepay_runtime_tenant_' || r.rolname
+      )
+    then
+      execute format(
+        'create policy %I on public.abacatepay_connections for all to %I
+           using (organization_id = nullif(current_setting(''app.abacatepay_org'', true), '''')::uuid)
+           with check (organization_id = nullif(current_setting(''app.abacatepay_org'', true), '''')::uuid)',
+        'abacatepay_runtime_tenant_' || r.rolname,
+        r.rolname
+      );
+    end if;
+
+    if to_regclass('public.billing_export_connections') is not null
+      and not exists (
+        select 1 from pg_policies
+        where tablename = 'billing_export_connections'
+          and policyname = 'billing_export_runtime_tenant_' || r.rolname
+      )
+    then
+      execute format(
+        'create policy %I on public.billing_export_connections for all to %I
+           using (organization_id = nullif(current_setting(''app.billing_export_org'', true), '''')::uuid)
+           with check (organization_id = nullif(current_setting(''app.billing_export_org'', true), '''')::uuid)',
+        'billing_export_runtime_tenant_' || r.rolname,
+        r.rolname
+      );
+    end if;
+  end loop;
+end
+$$;
