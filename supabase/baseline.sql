@@ -33325,3 +33325,16 @@ create policy crm_task_daily_queue_write on public.crm_task_daily_queue
 revoke all on public.crm_task_daily_queue from anon;
 grant select, insert on public.crm_task_daily_queue to authenticated;
 grant all on public.crm_task_daily_queue to service_role;
+
+-- ---- Conexão direta com a AbacatePay (migration 0358) ----
+create table if not exists public.abacatepay_connections (
+  organization_id uuid primary key references public.organizations(id) on delete cascade,
+  encrypted_api_key text not null,
+  store_id text,
+  store_name text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.abacatepay_connections enable row level security;
+revoke all on public.abacatepay_connections from public, anon, authenticated;
+grant select, insert, update, delete on public.abacatepay_connections to service_role;

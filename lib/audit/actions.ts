@@ -31,6 +31,11 @@
 export const AUDIT_ACTIONS = [
   "billing_export.connected",
   "billing_export.disconnected",
+  // Conexão direta com a API da AbacatePay (distinta do bridge acima) —
+  // lib/payment-providers/abacatepay/.
+  "abacatepay.connected",
+  "abacatepay.disconnected",
+  "abacatepay.synced",
   "auth.login_success",
   "auth.login_failed",
   /** Teto de tentativas barrou antes de chegar ao provedor (issue #64). */

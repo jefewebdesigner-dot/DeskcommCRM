@@ -156,9 +156,20 @@ async function executar(admin: Admin, organizationId: string, ops: Operacao[], r
   }
 }
 
-export async function syncBillingToCrm(organizationId: string): Promise<SyncResult> {
+/**
+ * A metade de aplicar — comum a TODA fonte de billing (bridge do admin
+ * legado + Stripe direta, ou qualquer provedor direto como AbacatePay). Quem
+ * muda entre fontes é só `entidades`; `planejar`/`executar` e o destino no
+ * funil são os mesmos, de propósito: duas fontes com a mesma classificação
+ * divergindo seria exatamente o "duas fontes de verdade" que esta função
+ * existe para evitar.
+ */
+export async function applyBillingEntitiesToCrm(
+  organizationId: string,
+  entidades: Awaited<ReturnType<typeof buildBillingEntities>>,
+): Promise<SyncResult> {
   const result: SyncResult = {
-    configured: false,
+    configured: true,
     contactsCreated: 0,
     contactsUpdated: 0,
     dealsCreated: 0,
@@ -168,14 +179,6 @@ export async function syncBillingToCrm(organizationId: string): Promise<SyncResu
     errors: 0,
     sampleErrors: [],
   };
-
-  const entidades = await buildBillingEntities(organizationId).catch((e: unknown) => {
-    // Billing não conectado é "não configurado", não erro; as demais falhas sobem (fail-closed).
-    if (e instanceof Error && e.message === "Billing não configurado.") return null;
-    throw e;
-  });
-  if (!entidades) return result;
-  result.configured = true;
 
   const admin = createAdminClient();
   const { destinos, slugPorEtapa } = await carregarDestinos(admin, organizationId);
@@ -212,4 +215,27 @@ export async function syncBillingToCrm(organizationId: string): Promise<SyncResu
 
   await executar(admin, organizationId, plano.ops, result);
   return result;
+}
+
+/** A fonte original (bridge do admin legado + Stripe direta) — mantida para quem já chamava esta função. */
+export async function syncBillingToCrm(organizationId: string): Promise<SyncResult> {
+  const entidades = await buildBillingEntities(organizationId).catch((e: unknown) => {
+    // Billing não conectado é "não configurado", não erro; as demais falhas sobem (fail-closed).
+    if (e instanceof Error && e.message === "Billing não configurado.") return null;
+    throw e;
+  });
+  if (!entidades) {
+    return {
+      configured: false,
+      contactsCreated: 0,
+      contactsUpdated: 0,
+      dealsCreated: 0,
+      dealsUpdated: 0,
+      dealsMoved: 0,
+      conflicts: 0,
+      errors: 0,
+      sampleErrors: [],
+    };
+  }
+  return applyBillingEntitiesToCrm(organizationId, entidades);
 }
