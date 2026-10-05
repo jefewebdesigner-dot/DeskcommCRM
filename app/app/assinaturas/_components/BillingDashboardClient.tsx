@@ -43,6 +43,7 @@ import type {
   BillingSourceError,
   StripeDashboard,
 } from "@/lib/billing-export/contracts";
+import { AbacatePayPanel } from "./AbacatePayPanel";
 
 type State = { configured: boolean; dashboard: BillingDashboard | null };
 type ResumoOperacional = {
@@ -692,6 +693,8 @@ export function BillingDashboardClient({
             ))}
           </nav>
         </header>
+
+        <AbacatePayPanel organizationId={organizationId} canConfigure={canConfigure} />
 
         {error && (
           <div
