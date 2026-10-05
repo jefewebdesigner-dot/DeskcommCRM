@@ -40,6 +40,13 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
   const [modo, setModo] = useState<Modo>("lista");
   const [situacao, setSituacao] = useState<FiltroDeSituacao>("aberto");
   const [responsavel, setResponsavel] = useState("todos");
+  /**
+   * Fila do dia — as 20 mais urgentes (atrasada mais antiga primeiro) do
+   * responsável escolhido, em vez da lista inteira em aberto. Nasceu do pedido
+   * real: dois perfis share-login (Jeferson/Luan) com dezenas de tarefas
+   * vencidas, e "abra a lista e role" não é um plano de trabalho do dia.
+   */
+  const [filaDoDia, setFilaDoDia] = useState(false);
   const [emEdicao, setEmEdicao] = useState<Tarefa | null>(null);
   const [emDetalhe, setEmDetalhe] = useState<Tarefa | null>(null);
   const [formAberto, setFormAberto] = useState(false);
@@ -72,9 +79,11 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
   } = useTasks(
     modo === "kanban"
       ? { responsible_profile_id: filtroResponsavel }
-      : situacao === "aberto"
-        ? { aberto: true, responsible_profile_id: filtroResponsavel }
-        : { status: situacao, responsible_profile_id: filtroResponsavel },
+      : modo === "lista" && filaDoDia
+        ? { aberto: true, responsible_profile_id: filtroResponsavel, limite: 20 }
+        : situacao === "aberto"
+          ? { aberto: true, responsible_profile_id: filtroResponsavel }
+          : { status: situacao, responsible_profile_id: filtroResponsavel },
   );
 
   function abrirNova(dia?: string) {
@@ -135,7 +144,13 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
 
           <div className="grid w-full grid-cols-2 gap-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
             {modo !== "kanban" ? (
-              <Select value={situacao} onValueChange={(v) => setSituacao(v as FiltroDeSituacao)}>
+              <Select
+                value={situacao}
+                onValueChange={(v) => {
+                  setFilaDoDia(false);
+                  setSituacao(v as FiltroDeSituacao);
+                }}
+              >
                 <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-background/70 text-xs xl:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -147,6 +162,23 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
                   <SelectItem value="cancelled">{t("Cancelada")}</SelectItem>
                 </SelectContent>
               </Select>
+            ) : null}
+
+            {modo === "lista" ? (
+              <Button
+                type="button"
+                variant={filaDoDia ? "primary" : "outline"}
+                size="sm"
+                className="h-9 w-full gap-1.5 rounded-xl text-xs xl:w-auto"
+                onClick={() => setFilaDoDia((v) => !v)}
+                aria-pressed={filaDoDia}
+                title={t(
+                  "As 20 tarefas mais urgentes do responsável escolhido — atrasada mais antiga primeiro.",
+                )}
+              >
+                <ListChecks size={14} aria-hidden />
+                {t("Fila de hoje (20)")}
+              </Button>
             ) : null}
 
             <Select value={responsavel} onValueChange={setResponsavel}>
