@@ -581,6 +581,11 @@ export const AUDIT_ACTIONS = [
   "crm_task.created",
   "crm_task.updated",
   "crm_task.deleted",
+  // A fila do dia (migration 0357) materializa a seleção travada de até 20
+  // tarefas por responsável na primeira leitura do dia — é a única escrita
+  // daquela rota, e por isso audita só quando MATERIALIZA (não a cada leitura
+  // que devolve o que já estava gravado).
+  "crm_task_daily_queue.created",
   "organization.switched",
 
   // Chamada de voz WhatsApp (spec 18, migration 0234). Ligá-la vincula um
