@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useT } from "@/hooks/i18n/useT";
+import { useFilaDoDia } from "@/hooks/tasks/useFilaDoDia";
 import { useTaskResponsibles } from "@/hooks/tasks/useTaskResponsibles";
 import { useTasks } from "@/hooks/tasks/useTasks";
 import { ArrowsClockwise, CalendarBlank, ListChecks, Plus } from "@/lib/ui/icons";
@@ -68,9 +69,9 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
   const filtroResponsavel = responsavel === "todos" ? undefined : responsavel;
 
   const {
-    tarefas,
-    carregando,
-    falhou,
+    tarefas: tarefasDaLista,
+    carregando: carregandoLista,
+    falhou: falhouLista,
     recarregar,
     criarTarefa,
     editarTarefa,
@@ -79,12 +80,17 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
   } = useTasks(
     modo === "kanban"
       ? { responsible_profile_id: filtroResponsavel }
-      : modo === "lista" && filaDoDia
-        ? { aberto: true, responsible_profile_id: filtroResponsavel, limite: 20 }
-        : situacao === "aberto"
-          ? { aberto: true, responsible_profile_id: filtroResponsavel }
-          : { status: situacao, responsible_profile_id: filtroResponsavel },
+      : situacao === "aberto"
+        ? { aberto: true, responsible_profile_id: filtroResponsavel }
+        : { status: situacao, responsible_profile_id: filtroResponsavel },
   );
+
+  const filaAtiva = modo === "lista" && filaDoDia && Boolean(filtroResponsavel);
+  const fila = useFilaDoDia(filaAtiva ? (filtroResponsavel ?? null) : null);
+
+  const tarefas = filaAtiva ? (fila.data?.tasks ?? []) : tarefasDaLista;
+  const carregando = filaAtiva ? fila.isLoading : carregandoLista;
+  const falhou = filaAtiva ? fila.isError : falhouLista;
 
   function abrirNova(dia?: string) {
     setEmEdicao(null);
@@ -172,9 +178,14 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
                 className="h-9 w-full gap-1.5 rounded-xl text-xs xl:w-auto"
                 onClick={() => setFilaDoDia((v) => !v)}
                 aria-pressed={filaDoDia}
-                title={t(
-                  "As 20 tarefas mais urgentes do responsável escolhido — atrasada mais antiga primeiro.",
-                )}
+                disabled={!filtroResponsavel}
+                title={
+                  filtroResponsavel
+                    ? t(
+                        "As 20 mais importantes do responsável (prioridade primeiro, depois prazo) — travadas até o dia virar.",
+                      )
+                    : t("Escolha um responsável (Jeferson/Luan) para ver a fila dele.")
+                }
               >
                 <ListChecks size={14} aria-hidden />
                 {t("Fila de hoje (20)")}

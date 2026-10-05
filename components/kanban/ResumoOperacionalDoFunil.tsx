@@ -40,8 +40,17 @@ export function resumirFunil(
   return {
     abertos: abertos.length,
     emRisco: abertos.filter((lead) => idsEmRisco.has(lead.id)).length,
+    // Três formas de "tem dono": login direto (owner_user_id, modelo antigo),
+    // agente de IA (owner_agent_id), ou perfil operacional compartilhado
+    // (responsible_profile_id — Jeferson/Luan com o mesmo login). Contar só as
+    // duas primeiras fazia TODO negócio aparecer "sem responsável" numa
+    // instalação que usa perfis: 338 de 338, quando na real só 12 estavam sem
+    // nenhum dos três.
     semResponsavel: abertos.filter(
-      (lead) => lead.owner_user_id === null && lead.owner_agent_id === null,
+      (lead) =>
+        lead.owner_user_id === null &&
+        lead.owner_agent_id === null &&
+        !lead.responsible_profile_id,
     ).length,
     prazoVencido: abertos.filter((lead) =>
       Boolean(lead.expected_close_date && lead.expected_close_date < hoje),
