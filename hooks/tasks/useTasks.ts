@@ -24,6 +24,8 @@ export interface FiltrosDeTarefa {
   responsible_profile_id?: string;
   /** `true` = só o que ainda pede ação (pendente ou em andamento). */
   aberto?: boolean;
+  /** Teto da fila — as mais urgentes primeiro, não as últimas criadas. */
+  limite?: number;
 }
 
 async function leJson<T>(res: Response, oQueFalhou: string): Promise<T> {
@@ -50,6 +52,7 @@ export function useTasks(filtros: FiltrosDeTarefa = {}) {
     params.set("responsible_profile_id", filtros.responsible_profile_id);
   }
   if (filtros.aberto) params.set("aberto", "true");
+  if (filtros.limite) params.set("limite", String(filtros.limite));
   const qs = params.toString();
 
   const query = useQuery({
