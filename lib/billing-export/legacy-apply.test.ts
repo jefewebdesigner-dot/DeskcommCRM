@@ -65,11 +65,20 @@ function aplicar(ops: Operacao[], contatos: ContatoDoBanco[], cards: CardDoBanco
     if (op.op === "inserir_contato") {
       const id = `novo-${++seq}`;
       novoPorEntidade.set(op.entityId, id);
-      cs.push(contato({ id, ...op.valores }));
+      // `email_normalized` é `generated always as (lower(trim(email)))` no
+      // banco real — o produtor não escreve, então o simulador deriva aqui,
+      // igual o Postgres faria no INSERT.
+      cs.push(
+        contato({
+          id,
+          ...op.valores,
+          email_normalized: op.valores.email ? op.valores.email.toLowerCase().trim() : null,
+        }),
+      );
     } else if (op.op === "atualizar_contato") {
       const c = cs.find((x) => x.id === op.contatoId)!;
       Object.assign(c, op.patch);
-      if (op.patch.email) c.email_normalized = op.patch.email;
+      if (op.patch.email) c.email_normalized = op.patch.email.toLowerCase().trim();
     } else if (op.op === "inserir_card") {
       const contactId = op.contatoId ?? novoPorEntidade.get(op.entityId)!;
       cr.push(card({ id: `card-${++seq}`, stage_id: op.stageId, contact_id: contactId, source: op.valores.source, external_id: op.valores.external_id, source_metadata: op.valores.source_metadata, tags: op.valores.tags }));
