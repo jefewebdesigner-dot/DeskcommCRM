@@ -15,6 +15,7 @@ import {
   type PrioridadeDaTarefa,
   type Tarefa,
 } from "@/lib/tarefas/tipos";
+import { MessageCircle } from "lucide-react";
 import { Check, PencilSimple, Trash } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -153,6 +154,20 @@ function Linha({
 
       {podeEditar ? (
         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          {/* Abre o detalhe direto no painel de WhatsApp — mesmo envio
+              rastreado pelo CRM que já existe lá dentro, só com um atalho que
+              não depende de abrir a tarefa e rolar até achar. Sem contato
+              vinculado, o painel de destino já nasce desabilitado e explica
+              por quê — não duplicamos essa checagem aqui. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label={t("Abrir conversa no WhatsApp")}
+            onClick={() => aoAbrirDetalhe(tarefa)}
+          >
+            <MessageCircle size={14} aria-hidden />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
