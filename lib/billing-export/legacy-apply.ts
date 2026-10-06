@@ -129,7 +129,6 @@ export type Operacao =
       valores: {
         name: string | null;
         email: string | null;
-        email_normalized: string | null;
         phone_number: string | null;
         tags: string[];
         source: string;
