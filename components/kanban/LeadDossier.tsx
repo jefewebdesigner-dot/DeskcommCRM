@@ -1,13 +1,16 @@
 "use client";
 
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
-import { useRef } from "react";
+import { useState } from "react";
 
 import { useT } from "@/hooks/i18n/useT";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConversaInline } from "@/components/inbox/ConversaInline";
 import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
 import type { Lead } from "@/lib/types/leads";
-import { ConversaNoDossie } from "./ConversaNoDossie";
+import type { Stage } from "@/lib/kanban/types";
+import { MoverDeEtapa } from "./MoverDeEtapa";
 import { LeadFieldsForm } from "./LeadFieldsForm";
 import { ScoreSlot } from "./ScoreSlot";
 import { LeadTimeline } from "./LeadTimeline";
@@ -24,7 +27,9 @@ interface Props {
   lead: Lead;
   pipelineId: string;
   fieldDefs?: CustomFieldDef[];
-  stageName: string;
+  /** Etapas e negócios do funil: alimentam o seletor "Mover para". */
+  stages: Stage[];
+  leadsDoFunil: Lead[];
   ownerNames?: Map<string, string | null>;
 }
 
@@ -60,12 +65,13 @@ export function LeadDossier({
   lead,
   pipelineId,
   fieldDefs = [],
-  stageName,
+  stages,
+  leadsDoFunil,
   ownerNames,
 }: Props) {
   const tagDoIdioma = useTagDeIdioma();
   const t = useT();
-  const campos = useRef<HTMLDivElement | null>(null);
+  const [aba, setAba] = useState<string>(lead.conversa ? "conversa" : "tarefas");
   const timeline = useLeadTimeline(open ? lead.id : null, lead.contact_id);
   const owner = resolveLeadOwner(lead, ownerNames);
   const score = lead.score ?? null;
@@ -74,7 +80,7 @@ export function LeadDossier({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md"
+        className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-xl"
         // Observável pelo mesmo motivo do board: "a assinatura morreu" e "nada
         // aconteceu" têm a mesma aparência, que é silêncio.
         data-realtime-status={timeline.realtimeStatus.toLowerCase()}
@@ -89,10 +95,10 @@ export function LeadDossier({
 
         {/* ① cabeçalho vivo */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border pb-3 text-xs">
-          <span className="font-medium tabular-nums text-text">
+          <span className="font-medium text-text tabular-nums">
             {formatBRL(lead.value_cents, lead.currency)}
           </span>
-          <span className="text-text-muted">{stageName}</span>
+          <MoverDeEtapa lead={lead} pipelineId={pipelineId} stages={stages} leads={leadsDoFunil} />
           <OwnerBadge
             ownerKind={owner.kind}
             ownerName={owner.name}
@@ -112,14 +118,6 @@ export function LeadDossier({
               factors={score.factors.slice(0, 3)}
             />
           )}
-
-          <button
-            type="button"
-            onClick={() => campos.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="ml-auto text-text-muted underline-offset-2 hover:text-text hover:underline"
-          >
-            {t("Editar campos")}
-          </button>
         </div>
 
         {/* O score NÃO aparece na timeline: recálculo é telemetria e não emite
@@ -133,33 +131,55 @@ export function LeadDossier({
           </p>
         )}
 
-        <div className="space-y-2 pt-3">
-          <ConversaNoDossie conversa={lead.conversa} />
-          <WhatsAppDoDossie lead={lead} pipelineId={pipelineId} />
-          <TarefasDoDossie lead={lead} />
-          <AgendarNoDossie lead={lead} pipelineId={pipelineId} />
-        </div>
+        {/* As quatro coisas que se faz com um negócio, uma por aba — e a conversa
+            primeiro: é o que a pessoa veio fazer. Antes, a conversa era um link para
+            outra página e o dossiê era uma rolagem única de cinco blocos. */}
+        <Tabs value={aba} onValueChange={setAba} className="flex flex-1 flex-col pt-3">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="conversa" className="gap-1.5">
+              {t("Conversa")}
+              {lead.conversa && lead.conversa.unread > 0 ? (
+                <span
+                  className="rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground tabular-nums"
+                  aria-label={`${lead.conversa.unread} ${t("sem ler")}`}
+                >
+                  {lead.conversa.unread}
+                </span>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger value="tarefas">{t("Tarefas")}</TabsTrigger>
+            <TabsTrigger value="historico">{t("Histórico")}</TabsTrigger>
+            <TabsTrigger value="dados">{t("Dados")}</TabsTrigger>
+          </TabsList>
 
-        {/* ② timeline */}
-        <section className="flex-1 py-3">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
-            {t("Linha do tempo")}
-          </h3>
-          <LeadTimeline
-            itens={timeline.itens}
-            chegouAoVivo={timeline.chegouAoVivo}
-            isLoading={timeline.isLoading}
-            isError={timeline.isError}
-          />
-        </section>
+          <TabsContent value="conversa" className="mt-3 space-y-2">
+            {lead.conversa ? (
+              <ConversaInline conversationId={lead.conversa.id} />
+            ) : (
+              // Sem conversa ainda: o envio abaixo ABRE uma e, quando abrir, o
+              // negócio passa a ter a conversa inteira nesta aba.
+              <WhatsAppDoDossie lead={lead} pipelineId={pipelineId} />
+            )}
+          </TabsContent>
 
-        {/* ③ campos, por último */}
-        <div ref={campos} className="border-t border-border pt-3">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
-            {t("Dados do negócio")}
-          </h3>
-          <LeadFieldsForm lead={lead} pipelineId={pipelineId} fieldDefs={fieldDefs} />
-        </div>
+          <TabsContent value="tarefas" className="mt-3 space-y-2">
+            <TarefasDoDossie lead={lead} />
+            <AgendarNoDossie lead={lead} pipelineId={pipelineId} />
+          </TabsContent>
+
+          <TabsContent value="historico" className="mt-3">
+            <LeadTimeline
+              itens={timeline.itens}
+              chegouAoVivo={timeline.chegouAoVivo}
+              isLoading={timeline.isLoading}
+              isError={timeline.isError}
+            />
+          </TabsContent>
+
+          <TabsContent value="dados" className="mt-3">
+            <LeadFieldsForm lead={lead} pipelineId={pipelineId} fieldDefs={fieldDefs} />
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
   );

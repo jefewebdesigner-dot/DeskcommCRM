@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -68,24 +66,5 @@ describe("a porta para a conversa", () => {
     // cinza ocuparia o mesmo espaço para não dizer nada.
     const { container } = render(<ConversaNoDossie conversa={null} />);
     expect(container).toBeEmptyDOMElement();
-  });
-});
-
-describe("o elo que some sem barulho", () => {
-  it("o dossiê MONTA o bloco — o componente sozinho não abre porta nenhuma", () => {
-    // O defeito original não era o componente faltando: era o dossiê não o
-    // chamar. Um teste que só exercitasse `ConversaNoDossie` ficaria verde com
-    // a tela exatamente como o usuário a encontrou.
-    const fonte = readFileSync("components/kanban/LeadDossier.tsx", "utf8");
-    expect(fonte, "o dossiê não monta o bloco da conversa").toMatch(
-      /<ConversaNoDossie\s+conversa=\{lead\.conversa\}/,
-    );
-  });
-
-  it("e o bloco vem ANTES da linha do tempo que anuncia o canal", () => {
-    // É a timeline que diz "Entrou pelo WhatsApp". A porta atrás do anúncio
-    // obrigaria a rolar para achar o que o próprio texto acabou de prometer.
-    const fonte = readFileSync("components/kanban/LeadDossier.tsx", "utf8");
-    expect(fonte.indexOf("<ConversaNoDossie")).toBeLessThan(fonte.indexOf("<LeadTimeline"));
   });
 });
