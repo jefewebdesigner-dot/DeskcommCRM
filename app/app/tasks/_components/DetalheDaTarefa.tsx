@@ -228,7 +228,16 @@ export function DetalheDaTarefa({
 
   return (
     <Sheet open={aberto} onOpenChange={aoMudarAbertura}>
-      <SheetContent side="right" className="w-full overflow-y-auto bg-muted/[0.05] sm:max-w-xl">
+      {/*
+        `bg-background`, nunca translúcido: este painel já teve `bg-muted/[0.05]`
+        (5% de opacidade) — quase transparente — e a tela de trás (os cards de
+        "Nesta visão"/"Atrasadas" da lista, dimmed pelo overlay) aparecia
+        "fantasma" atrás do título e dos espaços entre os cards brancos. O
+        `SheetContent` base (components/ui/sheet.tsx) já é `bg-background`
+        sólido; `LeadDossier.tsx` não sobrescreve e está correto — aqui também
+        não deveria.
+      */}
+      <SheetContent side="right" className="w-full overflow-y-auto bg-background sm:max-w-xl">
         <SheetHeader className="border-b border-border/60 pr-8 pb-5">
           <div className="flex flex-wrap items-center gap-2">
             {responsavel ? <Badge variant="info">{responsavel}</Badge> : null}
