@@ -35,6 +35,13 @@ interface LoseLeadDialogProps {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   pipelineId: string;
+  /**
+   * Pré-preenche "Outro" com este texto — usado pelo atalho "Sem WhatsApp" do
+   * card, cujo motivo real (ninguém cadastrou telefone nem e-mail) nunca vai
+   * estar na lista canônica nem na do funil. A pessoa ainda confirma — nunca
+   * grava sozinho, mesmo vindo de um atalho.
+   */
+  motivoInicial?: string;
 }
 
 const MAX_LEN = 500;
@@ -44,10 +51,11 @@ export function LoseLeadDialog({
   onOpenChange,
   leadId,
   pipelineId,
+  motivoInicial,
 }: LoseLeadDialogProps) {
   const t = useT();
-  const [reasonCode, setReasonCode] = useState<string>("");
-  const [otherText, setOtherText] = useState("");
+  const [reasonCode, setReasonCode] = useState<string>(motivoInicial ? OUTRO : "");
+  const [otherText, setOtherText] = useState(motivoInicial ?? "");
   const mutation = useLoseLead(pipelineId);
 
   // O funil deste card manda na lista: o que ele tem cadastrado substitui o
