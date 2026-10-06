@@ -1,17 +1,19 @@
 "use client";
 import { Draggable } from "@hello-pangea/dnd";
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import { resolveCardState, stageAgeLabel, type CardInput } from "@/lib/kanban/card-state";
 import { KanbanCardActions } from "./KanbanCardActions";
+import { LoseLeadDialog } from "./LoseLeadDialog";
 import { NextActionSlot } from "./NextActionSlot";
 import { ReactivationSlot } from "./ReactivationSlot";
 import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge, ownerInitials } from "./OwnerBadge";
-import { CalendarClock, ListTodo } from "lucide-react";
+import { CalendarClock, ListTodo, MessageCircle, UserX } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /** Os dois gestos de seleção que o card sabe relatar. */
 export type GestoDeSelecao = "alterna" | "intervalo";
@@ -108,6 +110,8 @@ export function KanbanCard({
   const value = formatBRL(card.valueCents, card.currency);
   const state = resolveCardState(card, t);
   const age = stageAgeLabel(card.hoursInStage, t);
+  const semContato = !card.contactPhone && !card.contactEmail;
+  const [descartarAberto, setDescartarAberto] = useState(false);
 
   // Clique ABRE o dossiê; ctrl/cmd+clique SELECIONA; shift+clique estende até a
   // âncora. "Clicar abre" é a convenção mais forte, e seleção múltipla é recurso
@@ -255,6 +259,44 @@ export function KanbanCard({
                 </button>
               </h3>
             </div>
+            {/* Abre o dossiê direto no painel de WhatsApp (mesmo envio
+                rastreado do CRM) — atalho de um clique pro gesto mais comum
+                num card: falar com o lead. Sem telefone/e-mail, o botão some:
+                não tem envio nenhum a atalhizar, e o atalho certo pra esse
+                caso é "Marcar como perdido" no menu "...", não este botão. */}
+            {semContato ? (
+              // Sem telefone NEM e-mail: não há WhatsApp a atalhizar, e a
+              // decisão certa não é deixar o card parado — é descartar com
+              // motivo registrado. Mesmo diálogo de "Marcar como perdido",
+              // só que já aberto com o motivo pronto; a pessoa ainda confirma.
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 hover:text-destructive"
+                aria-label={t("Sem contato — descartar")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDescartarAberto(true);
+                }}
+              >
+                <UserX size={16} aria-hidden />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-emerald-600 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 dark:text-emerald-400"
+                aria-label={t("Enviar WhatsApp")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen?.(card.id);
+                }}
+              >
+                <MessageCircle size={16} aria-hidden />
+              </Button>
+            )}
             <KanbanCardActions lead={lead} pipelineId={pipelineId} />
           </div>
 
@@ -392,6 +434,22 @@ export function KanbanCard({
                 : `${t("em")} ${card.stageName}`}
             </span>
           </div>
+
+          {semContato && (
+            // Mesma barreira de clique de `KanbanCardActions`: o diálogo é
+            // portado, e o portal do React propaga pela árvore React (o
+            // card), não pelo DOM — sem isto, fechar clicando fora reabriria
+            // o dossiê por cima.
+            <span className="contents" onClick={(e) => e.stopPropagation()}>
+              <LoseLeadDialog
+                open={descartarAberto}
+                onOpenChange={setDescartarAberto}
+                leadId={card.id}
+                pipelineId={pipelineId}
+                motivoInicial={t("Sem telefone nem e-mail cadastrado — não há como contatar.")}
+              />
+            </span>
+          )}
         </div>
       )}
     </Draggable>
