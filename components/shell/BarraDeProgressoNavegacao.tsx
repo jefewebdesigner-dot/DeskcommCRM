@@ -108,7 +108,13 @@ export function BarraDeProgressoNavegacao() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-x-0 top-0 z-[9999] h-[2px] bg-transparent"
+      // `z-40`, não `z-[9999]`: um Sheet/Dialog aberto (Radix, z-50) tem que
+      // cobrir esta barra, nunca o contrário. Com 9999 ela furava por cima de
+      // QUALQUER modal — inclusive o detalhe da tarefa, que troca o
+      // `searchParams` ao abrir e reacende a barra por 200ms logo no momento
+      // em que o painel aparece. O efeito: uma lasca escura cortando o topo
+      // do modal na primeira fração de segundo.
+      className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[2px] bg-transparent"
     >
       <div
         className="h-full bg-primary shadow-[0_0_8px_var(--color-primary)] transition-all duration-200 ease-out"
