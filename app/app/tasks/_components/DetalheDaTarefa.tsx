@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Loader2, MessageCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, MessageCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { ConversaInline } from "@/components/inbox/ConversaInline";
+import { MoverDeEtapa } from "@/components/kanban/MoverDeEtapa";
+import { useBoard } from "@/hooks/kanban/useBoard";
 import { useQuickReplySuggestion } from "@/hooks/inbox/useQuickReplySuggestion";
 import { interpolateTemplate } from "@/lib/inbox/template-vars";
 import { RESPOSTAS_RAPIDAS_SUGERIDAS } from "@/lib/inbox/respostas-sugeridas";
@@ -111,6 +114,7 @@ export function DetalheDaTarefa({
 }) {
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [concluindo, setConcluindo] = useState(false);
   const [concluirDepois, setConcluirDepois] = useState(true);
   const [conversationIdCriado, setConversationIdCriado] = useState<string | null>(null);
 
@@ -183,6 +187,20 @@ export function DetalheDaTarefa({
     return data.conversation_id;
   }
 
+  async function concluirTarefa() {
+    if (!tarefa) return;
+    setConcluindo(true);
+    try {
+      await aoConcluir(tarefa);
+      toast.success("Tarefa concluída.");
+      aoMudarAbertura(false);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível concluir a tarefa.");
+    } finally {
+      setConcluindo(false);
+    }
+  }
+
   async function enviarWhatsApp() {
     if (!mensagem.trim() || !tarefa) return;
     setEnviando(true);
@@ -222,6 +240,10 @@ export function DetalheDaTarefa({
   }
 
   const lead = contexto.data?.lead;
+  // O negócio como o quadro o vê (versão atual): é dele que o seletor de etapa
+  // tira `updated_at`, e o contexto da tarefa fica velho depois de cada mover.
+  const quadro = useBoard(aberto && lead ? lead.pipeline_id : null);
+  const leadDoQuadro = quadro.data?.leads.find((l) => l.id === lead?.id) ?? null;
   const contato = contexto.data?.contact;
   const atividades = resumo.data?.activities ?? [];
   const demandas = resumo.data?.demandas ?? [];
@@ -284,14 +306,32 @@ export function DetalheDaTarefa({
                   </Button>
                 ) : null}
               </div>
-
-              {contexto.data?.conversation?.last_message_preview ? (
-                <div className="rounded-xl border border-border/50 bg-muted/35 p-3 text-xs">
-                  <span className="font-medium">Última conversa: </span>
-                  {contexto.data.conversation.last_message_preview}
-                </div>
-              ) : null}
             </section>
+
+            {conversationId && tarefa ? (
+              // A conversa INTEIRA aqui, não só um trecho da última mensagem: quem
+              // abre uma tarefa para falar com o cliente precisa ler o que já foi
+              // dito e responder sem trocar de página (e sem perder o lugar na fila).
+              <section className="space-y-3">
+                <ConversaInline conversationId={conversationId} />
+                {tarefa.status !== "done" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full rounded-xl"
+                    disabled={concluindo}
+                    onClick={concluirTarefa}
+                  >
+                    {concluindo ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    Concluir tarefa
+                  </Button>
+                ) : null}
+              </section>
+            ) : null}
 
             <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
@@ -305,6 +345,17 @@ export function DetalheDaTarefa({
                       {nomeDoEmbed(lead.crm_pipelines) ?? "Funil"} ·{" "}
                       {nomeDoEmbed(lead.crm_stages) ?? "Etapa"} · {rotuloDoStatus(lead.status)}
                     </p>
+                  ) : null}
+                  {lead && leadDoQuadro && quadro.data ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Mover para</span>
+                      <MoverDeEtapa
+                        lead={leadDoQuadro}
+                        pipelineId={lead.pipeline_id}
+                        stages={quadro.data.stages}
+                        leads={quadro.data.leads}
+                      />
+                    </div>
                   ) : null}
                 </div>
                 {lead ? (
@@ -364,63 +415,65 @@ export function DetalheDaTarefa({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    WhatsApp
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Escreva e envie sem sair do CRM.
-                  </p>
+            {!conversationId ? (
+              <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      WhatsApp
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Escreva e envie sem sair do CRM.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={sugerirMensagem}
+                    disabled={!contactId || sugestao.isLoading}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Sugerir mensagem
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={sugerirMensagem}
-                  disabled={!contactId || sugestao.isLoading}
-                >
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  Sugerir mensagem
-                </Button>
-              </div>
 
-              {sugestao.data?.motivo ? (
-                <p className="mb-2 text-[11px] text-muted-foreground">
-                  Sugestão: {sugestao.data.motivo}
-                </p>
-              ) : null}
+                {sugestao.data?.motivo ? (
+                  <p className="mb-2 text-[11px] text-muted-foreground">
+                    Sugestão: {sugestao.data.motivo}
+                  </p>
+                ) : null}
 
-              <Textarea
-                rows={5}
-                value={mensagem}
-                onChange={(e) => setMensagem(e.target.value)}
-                placeholder="Escreva a mensagem que será enviada pelo WhatsApp..."
-              />
-
-              <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={concluirDepois}
-                  onChange={(e) => setConcluirDepois(e.target.checked)}
+                <Textarea
+                  rows={5}
+                  value={mensagem}
+                  onChange={(e) => setMensagem(e.target.value)}
+                  placeholder="Escreva a mensagem que será enviada pelo WhatsApp..."
                 />
-                Concluir esta tarefa depois do envio
-              </label>
 
-              <Button
-                className="mt-3 w-full rounded-xl"
-                disabled={enviando || !mensagem.trim() || !contactId}
-                onClick={enviarWhatsApp}
-              >
-                {enviando ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                )}
-                Enviar pelo WhatsApp
-              </Button>
-            </section>
+                <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={concluirDepois}
+                    onChange={(e) => setConcluirDepois(e.target.checked)}
+                  />
+                  Concluir esta tarefa depois do envio
+                </label>
+
+                <Button
+                  className="mt-3 w-full rounded-xl"
+                  disabled={enviando || !mensagem.trim() || !contactId}
+                  onClick={enviarWhatsApp}
+                >
+                  {enviando ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar pelo WhatsApp
+                </Button>
+              </section>
+            ) : null}
           </div>
         )}
       </SheetContent>

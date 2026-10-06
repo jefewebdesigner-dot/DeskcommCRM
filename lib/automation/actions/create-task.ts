@@ -31,10 +31,14 @@ async function execute(
     };
   }
 
-  const title = renderTemplate(titleTemplate, ctx.context).trim().slice(0, 255);
+  const title = renderTemplate(titleTemplate, ctx.context, { nomeComFallback: true })
+    .trim()
+    .slice(0, 255);
   const description =
     typeof config.description_template === "string"
-      ? renderTemplate(config.description_template, ctx.context).trim().slice(0, 2000)
+      ? renderTemplate(config.description_template, ctx.context, { nomeComFallback: true })
+          .trim()
+          .slice(0, 2000)
       : null;
   const dueInHours =
     typeof config.due_in_hours === "number" && Number.isFinite(config.due_in_hours)
