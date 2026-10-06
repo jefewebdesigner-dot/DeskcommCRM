@@ -690,7 +690,10 @@ Ele preserva decisões e estado do projeto sem reenviar conversas inteiras.
 
 ## Última validação automática
 
-- Status: passed · score 100/100
+- Status: failed · score 35/100
+- 360px: resposta HTTP inválida.
+- 360px: conteúdo principal ausente.
+- 360px: exceção JavaScript.
 
 ## O que já foi feito
 
