@@ -46,8 +46,14 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
    * responsável escolhido, em vez da lista inteira em aberto. Nasceu do pedido
    * real: dois perfis share-login (Jeferson/Luan) com dezenas de tarefas
    * vencidas, e "abra a lista e role" não é um plano de trabalho do dia.
+   *
+   * PADRÃO LIGADO — não é mais opt-in. Pedido explícito: "não pode ter mais
+   * que 20 tarefas atrasadas" vale sempre que um responsável está escolhido,
+   * não só quando alguém lembra de apertar o botão. `escolherResponsavel`
+   * abaixo reforça isto a cada troca de pessoa, para quem desligou não ficar
+   * preso nisso ao trocar de responsável.
    */
-  const [filaDoDia, setFilaDoDia] = useState(false);
+  const [filaDoDia, setFilaDoDia] = useState(true);
   const [emEdicao, setEmEdicao] = useState<Tarefa | null>(null);
   const [emDetalhe, setEmDetalhe] = useState<Tarefa | null>(null);
   const [formAberto, setFormAberto] = useState(false);
@@ -67,6 +73,12 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
   }, [responsavel]);
 
   const filtroResponsavel = responsavel === "todos" ? undefined : responsavel;
+
+  /** Troca de responsável religa a fila do dia — "no máx. 20" não é escolha pontual. */
+  function escolherResponsavel(id: string) {
+    setResponsavel(id);
+    if (id !== "todos") setFilaDoDia(true);
+  }
 
   const {
     tarefas: tarefasDaLista,
@@ -192,7 +204,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
               </Button>
             ) : null}
 
-            <Select value={responsavel} onValueChange={setResponsavel}>
+            <Select value={responsavel} onValueChange={escolherResponsavel}>
               <SelectTrigger className="h-9 w-full rounded-xl border-border/60 bg-background/70 text-xs xl:w-[190px]">
                 <SelectValue placeholder={t("Responsável")} />
               </SelectTrigger>
@@ -317,7 +329,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
         </span>
         <button
           type="button"
-          onClick={() => setResponsavel("todos")}
+          onClick={() => escolherResponsavel("todos")}
           className={cn(
             "shrink-0 rounded-full border px-3 py-1.5 text-xs transition",
             responsavel === "todos"
@@ -331,7 +343,7 @@ export function TarefasClient({ podeEditar }: { podeEditar: boolean }) {
           <button
             key={perfil.id}
             type="button"
-            onClick={() => setResponsavel(perfil.id)}
+            onClick={() => escolherResponsavel(perfil.id)}
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs transition",
               responsavel === perfil.id
