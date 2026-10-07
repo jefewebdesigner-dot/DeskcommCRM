@@ -115,7 +115,8 @@ create or replace function public.fn_ingest_retention_cancel_event(
 ) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_session public.retention_cancel_sessions%rowtype; v_event uuid;
 begin
-  if not auth.is_server_service() then
+  if not auth.is_server_service()
+     and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;
 
