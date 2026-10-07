@@ -228,6 +228,185 @@ drop trigger if exists trg_customer_action_items_updated_at on public.customer_a
 create trigger trg_customer_action_items_updated_at before update on public.customer_action_items
   for each row execute function public.fn_set_updated_at();
 
+create or replace function public.fn_ingest_revenue_observation(
+  p_organization_id uuid,
+  p_account_id uuid,
+  p_source text,
+  p_external_event_id text,
+  p_external_subscription_id text,
+  p_external_customer_id text,
+  p_status text,
+  p_mrr_cents bigint,
+  p_observed_at timestamptz,
+  p_started_at timestamptz default null,
+  p_ended_at timestamptz default null,
+  p_baseline boolean default false
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+declare
+  v_previous_status text;
+  v_previous_mrr bigint := 0;
+  v_previous_recurring bigint := 0;
+  v_current_recurring bigint := 0;
+  v_had_previous boolean := false;
+  v_had_baseline boolean := false;
+  v_event_type text := null;
+  v_delta bigint := 0;
+  v_effective_at timestamptz := p_observed_at;
+  v_event_id uuid;
+begin
+  if not auth.is_server_service()
+     and coalesce(auth.jwt()->>'role','') <> 'service_role' then
+    raise exception 'server_service_required' using errcode='42501';
+  end if;
+
+  if p_status not in ('active','past_due','canceling','canceled','unknown') then
+    raise exception 'invalid_revenue_status' using errcode='22023';
+  end if;
+  if p_mrr_cents < 0 then
+    raise exception 'invalid_mrr' using errcode='22023';
+  end if;
+  if not exists(
+    select 1 from public.saas_accounts
+    where id=p_account_id and organization_id=p_organization_id
+  ) then
+    raise exception 'account_not_found' using errcode='P0002';
+  end if;
+
+  -- Serializa somente esta assinatura: duas observações concorrentes não podem
+  -- calcular o movimento sobre o mesmo estado anterior.
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      p_organization_id::text || ':' || p_source || ':' || p_external_subscription_id,
+      0
+    )
+  );
+
+  select s.status, s.mrr_cents
+    into v_previous_status, v_previous_mrr
+  from public.revenue_subscription_states s
+  where s.organization_id=p_organization_id
+    and s.source=p_source
+    and s.external_subscription_id=p_external_subscription_id
+  for update;
+  v_had_previous := found;
+
+  select exists(
+    select 1 from public.revenue_source_baselines b
+    where b.organization_id=p_organization_id and b.source=p_source
+  ) into v_had_baseline;
+
+  insert into public.revenue_source_baselines(
+    organization_id,source,baseline_at,last_observed_at
+  ) values(
+    p_organization_id,p_source,p_observed_at,p_observed_at
+  )
+  on conflict(organization_id,source) do update set
+    last_observed_at=greatest(
+      public.revenue_source_baselines.last_observed_at,
+      excluded.last_observed_at
+    );
+
+  insert into public.revenue_subscription_states(
+    organization_id,account_id,source,external_subscription_id,
+    external_customer_id,status,mrr_cents,started_at,ended_at,
+    first_observed_at,last_observed_at
+  ) values(
+    p_organization_id,p_account_id,p_source,p_external_subscription_id,
+    p_external_customer_id,p_status,p_mrr_cents,p_started_at,p_ended_at,
+    p_observed_at,p_observed_at
+  )
+  on conflict(organization_id,source,external_subscription_id) do update set
+    account_id=excluded.account_id,
+    external_customer_id=excluded.external_customer_id,
+    status=excluded.status,
+    mrr_cents=excluded.mrr_cents,
+    started_at=coalesce(
+      public.revenue_subscription_states.started_at,
+      excluded.started_at
+    ),
+    ended_at=excluded.ended_at,
+    last_observed_at=greatest(
+      public.revenue_subscription_states.last_observed_at,
+      excluded.last_observed_at
+    );
+
+  if (not v_had_baseline) or p_baseline then
+    return jsonb_build_object(
+      'baseline',true,
+      'event',null
+    );
+  end if;
+
+  if v_had_previous and v_previous_status in ('active','past_due','canceling') then
+    v_previous_recurring := v_previous_mrr;
+  end if;
+  if p_status in ('active','past_due','canceling') then
+    v_current_recurring := p_mrr_cents;
+  end if;
+
+  if not v_had_previous and v_current_recurring > 0 then
+    v_event_type := 'new';
+    v_delta := v_current_recurring;
+    v_effective_at := coalesce(p_started_at,p_observed_at);
+  elsif v_previous_recurring = 0 and v_current_recurring > 0 then
+    v_event_type := 'reactivation';
+    v_delta := v_current_recurring;
+  elsif v_previous_recurring > 0 and v_current_recurring = 0 then
+    v_event_type := 'churn';
+    v_delta := -v_previous_recurring;
+    v_effective_at := coalesce(p_ended_at,p_observed_at);
+  elsif v_previous_recurring > 0
+    and v_current_recurring > 0
+    and v_previous_recurring <> v_current_recurring then
+    if v_current_recurring > v_previous_recurring then
+      v_event_type := 'expansion';
+    else
+      v_event_type := 'contraction';
+    end if;
+    v_delta := v_current_recurring-v_previous_recurring;
+  end if;
+
+  if v_event_type is null then
+    return jsonb_build_object('baseline',false,'event',null);
+  end if;
+
+  insert into public.revenue_mrr_events(
+    organization_id,account_id,source,external_subscription_id,
+    external_customer_id,event_type,effective_at,delta_cents,
+    previous_mrr_cents,current_mrr_cents,idempotency_key
+  ) values(
+    p_organization_id,p_account_id,p_source,p_external_subscription_id,
+    p_external_customer_id,v_event_type,v_effective_at,v_delta,
+    v_previous_recurring,v_current_recurring,
+    p_source || ':' || p_external_event_id
+  )
+  on conflict(organization_id,idempotency_key) do nothing
+  returning id into v_event_id;
+
+  return jsonb_build_object(
+    'baseline',false,
+    'event',
+      case when v_event_id is null then null
+      else jsonb_build_object(
+        'id',v_event_id,
+        'event_type',v_event_type,
+        'delta_cents',v_delta
+      ) end
+  );
+end;
+$;
+
+revoke all on function public.fn_ingest_revenue_observation(
+  uuid,uuid,text,text,text,text,text,bigint,timestamptz,timestamptz,timestamptz,boolean
+) from public, anon, authenticated;
+grant execute on function public.fn_ingest_revenue_observation(
+  uuid,uuid,text,text,text,text,text,bigint,timestamptz,timestamptz,timestamptz,boolean
+) to authenticated, service_role;
+
 create or replace function public.fn_ingest_product_event(
   p_organization_id uuid, p_account_id uuid, p_source text,
   p_external_event_id text, p_event_name text, p_occurred_at timestamptz,
@@ -237,7 +416,8 @@ language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_event_id uuid;
 begin
-  if not auth.is_server_service() then
+  if not auth.is_server_service()
+     and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;
 
