@@ -11,6 +11,7 @@ const MIGRATIONS = [
   "20261007_0039_gravity_crm_retention.sql",
   "20261007_0040_vertical_packs.sql",
   "20261007_0041_gravity_crm_service_identity.sql",
+  "20261007_0042_gravity_crm_default_branding.sql",
 ] as const;
 
 function required(name: string): string {
