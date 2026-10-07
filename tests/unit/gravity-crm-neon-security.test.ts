@@ -18,6 +18,11 @@ describe("Gravity CRM Neon security contract",()=>{
     expect(core).toMatch(/references public\.contacts\(id, organization_id\)/i);
   });
 
+  it("Contact/identity reconciliation refuses silent cross-customer moves",()=>{
+    expect(core).toMatch(/fn_reconcile_saas_contact_identity[\s\S]*saas_identity_contact_conflict/i);
+    expect(core).toMatch(/fn_reconcile_saas_contact_identity[\s\S]*auth\.is_server_service\(\)/i);
+  });
+
   it("Revenue RPC is atomic and server-only",()=>{
     expect(core).toMatch(/fn_ingest_revenue_observation[\s\S]*pg_advisory_xact_lock/i);
     expect(core).toMatch(/fn_ingest_revenue_observation[\s\S]*auth\.is_server_service\(\)/i);
