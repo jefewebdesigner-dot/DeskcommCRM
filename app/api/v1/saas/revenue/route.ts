@@ -35,6 +35,12 @@ export async function POST(req:NextRequest):Promise<Response>{
     catch(error){console.error("[gravity-crm.revenue] customer action reconcile failed",error);}
     return ok(result,{status:201,requestId});
   }catch(error){
-    return fail("ingestion_failed",error instanceof Error?error.message:"Falha ao registrar receita.",500,{requestId});
+    console.error("[gravity-crm.revenue] ingestion failed",{requestId,error});
+    return fail(
+      "ingestion_failed",
+      "Não foi possível registrar a observação de receita.",
+      500,
+      {requestId},
+    );
   }
 }
