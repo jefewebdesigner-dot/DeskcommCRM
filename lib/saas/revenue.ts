@@ -23,7 +23,11 @@ export function classifyMrrChange(previous: StoredState | null, current: Revenue
   return null;
 }
 
-async function resolveAccount(organizationId: string, input: RevenueObservation) {
+async function resolveAccount(
+  organizationId: string,
+  input: RevenueObservation,
+  allowCreate = true,
+) {
   const admin=createAdminClient();
   const found=await admin.from("saas_account_identities").select("account_id")
     .eq("organization_id",organizationId).eq("source",input.source)
@@ -37,6 +41,7 @@ async function resolveAccount(organizationId: string, input: RevenueObservation)
     }
     return String(found.data.account_id);
   }
+  if(!allowCreate) throw new Error("saas_customer_identity_not_found");
   const a=await admin.from("saas_accounts").insert({
     organization_id:organizationId,
     display_name:input.customer_name ?? ("Cliente "+input.external_customer_id.slice(0,12))
@@ -87,8 +92,16 @@ async function refreshSnapshotWithoutBreakingIngestion(organizationId:string){
   }
 }
 
-export async function ingestRevenueObservation(organizationId:string,input:RevenueObservation,options:{deferSnapshot?:boolean}={}) {
-  const admin=createAdminClient(),accountId=await resolveAccount(organizationId,input);
+export async function ingestRevenueObservation(
+  organizationId:string,
+  input:RevenueObservation,
+  options:{deferSnapshot?:boolean;requireExistingIdentity?:boolean}={},
+) {
+  const admin=createAdminClient(),accountId=await resolveAccount(
+    organizationId,
+    input,
+    !options.requireExistingIdentity,
+  );
   const prev=await admin.from("revenue_subscription_states").select("status,mrr_cents,last_observed_at")
     .eq("organization_id",organizationId).eq("source",input.source)
     .eq("external_subscription_id",input.external_subscription_id).maybeSingle();
