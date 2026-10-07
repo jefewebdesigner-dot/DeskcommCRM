@@ -129,6 +129,7 @@ async function main() {
     }
 
     const expectedFunctions = [
+      "fn_reconcile_saas_contact_identity",
       "fn_resolve_saas_account",
       "fn_ingest_revenue_observation",
       "fn_ingest_product_event",
