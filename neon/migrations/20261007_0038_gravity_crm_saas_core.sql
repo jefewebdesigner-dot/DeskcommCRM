@@ -10,6 +10,7 @@ create table if not exists public.revenue_source_baselines (
   organization_id uuid not null references public.organizations(id) on delete cascade,
   source text not null,
   baseline_at timestamptz not null default now(),
+  baseline_completed_at timestamptz,
   last_observed_at timestamptz not null default now(),
   primary key (organization_id, source)
 );
