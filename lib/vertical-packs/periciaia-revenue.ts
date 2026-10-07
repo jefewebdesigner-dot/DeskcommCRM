@@ -84,7 +84,7 @@ export async function syncPericiaiaRevenueToCore(
             observed_at: observedAt,
             baseline: !existingSources.has(source),
           },
-          { deferSnapshot: true },
+          { deferSnapshot: true, requireExistingIdentity: true },
         );
         observed++;
       } catch (error) {
