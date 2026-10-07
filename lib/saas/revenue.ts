@@ -29,29 +29,16 @@ async function resolveAccount(
   allowCreate = true,
 ) {
   const admin=createAdminClient();
-  const found=await admin.from("saas_account_identities").select("account_id")
-    .eq("organization_id",organizationId).eq("source",input.source)
-    .eq("external_customer_id",input.external_customer_id).maybeSingle();
-  if(found.error) throw found.error;
-  if(found.data?.account_id) {
-    if(input.customer_name) {
-      const u=await admin.from("saas_accounts").update({display_name:input.customer_name})
-        .eq("organization_id",organizationId).eq("id",found.data.account_id);
-      if(u.error) throw u.error;
-    }
-    return String(found.data.account_id);
-  }
-  if(!allowCreate) throw new Error("saas_customer_identity_not_found");
-  const a=await admin.from("saas_accounts").insert({
-    organization_id:organizationId,
-    display_name:input.customer_name ?? ("Cliente "+input.external_customer_id.slice(0,12))
-  }).select("id").single();
-  if(a.error || !a.data) throw a.error ?? new Error("saas_account_not_created");
-  const i=await admin.from("saas_account_identities").insert({
-    organization_id:organizationId,account_id:a.data.id,source:input.source,external_customer_id:input.external_customer_id
+  const resolved=await admin.rpc("fn_resolve_saas_account",{
+    p_organization_id:organizationId,
+    p_source:input.source,
+    p_external_customer_id:input.external_customer_id,
+    p_display_name:input.customer_name ?? null,
+    p_allow_create:allowCreate,
   });
-  if(i.error) throw i.error;
-  return String(a.data.id);
+  if(resolved.error) throw resolved.error;
+  if(!resolved.data) throw new Error("saas_account_not_resolved");
+  return String(resolved.data);
 }
 
 export async function refreshRevenueSnapshot(organizationId:string, now=new Date()){
