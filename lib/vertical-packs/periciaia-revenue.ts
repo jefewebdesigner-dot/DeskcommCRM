@@ -74,7 +74,9 @@ export async function syncPericiaiaRevenueToCore(
               ":" +
               status +
               ":" +
-              subscription.mrrCents,
+              subscription.mrrCents +
+              ":" +
+              observedAt,
             source,
             external_subscription_id: subscription.subscriptionId,
             external_customer_id: subscription.customerId,
