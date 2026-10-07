@@ -249,6 +249,7 @@ as $
 declare
   v_previous_status text;
   v_previous_mrr bigint := 0;
+  v_previous_observed_at timestamptz;
   v_previous_recurring bigint := 0;
   v_current_recurring bigint := 0;
   v_had_previous boolean := false;
@@ -285,14 +286,23 @@ begin
     )
   );
 
-  select s.status, s.mrr_cents
-    into v_previous_status, v_previous_mrr
+  select s.status, s.mrr_cents, s.last_observed_at
+    into v_previous_status, v_previous_mrr, v_previous_observed_at
   from public.revenue_subscription_states s
   where s.organization_id=p_organization_id
     and s.source=p_source
     and s.external_subscription_id=p_external_subscription_id
   for update;
   v_had_previous := found;
+
+  if v_had_previous and p_observed_at < v_previous_observed_at then
+    return jsonb_build_object(
+      'baseline',false,
+      'ignored',true,
+      'reason','stale_observation',
+      'event',null
+    );
+  end if;
 
   select exists(
     select 1 from public.revenue_source_baselines b
