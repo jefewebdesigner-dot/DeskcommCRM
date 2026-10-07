@@ -95,11 +95,13 @@ async function main() {
     }
 
     const expectedTables = [
+      "revenue_source_baselines",
       "saas_accounts",
       "saas_account_identities",
       "revenue_subscription_states",
       "revenue_mrr_events",
       "revenue_monthly_snapshots",
+      "product_health_settings",
       "product_events",
       "product_usage_states",
       "customer_action_items",
@@ -123,6 +125,35 @@ async function main() {
     if (missingTables.length) {
       throw new Error(
         "Instalação incompleta; tabelas ausentes: " + missingTables.join(", "),
+      );
+    }
+
+    const expectedFunctions = [
+      "fn_resolve_saas_account",
+      "fn_ingest_revenue_observation",
+      "fn_ingest_product_event",
+      "fn_ingest_retention_cancel_event",
+    ];
+
+    const functions = await client.query<{ name: string; installed: boolean }>(
+      `
+        select name, exists(
+          select 1
+          from pg_proc p
+          join pg_namespace n on n.oid=p.pronamespace
+          where n.nspname='public' and p.proname=name
+        ) as installed
+        from unnest($1::text[]) as name
+        order by name
+      `,
+      [expectedFunctions],
+    );
+    const missingFunctions = functions.rows
+      .filter((row) => !row.installed)
+      .map((row) => row.name);
+    if (missingFunctions.length) {
+      throw new Error(
+        "Instalação incompleta; RPCs ausentes: " + missingFunctions.join(", "),
       );
     }
 
@@ -167,6 +198,7 @@ async function main() {
           newlyApplied,
           confirmed: confirmed.rows.map((row) => row.version),
           tablesVerified: expectedTables.length,
+          functionsVerified: expectedFunctions.length,
           periciaiaPack,
           secretsPrinted: false,
         },

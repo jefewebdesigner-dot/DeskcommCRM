@@ -122,6 +122,16 @@ begin
 
   if not exists(select 1 from public.saas_accounts where id=p_account_id and organization_id=p_organization_id)
     then raise exception using errcode='P0001',message='retention_account_not_found'; end if;
+
+  -- Serializa a sessão lógica antes de consultar/criar a linha. Sem esse lock,
+  -- dois cancel_intent_created simultâneos poderiam disputar a unique key.
+  perform pg_advisory_xact_lock(
+    hashtextextended(
+      p_organization_id::text || ':' || p_source || ':' || p_external_session_id,
+      0
+    )
+  );
+
   select * into v_session from public.retention_cancel_sessions
     where organization_id=p_organization_id and source=p_source and external_session_id=p_external_session_id for update;
   if not found then

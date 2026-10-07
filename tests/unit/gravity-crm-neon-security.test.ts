@@ -31,6 +31,7 @@ describe("Gravity CRM Neon security contract",()=>{
 
   it("Retention RPC has the same server-only gate",()=>{
     expect(retention).toMatch(/fn_ingest_retention_cancel_event[\s\S]*auth\.is_server_service\(\)/i);
+    expect(retention).toMatch(/fn_ingest_retention_cancel_event[\s\S]*pg_advisory_xact_lock/i);
     expect(retention).toMatch(/grant execute on function public\.fn_ingest_retention_cancel_event[\s\S]*to authenticated, service_role/i);
   });
 });
