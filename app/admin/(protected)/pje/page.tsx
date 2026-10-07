@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { loadAuthUser } from "@/lib/auth/server";
 import { estadoTokenPje, statusTokenPje } from "@/lib/pje/config";
@@ -43,6 +45,21 @@ export default async function Page() {
           ponteConfiguradaInicial={ponte.configurada}
           emailLegadoInicial={ponte.email}
         />
+      </Card>
+
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Fusão com o Gravity CRM</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Acompanhe a reconciliação do mesmo tenant PeríciaIA com Customer 360,
+              Revenue OS e os critérios que precisam ficar verdes antes do cutover.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/admin/gravity-crm/periciaia">Ver cutover</Link>
+          </Button>
+        </div>
       </Card>
 
       <Card className="p-5 sm:p-6">
