@@ -73,6 +73,7 @@ export function evaluatePericiaiaCutover(input: {
   missingAccounts: number;
   expectedIdentities: number;
   missingIdentities: number;
+  identityConflicts: number;
   expectedSubscriptions: number;
   missingRevenueStates: number;
   pjeConfigured: boolean;
@@ -101,11 +102,16 @@ export function evaluatePericiaiaCutover(input: {
     {
       id: "identities",
       label: "Identidades financeiras",
-      ok: input.expectedIdentities > 0 && input.missingIdentities === 0,
+      ok:
+        input.expectedIdentities > 0 &&
+        input.missingIdentities === 0 &&
+        input.identityConflicts === 0,
       detail:
-        input.missingIdentities === 0
-          ? `${input.expectedIdentities} identidade(s) reconciliadas.`
-          : `${input.missingIdentities} identidade(s) de billing ainda sem vínculo.`,
+        input.identityConflicts > 0
+          ? `${input.identityConflicts} identidade(s) estão ligadas ao cliente errado ou aparecem em contatos diferentes.`
+          : input.missingIdentities === 0
+            ? `${input.expectedIdentities} identidade(s) reconciliadas.`
+            : `${input.missingIdentities} identidade(s) de billing ainda sem vínculo.`,
       blocking: true,
     },
     {
@@ -156,15 +162,16 @@ export async function loadPericiaiaCutoverStatus() {
     periciaiaIdentities(contact).some((identity) => identity.source !== "periciaia"),
   );
 
-  const expectedIdentityKeys = new Set<string>();
+  const expectedIdentityOwners = new Map<string, Set<string>>();
   const expectedSubscriptionKeys = new Set<string>();
 
   for (const contact of eligible) {
     for (const identity of periciaiaIdentities(contact)) {
       if (identity.source === "periciaia") continue;
-      expectedIdentityKeys.add(
-        identity.source + "|" + identity.externalCustomerId,
-      );
+      const key = identity.source + "|" + identity.externalCustomerId;
+      const owners = expectedIdentityOwners.get(key) ?? new Set<string>();
+      owners.add(contact.id);
+      expectedIdentityOwners.set(key, owners);
     }
     for (const subscription of subscriptionsOf(contact)) {
       const provider = source(subscription.provider);
@@ -188,7 +195,7 @@ export async function loadPericiaiaCutoverStatus() {
         .eq("organization_id", PERICIAIA_ORGANIZATION_ID),
       admin
         .from("saas_account_identities")
-        .select("source,external_customer_id")
+        .select("account_id,source,external_customer_id")
         .eq("organization_id", PERICIAIA_ORGANIZATION_ID),
       admin
         .from("revenue_subscription_states")
@@ -203,16 +210,19 @@ export async function loadPericiaiaCutoverStatus() {
   if (identities.error) throw identities.error;
   if (revenueStates.error) throw revenueStates.error;
 
-  const accountContacts = new Set(
-    (accounts.data ?? [])
-      .map((row) => (row.contact_id ? String(row.contact_id) : null))
-      .filter((value): value is string => Boolean(value)),
-  );
-  const actualIdentities = new Set(
-    (identities.data ?? []).map(
-      (row) => String(row.source) + "|" + String(row.external_customer_id),
-    ),
-  );
+  const accountByContact = new Map<string, string>();
+  for (const row of accounts.data ?? []) {
+    if (row.contact_id) {
+      accountByContact.set(String(row.contact_id), String(row.id));
+    }
+  }
+  const actualIdentities = new Map<string, string>();
+  for (const row of identities.data ?? []) {
+    actualIdentities.set(
+      String(row.source) + "|" + String(row.external_customer_id),
+      String(row.account_id),
+    );
+  }
   const actualSubscriptions = new Set(
     (revenueStates.data ?? []).map(
       (row) => String(row.source) + "|" + String(row.external_subscription_id),
@@ -220,11 +230,30 @@ export async function loadPericiaiaCutoverStatus() {
   );
 
   const missingAccounts = eligible.filter(
-    (contact) => !accountContacts.has(contact.id),
+    (contact) => !accountByContact.has(contact.id),
   ).length;
-  const missingIdentities = [...expectedIdentityKeys].filter(
+  const missingIdentities = [...expectedIdentityOwners.keys()].filter(
     (key) => !actualIdentities.has(key),
   ).length;
+
+  let identityConflicts = 0;
+  for (const [key, owners] of expectedIdentityOwners) {
+    if (owners.size !== 1) {
+      identityConflicts++;
+      continue;
+    }
+    const contactId = [...owners][0];
+    const expectedAccountId = accountByContact.get(contactId);
+    const actualAccountId = actualIdentities.get(key);
+    if (
+      expectedAccountId &&
+      actualAccountId &&
+      expectedAccountId !== actualAccountId
+    ) {
+      identityConflicts++;
+    }
+  }
+
   const missingRevenueStates = [...expectedSubscriptionKeys].filter(
     (key) => !actualSubscriptions.has(key),
   ).length;
@@ -233,8 +262,9 @@ export async function loadPericiaiaCutoverStatus() {
     packStatus: pack.data?.status ? String(pack.data.status) : null,
     eligibleContacts: eligible.length,
     missingAccounts,
-    expectedIdentities: expectedIdentityKeys.size,
+    expectedIdentities: expectedIdentityOwners.size,
     missingIdentities,
+    identityConflicts,
     expectedSubscriptions: expectedSubscriptionKeys.size,
     missingRevenueStates,
     pjeConfigured: pje.configurado,
@@ -248,12 +278,13 @@ export async function loadPericiaiaCutoverStatus() {
       contacts: contacts.length,
       eligibleContacts: eligible.length,
       saasAccounts: (accounts.data ?? []).length,
-      expectedIdentities: expectedIdentityKeys.size,
+      expectedIdentities: expectedIdentityOwners.size,
       actualIdentities: actualIdentities.size,
       expectedSubscriptions: expectedSubscriptionKeys.size,
       actualRevenueStates: actualSubscriptions.size,
       missingAccounts,
       missingIdentities,
+      identityConflicts,
       missingRevenueStates,
     },
     pje,
