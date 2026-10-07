@@ -19,6 +19,7 @@
     "db:migrate": "echo 'TODO: wire Neon migrations runner' && exit 0",
     "db:reset": "echo 'Use uma branch Neon descartável e recrie-a pelo Gravity; reset Supabase foi removido.' && exit 1",
     "neon:registrar-worker": "tsx --env-file=.env --env-file=.env.local scripts/neon/registrar-worker-por-organizacao.ts",
+    "neon:instalar-gravity-crm": "tsx --env-file=.env --env-file=.env.local scripts/neon/instalar-gravity-crm-saas.ts",
     "neon:semear-playbook": "tsx --env-file=.env --env-file=.env.local scripts/neon/semear-playbook-plataforma.ts",
     "test:rls-worker": "vitest run --config vitest.neon-rls.config.ts",
     "neon:register-service":"tsx --env-file=.env --env-file=.env.local scripts/neon/registrar-identidade-servico.ts",
