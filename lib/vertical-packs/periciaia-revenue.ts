@@ -29,14 +29,18 @@ export async function syncPericiaiaRevenueToCore(
   const admin = createAdminClient();
   const baselineRows = await admin
     .from("revenue_source_baselines")
-    .select("source")
+    .select("source,baseline_completed_at")
     .eq("organization_id", organizationId);
   if (baselineRows.error) throw baselineRows.error;
 
-  const existingSources = new Set(
-    (baselineRows.data ?? []).map((row) => String(row.source)),
+  const completedSources = new Set(
+    (baselineRows.data ?? [])
+      .filter((row) => Boolean(row.baseline_completed_at))
+      .map((row) => String(row.source)),
   );
   const observedAt = new Date().toISOString();
+  const seenSources = new Set<string>();
+  const blockedSources = new Set<string>();
 
   let observed = 0;
   let skipped = 0;
@@ -44,14 +48,16 @@ export async function syncPericiaiaRevenueToCore(
 
   for (const entity of entities) {
     for (const subscription of entity.subscriptions) {
-      if (!subscription.customerId || !subscription.subscriptionId) {
-        skipped++;
-        continue;
-      }
-
       const source = sourceForProvider(subscription.provider);
       if (!source) {
         skipped++;
+        continue;
+      }
+      seenSources.add(source);
+
+      if (!subscription.customerId || !subscription.subscriptionId) {
+        skipped++;
+        blockedSources.add(source);
         continue;
       }
 
@@ -84,13 +90,14 @@ export async function syncPericiaiaRevenueToCore(
             status,
             mrr_cents: status === "canceled" ? 0 : subscription.mrrCents,
             observed_at: observedAt,
-            baseline: !existingSources.has(source),
+            baseline: !completedSources.has(source),
           },
           { deferSnapshot: true, requireExistingIdentity: true },
         );
         observed++;
       } catch (error) {
         failures++;
+        blockedSources.add(source);
         console.error("[periciaia-revenue] observation failed", {
           source,
           subscriptionId: subscription.subscriptionId,
@@ -100,10 +107,45 @@ export async function syncPericiaiaRevenueToCore(
     }
   }
 
+  const completedNow: string[] = [];
+  for (const source of seenSources) {
+    if (completedSources.has(source) || blockedSources.has(source)) continue;
+
+    const completed = await admin
+      .from("revenue_source_baselines")
+      .update({ baseline_completed_at: observedAt })
+      .eq("organization_id", organizationId)
+      .eq("source", source)
+      .is("baseline_completed_at", null);
+    if (completed.error) {
+      failures++;
+      blockedSources.add(source);
+      console.error("[periciaia-revenue] baseline completion failed", {
+        source,
+        error: completed.error,
+      });
+      continue;
+    }
+    completedNow.push(source);
+  }
+
   if (observed > 0) {
     await refreshRevenueSnapshot(organizationId);
     await syncCustomerActionCenter(organizationId);
   }
 
-  return { observed, skipped, failures };
+  if (failures > 0) {
+    throw new Error(
+      "periciaia_revenue_sync_incomplete:" +
+        [...blockedSources].sort().join(","),
+    );
+  }
+
+  return {
+    observed,
+    skipped,
+    failures,
+    completedNow,
+    incompleteSources: [...blockedSources].sort(),
+  };
 }
