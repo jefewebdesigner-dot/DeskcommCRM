@@ -11,6 +11,10 @@ export type RevenueObservation = {
 type StoredState = { status: RevenueStatus; mrr_cents: number; last_observed_at: string };
 const recurring = (s: RevenueStatus) => s === "active" || s === "past_due" || s === "canceling";
 
+export function canUseRevenueBaseline(scopes:string[]){
+  return scopes.includes("saas_revenue:baseline");
+}
+
 export function classifyMrrChange(previous: StoredState | null, current: RevenueObservation) {
   const cur = recurring(current.status) ? current.mrr_cents : 0;
   if (!previous) return cur > 0 ? { type:"new" as const, delta:cur, previous:0, current:cur, at:current.started_at ?? current.observed_at } : null;
