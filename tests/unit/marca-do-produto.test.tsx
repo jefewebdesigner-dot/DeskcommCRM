@@ -80,8 +80,8 @@ describe("o desenho na barra lateral", () => {
     // O e2e `marca-logo.spec.ts` lê "barra sem <img>" como "sem logo do
     // revendedor"; um <img> do produto aqui faria a spec medir a coisa errada.
     expect(document.querySelector("img")).toBeNull();
-    // Nem o nome em texto: o logotipo já o escreve.
-    expect(screen.queryByText(DEFAULT_APP_NAME)).toBeNull();
+    // O wordmark usa o próprio nome resolvido, não paths de uma marca antiga.
+    expect(logotipo.textContent).toBe(DEFAULT_APP_NAME);
   });
 
   it("recolhida, mostra só o símbolo — e não a inicial em texto", () => {
