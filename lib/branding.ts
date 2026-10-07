@@ -1,7 +1,7 @@
 /**
  * Marca da instalação — nome e logo configuráveis pelo `.env`, SEM rebuild.
  *
- * Por que existe: quem instala o DeskcommCRM para clientes (agência, revendedor)
+ * Por que existe: quem instala o produto para clientes (agência, revendedor)
  * precisa da própria marca na interface. Fazer isso editando o código quebraria o
  * caminho de atualização — `update.sh` puxa a imagem nova e o patch local se perde,
  * que é exatamente a dor nº 1 de quem hospeda o próprio sistema. Configuração em
