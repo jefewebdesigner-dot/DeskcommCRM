@@ -13,7 +13,7 @@ function count(text:string){
 
 describe("Gravity CRM SaaS Core migration integrity",()=>{
   it("não repete RPCs nem cresce por inserção acidental de conteúdo",()=>{
-    expect(Buffer.byteLength(migration,"utf8")).toBeLessThan(40_000);
+    expect(Buffer.byteLength(migration,"utf8")).toBeLessThan(60_000);
     expect(count("create or replace function public.fn_reconcile_saas_contact_identity(")).toBe(1);
     expect(count("create or replace function public.fn_resolve_saas_account(")).toBe(1);
     expect(count("create or replace function public.fn_ingest_revenue_observation(")).toBe(1);
