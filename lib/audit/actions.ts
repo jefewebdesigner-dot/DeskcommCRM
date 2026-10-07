@@ -746,6 +746,7 @@ export const AUDIT_ACTIONS = [
   "retention.cancel_event_recorded",
   "retention.churn_reason_recorded",
   "retention.playbook_synced",
+  "customer_health.reconciled",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

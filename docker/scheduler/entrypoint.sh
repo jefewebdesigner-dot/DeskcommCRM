@@ -111,6 +111,9 @@ CRONS="
 # DIAS. Diária e de madrugada porque o estado que ela lê muda em dias — de 5 em
 # 5 minutos seriam 288 varreduras para nada, e o aviso chegaria na mesma hora.
 50 5 * * *|60|api/v1/cron/canal-mudo-watcher
+# Gravity CRM: inatividade vira risco mesmo se o app não emitir evento novo.
+# Diário é suficiente porque a régua de saúde trabalha em dias, não minutos.
+10 6 * * *|90|api/v1/cron/customer-health
 0 12 * * *|60|api/v1/cron/lgpd-sla-watcher
 30 3 * * *|120|api/v1/cron/kb-conversations-batch
 15 4 * * *|60|api/v1/cron/sync-model-catalog

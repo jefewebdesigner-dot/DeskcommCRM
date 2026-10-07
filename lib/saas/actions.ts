@@ -79,6 +79,7 @@ export async function syncCustomerActionCenter(organizationId:string){
   const desired=customers.flatMap((c)=>desiredFor(c).map((a)=>({customer:c,...a})));
   const admin=createAdminClient();
 
+  let created=0,updated=0,autoClosed=0;
   for(const item of desired){
     const current=await admin.from("customer_action_items").select("id,status")
       .eq("organization_id",organizationId).eq("idempotency_key",item.key).maybeSingle();
@@ -96,12 +97,14 @@ export async function syncCustomerActionCenter(organizationId:string){
         idempotency_key:item.key,
       });
       if(inserted.error) throw inserted.error;
+      created++;
     }else if(current.data.status==="open"){
-      const updated=await admin.from("customer_action_items").update({
+      const writeResult=await admin.from("customer_action_items").update({
         priority:item.priority,title:item.title,evidence:item.evidence,
         revenue_impact_cents:item.revenue_impact_cents,
       }).eq("organization_id",organizationId).eq("id",current.data.id);
-      if(updated.error) throw updated.error;
+      if(writeResult.error) throw writeResult.error;
+      updated++;
     }
   }
 
@@ -121,18 +124,21 @@ export async function syncCustomerActionCenter(organizationId:string){
       resolved_at:new Date().toISOString(),
     }).eq("organization_id",organizationId).eq("id",row.id).eq("status","open");
     if(u.error) throw u.error;
+    autoClosed++;
   }
-  return customers;
+  return {customers,desired:desired.length,created,updated,autoClosed};
 }
 
 export async function loadCustomerActionCenter(organizationId:string){
-  const customers=await syncCustomerActionCenter(organizationId);
-  const actionsResult=await createAdminClient().from("customer_action_items")
+  const [customers,actionsResult]=await Promise.all([
+    loadSaaSCustomers(organizationId),
+    createAdminClient().from("customer_action_items")
       .select("id,account_id,action_type,priority,status,title,evidence,revenue_impact_cents,assigned_to,due_at,resolution_outcome,recovered_revenue_cents,created_at,updated_at")
       .eq("organization_id",organizationId)
       .eq("status","open")
       .order("revenue_impact_cents",{ascending:false})
-      .limit(200);
+      .limit(200),
+  ]);
   if(actionsResult.error) throw actionsResult.error;
   const names=new Map(customers.map((c)=>[c.id,c.name]));
   const rank:Record<CustomerAction["priority"],number>={critical:4,high:3,medium:2,low:1};

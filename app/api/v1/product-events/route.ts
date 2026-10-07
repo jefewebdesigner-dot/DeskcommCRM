@@ -5,6 +5,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { McpAuthError, ensureScope, validateBearerToken } from "@/lib/mcp/auth";
 import { productEventsRequestSchema } from "@/lib/schemas/product-events";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncCustomerActionCenter } from "@/lib/saas/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,10 @@ export async function POST(req:NextRequest):Promise<Response>{
     });
     if(r.error)rejected.push({external_event_id:event.external_event_id,code:"ingestion_failed"});
     else if(r.data)accepted++;else duplicates++;
+  }
+  if(accepted>0){
+    try{await syncCustomerActionCenter(auth.organizationId);}
+    catch(error){console.error("[gravity-crm.product-events] customer action reconcile failed",error);}
   }
   return ok({accepted,duplicates,rejected},{status:accepted?201:200,requestId});
 }
