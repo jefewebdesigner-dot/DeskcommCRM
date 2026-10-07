@@ -76,6 +76,7 @@ export function evaluatePericiaiaCutover(input: {
   identityConflicts: number;
   expectedSubscriptions: number;
   missingRevenueStates: number;
+  incompleteBaselineSources: number;
   pjeConfigured: boolean;
   legacyBridgeConfigured: boolean;
 }) {
@@ -117,11 +118,16 @@ export function evaluatePericiaiaCutover(input: {
     {
       id: "revenue",
       label: "Assinaturas no Revenue OS",
-      ok: input.expectedSubscriptions > 0 && input.missingRevenueStates === 0,
+      ok:
+        input.expectedSubscriptions > 0 &&
+        input.missingRevenueStates === 0 &&
+        input.incompleteBaselineSources === 0,
       detail:
-        input.missingRevenueStates === 0
-          ? `${input.expectedSubscriptions} assinatura(s) encontradas no ledger atual.`
-          : `${input.missingRevenueStates} assinatura(s) ainda não chegaram ao Revenue OS.`,
+        input.incompleteBaselineSources > 0
+          ? `${input.incompleteBaselineSources} fonte(s) ainda estão concluindo o baseline histórico.`
+          : input.missingRevenueStates === 0
+            ? `${input.expectedSubscriptions} assinatura(s) encontradas no ledger atual, com baseline concluído.`
+            : `${input.missingRevenueStates} assinatura(s) ainda não chegaram ao Revenue OS.`,
       blocking: true,
     },
     {
@@ -164,6 +170,7 @@ export async function loadPericiaiaCutoverStatus() {
 
   const expectedIdentityOwners = new Map<string, Set<string>>();
   const expectedSubscriptionKeys = new Set<string>();
+  const expectedRevenueSources = new Set<string>();
 
   for (const contact of eligible) {
     for (const identity of periciaiaIdentities(contact)) {
@@ -176,12 +183,14 @@ export async function loadPericiaiaCutoverStatus() {
     for (const subscription of subscriptionsOf(contact)) {
       const provider = source(subscription.provider);
       const subscriptionId = text(subscription.subscriptionId);
-      if (!provider || !subscriptionId) continue;
+      if (!provider) continue;
+      expectedRevenueSources.add(provider);
+      if (!subscriptionId) continue;
       expectedSubscriptionKeys.add(provider + "|" + subscriptionId);
     }
   }
 
-  const [pack, accounts, identities, revenueStates, pje, bridge] =
+  const [pack, accounts, identities, revenueStates, baselines, pje, bridge] =
     await Promise.all([
       admin
         .from("organization_vertical_packs")
@@ -201,6 +210,10 @@ export async function loadPericiaiaCutoverStatus() {
         .from("revenue_subscription_states")
         .select("source,external_subscription_id")
         .eq("organization_id", PERICIAIA_ORGANIZATION_ID),
+      admin
+        .from("revenue_source_baselines")
+        .select("source,baseline_completed_at")
+        .eq("organization_id", PERICIAIA_ORGANIZATION_ID),
       statusTokenPje(),
       estadoPontePje(),
     ]);
@@ -209,6 +222,7 @@ export async function loadPericiaiaCutoverStatus() {
   if (accounts.error) throw accounts.error;
   if (identities.error) throw identities.error;
   if (revenueStates.error) throw revenueStates.error;
+  if (baselines.error) throw baselines.error;
 
   const accountByContact = new Map<string, string>();
   for (const row of accounts.data ?? []) {
@@ -262,6 +276,15 @@ export async function loadPericiaiaCutoverStatus() {
     (key) => !actualSubscriptions.has(key),
   ).length;
 
+  const completedBaselineSources = new Set(
+    (baselines.data ?? [])
+      .filter((row) => Boolean(row.baseline_completed_at))
+      .map((row) => String(row.source)),
+  );
+  const incompleteBaselineSources = [...expectedRevenueSources].filter(
+    (source) => !completedBaselineSources.has(source),
+  ).length;
+
   const evaluation = evaluatePericiaiaCutover({
     packStatus: pack.data?.status ? String(pack.data.status) : null,
     eligibleContacts: eligible.length,
@@ -271,6 +294,7 @@ export async function loadPericiaiaCutoverStatus() {
     identityConflicts,
     expectedSubscriptions: expectedSubscriptionKeys.size,
     missingRevenueStates,
+    incompleteBaselineSources,
     pjeConfigured: pje.configurado,
     legacyBridgeConfigured: bridge.configurada,
   });
@@ -290,6 +314,7 @@ export async function loadPericiaiaCutoverStatus() {
       missingIdentities,
       identityConflicts,
       missingRevenueStates,
+      incompleteBaselineSources,
     },
     pje,
     bridge,
