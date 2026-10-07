@@ -13,6 +13,7 @@ describe("PeríciaIA cutover gate", () => {
       identityConflicts: 0,
       expectedSubscriptions: 43,
       missingRevenueStates: 0,
+      incompleteBaselineSources: 0,
       pjeConfigured: true,
       legacyBridgeConfigured: true,
     });
@@ -29,6 +30,7 @@ describe("PeríciaIA cutover gate", () => {
       identityConflicts: 0,
       expectedSubscriptions: 43,
       missingRevenueStates: 0,
+      incompleteBaselineSources: 0,
       pjeConfigured: true,
       legacyBridgeConfigured: true,
     });
@@ -46,11 +48,30 @@ describe("PeríciaIA cutover gate", () => {
       identityConflicts: 1,
       expectedSubscriptions: 43,
       missingRevenueStates: 0,
+      incompleteBaselineSources: 0,
       pjeConfigured: true,
       legacyBridgeConfigured: true,
     });
     expect(blocked.blockingReady).toBe(false);
     expect(blocked.checks.find((item) => item.id === "identities")?.ok).toBe(false);
+  });
+
+  it("baseline financeiro incompleto bloqueia o cutover", () => {
+    const blocked = evaluatePericiaiaCutover({
+      packStatus: "transitioning",
+      eligibleContacts: 42,
+      missingAccounts: 0,
+      expectedIdentities: 43,
+      missingIdentities: 0,
+      identityConflicts: 0,
+      expectedSubscriptions: 43,
+      missingRevenueStates: 0,
+      incompleteBaselineSources: 1,
+      pjeConfigured: true,
+      legacyBridgeConfigured: true,
+    });
+    expect(blocked.blockingReady).toBe(false);
+    expect(blocked.checks.find((item) => item.id === "revenue")?.ok).toBe(false);
   });
 
   it("depois de ativo, a ponte legada pode ser retirada sem reabrir a fusão", () => {
@@ -63,6 +84,7 @@ describe("PeríciaIA cutover gate", () => {
       identityConflicts: 0,
       expectedSubscriptions: 43,
       missingRevenueStates: 0,
+      incompleteBaselineSources: 0,
       pjeConfigured: true,
       legacyBridgeConfigured: false,
     });
