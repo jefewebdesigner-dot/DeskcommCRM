@@ -14,14 +14,19 @@ create table if not exists public.revenue_source_baselines (
   primary key (organization_id, source)
 );
 
+create unique index if not exists contacts_id_org_unique
+  on public.contacts (id, organization_id);
+
 create table if not exists public.saas_accounts (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  contact_id uuid references public.contacts(id) on delete set null,
+  contact_id uuid,
   display_name text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (id, organization_id)
+  unique (id, organization_id),
+  foreign key (contact_id, organization_id)
+    references public.contacts(id, organization_id) on delete set null (contact_id)
 );
 create unique index if not exists saas_accounts_org_contact_unique
   on public.saas_accounts (organization_id, contact_id) where contact_id is not null;
@@ -232,6 +237,10 @@ language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_event_id uuid;
 begin
+  if not auth.is_server_service() then
+    raise exception 'server_service_required' using errcode='42501';
+  end if;
+
   if not exists (
     select 1 from public.saas_accounts
     where id=p_account_id and organization_id=p_organization_id
@@ -258,7 +267,7 @@ begin
 end;
 $$;
 revoke all on function public.fn_ingest_product_event(uuid,uuid,text,text,text,timestamptz,jsonb) from public, anon, authenticated;
-grant execute on function public.fn_ingest_product_event(uuid,uuid,text,text,text,timestamptz,jsonb) to service_role;
+grant execute on function public.fn_ingest_product_event(uuid,uuid,text,text,text,timestamptz,jsonb) to authenticated, service_role;
 
 create or replace function public.fn_product_usage_windows(
   p_organization_id uuid, p_now timestamptz default now()

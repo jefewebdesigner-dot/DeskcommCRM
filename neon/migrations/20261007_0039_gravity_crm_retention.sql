@@ -115,6 +115,10 @@ create or replace function public.fn_ingest_retention_cancel_event(
 ) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_session public.retention_cancel_sessions%rowtype; v_event uuid;
 begin
+  if not auth.is_server_service() then
+    raise exception 'server_service_required' using errcode='42501';
+  end if;
+
   if not exists(select 1 from public.saas_accounts where id=p_account_id and organization_id=p_organization_id)
     then raise exception using errcode='P0001',message='retention_account_not_found'; end if;
   select * into v_session from public.retention_cancel_sessions
@@ -161,7 +165,7 @@ begin
 end;
 $$;
 revoke all on function public.fn_ingest_retention_cancel_event(uuid,uuid,text,text,text,text,timestamptz,bigint,text,text,text,text,text,bigint) from public,anon,authenticated;
-grant execute on function public.fn_ingest_retention_cancel_event(uuid,uuid,text,text,text,text,timestamptz,bigint,text,text,text,text,text,bigint) to service_role;
+grant execute on function public.fn_ingest_retention_cancel_event(uuid,uuid,text,text,text,text,timestamptz,bigint,text,text,text,text,text,bigint) to authenticated, service_role;
 
 insert into public.neon_schema_migrations(version,note)
 values('20261007_0039_gravity_crm_retention','Gravity CRM: churn diagnosis, preventive cancellation and retention audit')
