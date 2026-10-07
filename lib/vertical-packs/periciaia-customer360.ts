@@ -94,58 +94,46 @@ export async function reconcilePericiaiaCustomer360(
 
     for (const contact of contacts) {
       const identities = periciaiaIdentities(contact);
-      const hasBillingIdentity = identities.some(
-        (identity) => identity.source !== "periciaia",
-      );
-      if (!hasBillingIdentity) continue;
+      if (!identities.some((identity) => identity.source !== "periciaia")) {
+        continue;
+      }
       eligible++;
 
-      const existing = await admin
-        .from("saas_accounts")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .eq("contact_id", contact.id)
-        .maybeSingle();
-      if (existing.error) throw existing.error;
-
-      let accountId: string;
-      if (existing.data?.id) {
-        accountId = String(existing.data.id);
-        accountsReused++;
-      } else {
-        const created = await admin
-          .from("saas_accounts")
-          .insert({
-            organization_id: organizationId,
-            contact_id: contact.id,
-            display_name: contact.name ?? contact.email ?? "Cliente PeríciaIA",
-          })
-          .select("id")
-          .single();
-
-        if (created.error || !created.data) {
-          throw created.error ?? new Error("Não foi possível criar a conta SaaS.");
-        }
-        accountId = String(created.data.id);
-        accountsCreated++;
-      }
+      let accountId: string | null = null;
+      let createdForContact = false;
 
       for (const identity of identities) {
-        const linked = await admin.from("saas_account_identities").upsert(
+        const reconciled = await admin.rpc(
+          "fn_reconcile_saas_contact_identity",
           {
-            organization_id: organizationId,
-            account_id: accountId,
-            source: identity.source,
-            external_customer_id: identity.externalCustomerId,
-          },
-          {
-            onConflict: "organization_id,source,external_customer_id",
-            ignoreDuplicates: false,
+            p_organization_id: organizationId,
+            p_contact_id: contact.id,
+            p_source: identity.source,
+            p_external_customer_id: identity.externalCustomerId,
+            p_display_name:
+              contact.name ?? contact.email ?? "Cliente PeríciaIA",
           },
         );
-        if (linked.error) throw linked.error;
+        if (reconciled.error) throw reconciled.error;
+
+        const payload = (reconciled.data ?? {}) as {
+          account_id?: string;
+          account_created?: boolean;
+        };
+        if (!payload.account_id) {
+          throw new Error("Customer 360 não devolveu a conta reconciliada.");
+        }
+        if (accountId && accountId !== payload.account_id) {
+          throw new Error("saas_identity_contact_conflict");
+        }
+
+        accountId = payload.account_id;
+        createdForContact ||= payload.account_created === true;
         identitiesLinked++;
       }
+
+      if (createdForContact) accountsCreated++;
+      else accountsReused++;
     }
 
     if (contacts.length < pageSize) break;
