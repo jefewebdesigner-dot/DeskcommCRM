@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyMrrChange } from "@/lib/saas/revenue";
+import { canUseRevenueBaseline, classifyMrrChange } from "@/lib/saas/revenue";
 import { classifyHealth } from "@/lib/saas/customer360";
 import { revenueObservationSchema } from "@/lib/schemas/product-events";
 
@@ -32,6 +32,13 @@ describe("Gravity CRM SaaS core", () => {
       baseline: true,
     });
     expect(parsed.baseline).toBe(true);
+  });
+
+  it("baseline histórico exige escopo separado da escrita normal", () => {
+    expect(canUseRevenueBaseline(["saas_revenue:write"])).toBe(false);
+    expect(
+      canUseRevenueBaseline(["saas_revenue:write", "saas_revenue:baseline"]),
+    ).toBe(true);
   });
 
   it("não aceita PII livre nas propriedades de telemetria", () => {
