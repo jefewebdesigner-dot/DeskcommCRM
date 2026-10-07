@@ -18,6 +18,12 @@ describe("Gravity CRM Neon security contract",()=>{
     expect(core).toMatch(/references public\.contacts\(id, organization_id\)/i);
   });
 
+  it("Revenue RPC is atomic and server-only",()=>{
+    expect(core).toMatch(/fn_ingest_revenue_observation[\s\S]*pg_advisory_xact_lock/i);
+    expect(core).toMatch(/fn_ingest_revenue_observation[\s\S]*auth\.is_server_service\(\)/i);
+    expect(core).toMatch(/grant execute on function public\.fn_ingest_revenue_observation[\s\S]*to authenticated, service_role/i);
+  });
+
   it("Product Events RPC is callable by the technical identity but rejects normal authenticated users",()=>{
     expect(core).toMatch(/fn_ingest_product_event[\s\S]*auth\.is_server_service\(\)/i);
     expect(core).toMatch(/grant execute on function public\.fn_ingest_product_event[\s\S]*to authenticated, service_role/i);
