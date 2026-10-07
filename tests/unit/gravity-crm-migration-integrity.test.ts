@@ -20,6 +20,10 @@ describe("Gravity CRM SaaS Core migration integrity",()=>{
     expect(count("create or replace function public.fn_ingest_product_event(")).toBe(1);
   });
 
+  it("mantém estado explícito de conclusão do baseline por fonte",()=>{
+    expect(migration).toMatch(/revenue_source_baselines[\s\S]*baseline_completed_at\s+timestamptz/i);
+  });
+
   it("usa delimitadores PL/pgSQL válidos nas RPCs críticas",()=>{
     expect(migration).toMatch(/fn_reconcile_saas_contact_identity[\s\S]*as \$\$[\s\S]*end;\s*\$\$;/i);
     expect(migration).toMatch(/fn_resolve_saas_account[\s\S]*as \$\$[\s\S]*end;\s*\$\$;/i);
