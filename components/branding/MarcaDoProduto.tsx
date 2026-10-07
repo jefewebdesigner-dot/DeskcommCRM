@@ -1,39 +1,16 @@
 import { LOGOTIPO, SIMBOLO } from "@/lib/branding/desenho";
 import { cn } from "@/lib/utils";
 
-/**
- * A marca do PRODUTO desenhada em SVG inline — o que a tela mostra quando
- * ninguém configurou marca própria (`marcaEhADoProduto`, em `lib/branding.ts`).
- *
- * Inline, e não `<img src="/algo.svg">`, por três motivos:
- *  - as cores seguem o TEMA: sálvia mais clara e nome em creme no escuro, como
- *    a régua do produto já define — um arquivo estático teria uma cor só;
- *  - nada em `public/`: um `.svg` fixo ali seria servido na instalação de um
- *    revendedor que configurou a marca dele (ver `lib/branding/desenho.ts`);
- *  - a barra lateral já usa `<img>` para o logo CONFIGURADO, e o e2e
- *    `marca-logo.spec.ts` mede "barra sem `<img>`" como "sem logo do
- *    revendedor". Um `<img>` do produto ali faria a spec medir a coisa errada.
- *
- * O texto alternativo é o `nome` que a tela já resolveu — nunca uma string
- * fixa, para que a catraca de marca (`tests/unit/branding.test.ts`) continue
- * contando ZERO ocorrências fora de `lib/branding.ts`.
- */
-
 type Props = {
   readonly nome: string;
   readonly className?: string;
-  /** `true` quando o texto ao lado já nomeia a marca — evita ler duas vezes. */
   readonly decorativo?: boolean;
 };
 
-const SIMBOLO_CLARO_ESCURO = "fill-[#506d48] dark:fill-[#82a077]";
+const SIMBOLO_CLARO_ESCURO = "stroke-[#506d48] dark:stroke-[#82a077]";
 const NOME_CLARO_ESCURO = "fill-[#1c1a16] dark:fill-[#f5f4ef]";
 const SUFIXO_CLARO_ESCURO = "fill-[#5d594f] dark:fill-[#8e8b7f]";
 
-// As classes acima repetem os hexes de `CORES_DA_MARCA` porque o Tailwind só
-// gera utilitário para valor LITERAL no fonte. Quem impede os dois de divergirem
-// é `tests/unit/marca-do-produto.test.tsx`, que compara as classes à paleta —
-// e não uma asserção em runtime: um throw aqui derrubaria a casca inteira.
 export const CLASSES_DE_COR = {
   simbolo: SIMBOLO_CLARO_ESCURO,
   nome: NOME_CLARO_ESCURO,
@@ -46,7 +23,15 @@ function acessibilidade(nome: string, decorativo: boolean) {
     : ({ role: "img", "aria-label": nome } as const);
 }
 
-/** O símbolo sozinho — para a barra recolhida, avatar e cantos apertados. */
+function partesDoNome(nome: string) {
+  const trim = nome.trim();
+  if (trim.toUpperCase().endsWith(" CRM")) {
+    return { principal: trim.slice(0, -4), sufixo: "CRM" };
+  }
+  return { principal: trim, sufixo: "" };
+}
+
+/** Símbolo do produto para a barra recolhida e superfícies compactas. */
 export function SimboloDoProduto({ nome, className, decorativo = false }: Props) {
   return (
     <svg
@@ -54,36 +39,55 @@ export function SimboloDoProduto({ nome, className, decorativo = false }: Props)
       className={cn("shrink-0", className)}
       {...acessibilidade(nome, decorativo)}
     >
-      <g className={SIMBOLO_CLARO_ESCURO} transform={SIMBOLO.transform}>
-        <path d={SIMBOLO.d} />
-        <rect {...SIMBOLO.modulo} />
+      <g transform={SIMBOLO.transform}>
+        <path
+          d={SIMBOLO.d}
+          fill="none"
+          className={SIMBOLO_CLARO_ESCURO}
+          strokeWidth={SIMBOLO.strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </g>
     </svg>
   );
 }
 
-/** Símbolo + nome — para a barra aberta e a fachada de entrada. */
+/**
+ * Wordmark padrão. O texto vem de `nome`, e não de path fixo, para a interface
+ * nunca voltar a desenhar uma marca antiga quando o nome do produto mudar.
+ */
 export function LogotipoDoProduto({ nome, className, decorativo = false }: Props) {
+  const partes = partesDoNome(nome);
   return (
     <svg
       viewBox={LOGOTIPO.viewBox}
       className={cn("shrink-0", className)}
       {...acessibilidade(nome, decorativo)}
     >
-      <g className={SIMBOLO_CLARO_ESCURO} transform={LOGOTIPO.simbolo.transform}>
-        <path d={LOGOTIPO.simbolo.d} />
-        <rect {...LOGOTIPO.simbolo.modulo} />
+      <g transform={LOGOTIPO.simbolo.transform}>
+        <path
+          d={LOGOTIPO.simbolo.d}
+          fill="none"
+          className={SIMBOLO_CLARO_ESCURO}
+          strokeWidth={LOGOTIPO.simbolo.strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </g>
-      <g className={NOME_CLARO_ESCURO}>
-        {LOGOTIPO.nome.map((g) => (
-          <path key={g.transform} transform={g.transform} d={g.d} />
-        ))}
-      </g>
-      <g className={SUFIXO_CLARO_ESCURO}>
-        {LOGOTIPO.sufixo.map((g) => (
-          <path key={g.transform} transform={g.transform} d={g.d} />
-        ))}
-      </g>
+      <text
+        x="76"
+        y="41"
+        fontFamily="ui-sans-serif, system-ui, sans-serif"
+        fontSize="28"
+        fontWeight="650"
+        letterSpacing="-0.8"
+      >
+        <tspan className={NOME_CLARO_ESCURO}>{partes.principal}</tspan>
+        {partes.sufixo ? (
+          <tspan className={SUFIXO_CLARO_ESCURO}> {partes.sufixo}</tspan>
+        ) : null}
+      </text>
     </svg>
   );
 }
