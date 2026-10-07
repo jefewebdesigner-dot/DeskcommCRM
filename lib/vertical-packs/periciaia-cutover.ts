@@ -242,7 +242,11 @@ export async function loadPericiaiaCutoverStatus() {
       identityConflicts++;
       continue;
     }
-    const contactId = [...owners][0];
+    const contactId = owners.values().next().value as string | undefined;
+    if (!contactId) {
+      identityConflicts++;
+      continue;
+    }
     const expectedAccountId = accountByContact.get(contactId);
     const actualAccountId = actualIdentities.get(key);
     if (
