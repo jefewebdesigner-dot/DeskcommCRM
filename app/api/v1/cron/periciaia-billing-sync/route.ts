@@ -27,12 +27,20 @@ import { audit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { syncBillingToCrm, type SyncResult } from "@/lib/billing-export/crm-sync";
+import { reconcilePericiaiaCustomer360 } from "@/lib/vertical-packs/periciaia-customer360";
 
 export const dynamic = "force-dynamic";
 
 interface RunResult {
   organizationsWithConnection: number;
   totals: SyncResult;
+  customer360: {
+    scanned: number;
+    eligible: number;
+    accountsCreated: number;
+    accountsReused: number;
+    identitiesLinked: number;
+  } | null;
 }
 
 export async function runPericiaiaBillingSync(requestId: string): Promise<RunResult> {
@@ -67,7 +75,9 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
   // desta feature — sinalizado para quem revisar depois.
   const orgId = "9563e071-406b-4db2-aaa4-d08846d3267b";
   const result = await syncBillingToCrm(orgId);
-  if (!result.configured) return { organizationsWithConnection: 0, totals };
+  if (!result.configured) {
+    return { organizationsWithConnection: 0, totals, customer360: null };
+  }
 
   organizationsWithConnection = 1;
   totals.configured = true;
@@ -79,6 +89,10 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
   totals.conflicts += result.conflicts;
   totals.errors += result.errors;
   totals.sampleErrors.push(...result.sampleErrors);
+
+  // A mesma rodada que atualiza os contatos também os transforma em contas
+  // SaaS do Customer 360. Não cria segundo contato nem segundo tenant.
+  const customer360 = await reconcilePericiaiaCustomer360(orgId);
 
   const houveEfeito =
     totals.contactsCreated + totals.contactsUpdated + totals.dealsCreated + totals.dealsUpdated + totals.dealsMoved > 0;
@@ -97,7 +111,7 @@ export async function runPericiaiaBillingSync(requestId: string): Promise<RunRes
     });
   }
 
-  return { organizationsWithConnection, totals };
+  return { organizationsWithConnection, totals, customer360 };
 }
 
 async function handle(req: NextRequest): Promise<Response> {
