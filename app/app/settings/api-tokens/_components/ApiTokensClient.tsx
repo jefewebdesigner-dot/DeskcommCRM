@@ -56,6 +56,8 @@ const SCOPES: { id: string; label: string }[] = [
   { id: "messages:read", label: "Ler mensagens" },
   { id: "messages:write", label: "Enviar mensagens" },
   { id: "audit:read", label: "Ler o log de auditoria" },
+  { id: "saas_revenue:write", label: "Enviar assinaturas e MRR ao Gravity CRM" },
+  { id: "product_events:write", label: "Enviar uso do produto para Customer Health" },
 ];
 
 export function ApiTokensClient() {

@@ -77,7 +77,7 @@ export const NAV_GROUPS: NavGroup[] = [
   // de 2026-09-26) — a visão financeira/comercial é o que ele quer ver primeiro
   // ao abrir o CRM, antes até da fila de conversas. Um grupo de item único não
   // precisa de hub.
-  { id: "financeiro", label: "Financeiro" },
+  { id: "financeiro", label: "SaaS", hub: { href: "/app/saas", label: "Operação SaaS" } },
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
@@ -284,6 +284,35 @@ export const NAV_CATALOG = [
     // e escrever os motivos de perda é trabalho de montagem, feito uma vez e
     // revisitado por `manager` de vez em quando — enquanto Funis, Contatos e
     // Tarefas se abrem todo dia. É esse o corte que decide quem fica no menu.
+  },
+
+  // ---- SaaS — Customer Success, uso e receita recorrente ----
+  {
+    href: "/app/saas/customers",
+    label: "Clientes SaaS",
+    description: "Customer 360: cliente, assinatura, receita e uso numa única identidade.",
+    icon: "UsersThree",
+    group: "financeiro",
+    section: "Customer Success",
+    minRole: "manager",
+  },
+  {
+    href: "/app/saas/health",
+    label: "Saúde da base",
+    description: "Quem está saudável, em atenção ou em risco — priorizado por evidência e receita.",
+    icon: "Gauge",
+    group: "financeiro",
+    section: "Customer Success",
+    minRole: "manager",
+  },
+  {
+    href: "/app/saas/revenue",
+    label: "Revenue OS",
+    description: "MRR, ARR, expansão, contração, churn, NRR e GRR.",
+    icon: "ChartLineUp",
+    group: "financeiro",
+    section: "Receita e retenção",
+    minRole: "manager",
   },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
@@ -518,8 +547,8 @@ export const NAV_CATALOG = [
     // Estava em "analise"/"Resultados" — movido para o grupo próprio acima do
     // Atendimento a pedido do dono do produto (ver comentário em NAV_GROUPS).
     group: "financeiro",
+    section: "Visão geral",
     minRole: "manager",
-    sidebar: true,
   },
   {
     href: "/app/metrics",
