@@ -738,6 +738,14 @@ export const AUDIT_ACTIONS = [
    * efeito não audita (doutrina de audit log de cron).
    */
   "billing_export.crm_synced",
+  // Gravity CRM — Customer Success / Retention. Códigos separados porque
+  // "concluiu ação", "ignorou", "registrou causa" e "preveniu cancelamento"
+  // respondem perguntas operacionais diferentes no log append-only.
+  "customer_action.outcome_recorded",
+  "customer_action.dismissed",
+  "retention.cancel_event_recorded",
+  "retention.churn_reason_recorded",
+  "retention.playbook_synced",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

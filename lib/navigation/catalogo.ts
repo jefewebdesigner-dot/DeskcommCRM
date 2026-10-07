@@ -323,6 +323,15 @@ export const NAV_CATALOG = [
     section: "Receita e retenção",
     minRole: "manager",
   },
+  {
+    href: "/app/saas/retention",
+    label: "Retenção",
+    description: "Motivos de churn, prevenção de cancelamento e MRR preservado.",
+    icon: "Gauge",
+    group: "financeiro",
+    section: "Receita e retenção",
+    minRole: "manager",
+  },
 
   // ---- Agente de IA — montar, ensinar, acompanhar ----
   {

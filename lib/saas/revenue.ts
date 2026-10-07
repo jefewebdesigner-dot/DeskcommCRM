@@ -49,6 +49,44 @@ async function resolveAccount(organizationId: string, input: RevenueObservation)
   return String(a.data.id);
 }
 
+async function refreshCurrentSnapshot(organizationId:string, now=new Date()){
+  const admin=createAdminClient();
+  const month=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+  const monthIso=month.toISOString();
+  const monthKey=monthIso.slice(0,10);
+  const [sr,er,br]=await Promise.all([
+    admin.from("revenue_subscription_states").select("account_id,status,mrr_cents").eq("organization_id",organizationId),
+    admin.from("revenue_mrr_events").select("account_id,event_type,delta_cents").eq("organization_id",organizationId).gte("effective_at",monthIso),
+    admin.from("revenue_source_baselines").select("baseline_at").eq("organization_id",organizationId),
+  ]);
+  if(sr.error||er.error||br.error) throw sr.error||er.error||br.error;
+  const states=sr.data??[],events=er.data??[];
+  const current=states.filter((x)=>recurring(x.status as RevenueStatus));
+  const closing=current.reduce((sum,x)=>sum+Number(x.mrr_cents||0),0);
+  const activeCustomers=new Set(current.map((x)=>x.account_id).filter(Boolean)).size;
+  const sum=(type:MrrEventType)=>events.filter((x)=>x.event_type===type).reduce((n,x)=>n+Math.abs(Number(x.delta_cents||0)),0);
+  const newMrr=sum("new"),expansion=sum("expansion"),reactivation=sum("reactivation"),contraction=sum("contraction"),churn=sum("churn");
+  const historyComplete=(br.data??[]).length>0&&(br.data??[]).every((b)=>String(b.baseline_at)<=monthIso);
+  const opening=historyComplete?Math.max(0,closing-(newMrr+expansion+reactivation-contraction-churn)):null;
+  const churnedCustomers=new Set(events.filter((x)=>x.event_type==="churn").map((x)=>x.account_id).filter(Boolean)).size;
+  const nrr=historyComplete&&opening&&opening>0?(opening+expansion+reactivation-contraction-churn)/opening:null;
+  const grr=historyComplete&&opening&&opening>0?Math.max(0,opening-contraction-churn)/opening:null;
+  const upsert=await admin.from("revenue_monthly_snapshots").upsert({
+    organization_id:organizationId,month:monthKey,opening_mrr_cents:opening,
+    new_mrr_cents:newMrr,expansion_mrr_cents:expansion,reactivation_mrr_cents:reactivation,
+    contraction_mrr_cents:contraction,churn_mrr_cents:churn,closing_mrr_cents:closing,
+    active_customers:activeCustomers,churned_customers:churnedCustomers,
+    nrr_rate:nrr,grr_rate:grr,history_complete:historyComplete,calculated_at:new Date().toISOString(),
+  },{onConflict:"organization_id,month",ignoreDuplicates:false});
+  if(upsert.error) throw upsert.error;
+}
+
+async function refreshSnapshotWithoutBreakingIngestion(organizationId:string){
+  try{await refreshCurrentSnapshot(organizationId);}catch(error){
+    console.error("[gravity-crm.revenue] snapshot refresh failed",error);
+  }
+}
+
 export async function ingestRevenueObservation(organizationId:string,input:RevenueObservation) {
   const admin=createAdminClient(),accountId=await resolveAccount(organizationId,input);
   const prev=await admin.from("revenue_subscription_states").select("status,mrr_cents,last_observed_at")
@@ -74,7 +112,7 @@ export async function ingestRevenueObservation(organizationId:string,input:Reven
 
   const suppressEvent=first || input.baseline === true;
   const change=suppressEvent?null:classifyMrrChange((prev.data as StoredState|null),input);
-  if(!change) return {accountId,baseline:suppressEvent,event:null};
+  if(!change){await refreshSnapshotWithoutBreakingIngestion(organizationId);return {accountId,baseline:suppressEvent,event:null};}
   const ev=await admin.from("revenue_mrr_events").upsert({
     organization_id:organizationId,account_id:accountId,source:input.source,
     external_subscription_id:input.external_subscription_id,external_customer_id:input.external_customer_id,
@@ -83,6 +121,7 @@ export async function ingestRevenueObservation(organizationId:string,input:Reven
     idempotency_key:input.source+":"+input.external_event_id
   },{onConflict:"organization_id,idempotency_key",ignoreDuplicates:true}).select("id,event_type,delta_cents").maybeSingle();
   if(ev.error) throw ev.error;
+  await refreshSnapshotWithoutBreakingIngestion(organizationId);
   return {accountId,baseline:false,event:ev.data ?? null};
 }
 
