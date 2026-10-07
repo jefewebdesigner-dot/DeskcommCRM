@@ -49,7 +49,7 @@ async function resolveAccount(organizationId: string, input: RevenueObservation)
   return String(a.data.id);
 }
 
-async function refreshCurrentSnapshot(organizationId:string, now=new Date()){
+export async function refreshRevenueSnapshot(organizationId:string, now=new Date()){
   const admin=createAdminClient();
   const month=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
   const monthIso=month.toISOString();
@@ -82,12 +82,12 @@ async function refreshCurrentSnapshot(organizationId:string, now=new Date()){
 }
 
 async function refreshSnapshotWithoutBreakingIngestion(organizationId:string){
-  try{await refreshCurrentSnapshot(organizationId);}catch(error){
+  try{await refreshRevenueSnapshot(organizationId);}catch(error){
     console.error("[gravity-crm.revenue] snapshot refresh failed",error);
   }
 }
 
-export async function ingestRevenueObservation(organizationId:string,input:RevenueObservation) {
+export async function ingestRevenueObservation(organizationId:string,input:RevenueObservation,options:{deferSnapshot?:boolean}={}) {
   const admin=createAdminClient(),accountId=await resolveAccount(organizationId,input);
   const prev=await admin.from("revenue_subscription_states").select("status,mrr_cents,last_observed_at")
     .eq("organization_id",organizationId).eq("source",input.source)
@@ -112,7 +112,7 @@ export async function ingestRevenueObservation(organizationId:string,input:Reven
 
   const suppressEvent=first || input.baseline === true;
   const change=suppressEvent?null:classifyMrrChange((prev.data as StoredState|null),input);
-  if(!change){await refreshSnapshotWithoutBreakingIngestion(organizationId);return {accountId,baseline:suppressEvent,event:null};}
+  if(!change){if(!options.deferSnapshot)await refreshSnapshotWithoutBreakingIngestion(organizationId);return {accountId,baseline:suppressEvent,event:null};}
   const ev=await admin.from("revenue_mrr_events").upsert({
     organization_id:organizationId,account_id:accountId,source:input.source,
     external_subscription_id:input.external_subscription_id,external_customer_id:input.external_customer_id,
@@ -121,7 +121,7 @@ export async function ingestRevenueObservation(organizationId:string,input:Reven
     idempotency_key:input.source+":"+input.external_event_id
   },{onConflict:"organization_id,idempotency_key",ignoreDuplicates:true}).select("id,event_type,delta_cents").maybeSingle();
   if(ev.error) throw ev.error;
-  await refreshSnapshotWithoutBreakingIngestion(organizationId);
+  if(!options.deferSnapshot)await refreshSnapshotWithoutBreakingIngestion(organizationId);
   return {accountId,baseline:false,event:ev.data ?? null};
 }
 
