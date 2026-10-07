@@ -97,45 +97,43 @@ export async function ingestRevenueObservation(
   input:RevenueObservation,
   options:{deferSnapshot?:boolean;requireExistingIdentity?:boolean}={},
 ) {
-  const admin=createAdminClient(),accountId=await resolveAccount(
+  const admin=createAdminClient();
+  const accountId=await resolveAccount(
     organizationId,
     input,
     !options.requireExistingIdentity,
   );
-  const prev=await admin.from("revenue_subscription_states").select("status,mrr_cents,last_observed_at")
-    .eq("organization_id",organizationId).eq("source",input.source)
-    .eq("external_subscription_id",input.external_subscription_id).maybeSingle();
-  if(prev.error) throw prev.error;
-  const base=await admin.from("revenue_source_baselines").select("baseline_at")
-    .eq("organization_id",organizationId).eq("source",input.source).maybeSingle();
-  if(base.error) throw base.error;
-  const first=!base.data;
-  const bs=first
-    ? await admin.from("revenue_source_baselines").insert({organization_id:organizationId,source:input.source,baseline_at:input.observed_at,last_observed_at:input.observed_at})
-    : await admin.from("revenue_source_baselines").update({last_observed_at:input.observed_at}).eq("organization_id",organizationId).eq("source",input.source);
-  if(bs.error) throw bs.error;
 
-  const st=await admin.from("revenue_subscription_states").upsert({
-    organization_id:organizationId,account_id:accountId,source:input.source,
-    external_subscription_id:input.external_subscription_id,external_customer_id:input.external_customer_id,
-    status:input.status,mrr_cents:input.mrr_cents,started_at:input.started_at ?? null,
-    ended_at:input.ended_at ?? null,last_observed_at:input.observed_at
-  },{onConflict:"organization_id,source,external_subscription_id",ignoreDuplicates:false});
-  if(st.error) throw st.error;
+  const result=await admin.rpc("fn_ingest_revenue_observation",{
+    p_organization_id:organizationId,
+    p_account_id:accountId,
+    p_source:input.source,
+    p_external_event_id:input.external_event_id,
+    p_external_subscription_id:input.external_subscription_id,
+    p_external_customer_id:input.external_customer_id,
+    p_status:input.status,
+    p_mrr_cents:input.mrr_cents,
+    p_observed_at:input.observed_at,
+    p_started_at:input.started_at ?? null,
+    p_ended_at:input.ended_at ?? null,
+    p_baseline:input.baseline === true,
+  });
+  if(result.error) throw result.error;
 
-  const suppressEvent=first || input.baseline === true;
-  const change=suppressEvent?null:classifyMrrChange((prev.data as StoredState|null),input);
-  if(!change){if(!options.deferSnapshot)await refreshSnapshotWithoutBreakingIngestion(organizationId);return {accountId,baseline:suppressEvent,event:null};}
-  const ev=await admin.from("revenue_mrr_events").upsert({
-    organization_id:organizationId,account_id:accountId,source:input.source,
-    external_subscription_id:input.external_subscription_id,external_customer_id:input.external_customer_id,
-    event_type:change.type,effective_at:change.at,delta_cents:change.delta,
-    previous_mrr_cents:change.previous,current_mrr_cents:change.current,
-    idempotency_key:input.source+":"+input.external_event_id
-  },{onConflict:"organization_id,idempotency_key",ignoreDuplicates:true}).select("id,event_type,delta_cents").maybeSingle();
-  if(ev.error) throw ev.error;
-  if(!options.deferSnapshot)await refreshSnapshotWithoutBreakingIngestion(organizationId);
-  return {accountId,baseline:false,event:ev.data ?? null};
+  const payload=(result.data ?? {}) as {
+    baseline?: boolean;
+    event?: {id:string;event_type:MrrEventType;delta_cents:number} | null;
+  };
+
+  if(!options.deferSnapshot){
+    await refreshSnapshotWithoutBreakingIngestion(organizationId);
+  }
+
+  return {
+    accountId,
+    baseline:payload.baseline === true,
+    event:payload.event ?? null,
+  };
 }
 
 export async function loadRevenueOverview(organizationId:string,now=new Date()) {
