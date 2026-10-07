@@ -28,9 +28,10 @@ export default async function SaaSHub(){
         ["NRR",r?.nrrRate==null?"Histórico em formação":pct.format(r.nrrRate)],
       ].map(([l,v])=><Card key={l} className="p-4"><p className="text-xs text-muted-foreground">{l}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{v}</p></Card>)}
     </section>
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       <Link href="/app/saas/customers"><Card className="h-full p-5"><h2 className="font-semibold">Customer 360</h2><p className="mt-2 text-sm text-muted-foreground">{c.length} contas conectadas. Receita, fonte e uso numa identidade.</p></Card></Link>
       <Link href="/app/saas/health"><Card className="h-full p-5"><h2 className="font-semibold">Saúde da base</h2><p className="mt-2 text-sm text-muted-foreground">{risk.length} cliente(s) em risco alto ou crítico para priorizar agora.</p></Card></Link>
+      <Link href="/app/saas/actions"><Card className="h-full p-5"><h2 className="font-semibold">Action Center</h2><p className="mt-2 text-sm text-muted-foreground">Transforma sinais de risco em próximos passos operacionais, sem depender de leitura manual.</p></Card></Link>
       <Link href="/app/saas/revenue"><Card className="h-full p-5"><h2 className="font-semibold">Revenue OS</h2><p className="mt-2 text-sm text-muted-foreground">Novo MRR, expansão, contração, churn, NRR e GRR com origem auditável.</p></Card></Link>
       <Link href="/app/assinaturas"><Card className="h-full p-5"><h2 className="font-semibold">Cobrança & contratos</h2><p className="mt-2 text-sm text-muted-foreground">Billing operacional, provedores, cobranças e base financeira existente do CRM.</p></Card></Link>
     </section>

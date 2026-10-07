@@ -306,6 +306,15 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    href: "/app/saas/actions",
+    label: "Action Center",
+    description: "A fila priorizada de ações de Customer Success, cobrança e retenção.",
+    icon: "ListChecks",
+    group: "financeiro",
+    section: "Customer Success",
+    minRole: "manager",
+  },
+  {
     href: "/app/saas/revenue",
     label: "Revenue OS",
     description: "MRR, ARR, expansão, contração, churn, NRR e GRR.",
