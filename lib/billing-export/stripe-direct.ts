@@ -115,7 +115,21 @@ export type StripeLifecycleRow = {
   status: "active" | "past_due" | "canceled";
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
+  canceledAt: string | null;
+  mrrCents: number;
 };
+
+function monthlyMrrCents(sub: StripeSubscription): number {
+  return sub.items.data.reduce((total, item) => {
+    const price = item.price;
+    const amount = price.unit_amount ?? 0;
+    const interval = price.recurring?.interval;
+    const count = Math.max(1, price.recurring?.interval_count ?? 1);
+    if (interval === "year") return total + Math.round(amount / (12 * count));
+    if (interval === "week") return total + Math.round((amount * 52) / (12 * count));
+    return total + Math.round(amount / count);
+  }, 0);
+}
 
 function lifecycleRow(
   sub: StripeSubscription,
@@ -138,6 +152,8 @@ function lifecycleRow(
     status,
     cancelAtPeriodEnd: sub.cancel_at_period_end,
     currentPeriodEnd: fim > 0 ? new Date(fim * 1000).toISOString() : null,
+    canceledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
+    mrrCents: monthlyMrrCents(sub),
   };
 }
 

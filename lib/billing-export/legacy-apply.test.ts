@@ -39,7 +39,14 @@ function entidade(p: Partial<LegacyImportEntity> & { id: string }): LegacyImport
   };
 }
 const ass = (id: string, status: "active" | "canceled" | "past_due", provider = "stripe") =>
-  ({ provider, subscriptionId: id, customerId: `cus_${id}`, status, cancelAtPeriodEnd: false }) as const;
+  ({
+    provider,
+    subscriptionId: id,
+    customerId: `cus_${id}`,
+    status,
+    cancelAtPeriodEnd: false,
+    mrrCents: status === "canceled" ? 0 : 9990,
+  }) as const;
 
 function contato(p: Partial<ContatoDoBanco> & { id: string }): ContatoDoBanco {
   return {

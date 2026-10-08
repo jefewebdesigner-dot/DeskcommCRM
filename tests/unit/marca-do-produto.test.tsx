@@ -41,7 +41,7 @@ const org = {
 let contexto: { user: AuthUser; activeOrg: ActiveOrg | null } = { user: usuario, activeOrg: org };
 vi.mock("@/hooks/auth/AuthProvider", () => ({ useAuth: () => contexto }));
 
-const PADRAO: Branding = { name: DEFAULT_APP_NAME, logoUrl: null, initial: "D" };
+const PADRAO: Branding = { name: DEFAULT_APP_NAME, logoUrl: null, initial: "G" };
 
 function renderSidebar(marca: Branding, collapsed: boolean) {
   return render(
@@ -80,14 +80,14 @@ describe("o desenho na barra lateral", () => {
     // O e2e `marca-logo.spec.ts` lê "barra sem <img>" como "sem logo do
     // revendedor"; um <img> do produto aqui faria a spec medir a coisa errada.
     expect(document.querySelector("img")).toBeNull();
-    // Nem o nome em texto: o logotipo já o escreve.
-    expect(screen.queryByText(DEFAULT_APP_NAME)).toBeNull();
+    // O wordmark usa o próprio nome resolvido, não paths de uma marca antiga.
+    expect(logotipo.textContent).toBe(DEFAULT_APP_NAME);
   });
 
   it("recolhida, mostra só o símbolo — e não a inicial em texto", () => {
     renderSidebar(PADRAO, true);
     expect(screen.getByRole("img", { name: DEFAULT_APP_NAME }).tagName.toLowerCase()).toBe("svg");
-    expect(screen.queryByText("D")).toBeNull();
+    expect(screen.queryByText("G")).toBeNull();
   });
 
   it("com nome da instalação, segue em texto — o desenho do produto não vaza", () => {
@@ -121,8 +121,9 @@ describe("as cores do desenho", () => {
   it("cada tema tem a sua classe: `dark:` no escuro, nada no claro", () => {
     for (const [papel, classes] of Object.entries(CLASSES_DE_COR)) {
       const chave = papel as keyof typeof CORES_DA_MARCA.claro;
-      expect(classes).toContain(`fill-[${CORES_DA_MARCA.claro[chave]}]`);
-      expect(classes).toContain(`dark:fill-[${CORES_DA_MARCA.escuro[chave]}]`);
+      const propriedade = papel === "simbolo" ? "stroke" : "fill";
+      expect(classes).toContain(`${propriedade}-[${CORES_DA_MARCA.claro[chave]}]`);
+      expect(classes).toContain(`dark:${propriedade}-[${CORES_DA_MARCA.escuro[chave]}]`);
     }
   });
 
@@ -140,7 +141,7 @@ describe("o favicon segue a mesma regra", () => {
 
   it("desenha o símbolo quando a marca é a do produto, e a inicial quando não é", () => {
     expect(icone).toMatch(/marcaEhADoProduto\(\{ name: marca\.nome, logoUrl: marca\.logoUrl \}\)/);
-    expect(icone).toMatch(/<path d=\{SIMBOLO\.d\}/);
+    expect(icone).toMatch(/<path\s+d=\{SIMBOLO\.d\}/);
     expect(icone).toMatch(/letraDoIcone\(marca\.nome\)/);
   });
 });

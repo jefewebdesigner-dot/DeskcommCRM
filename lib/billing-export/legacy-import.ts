@@ -37,6 +37,7 @@ export interface Evidence {
   provider?: string | null;
   subscriptionId?: string | null;
   customerId?: string | null;
+  mrrCents?: number;
 }
 
 export interface LegacyImportSubscription {
@@ -45,6 +46,7 @@ export interface LegacyImportSubscription {
   customerId: string | null;
   status: "active" | "past_due" | "canceled";
   cancelAtPeriodEnd: boolean;
+  mrrCents: number;
 }
 
 export interface LegacyImportEntity {
@@ -260,6 +262,7 @@ export function evidencesFromOther(data: OtherExport): Evidence[] {
       subscriptionId: subscription.externalId,
       customerId: subscription.customerExternalId,
       cancelAtPeriodEnd: false,
+      mrrCents: subscription.mrrMinor,
     } satisfies Evidence;
   });
 }
@@ -281,6 +284,7 @@ function evidenceFromStripe(row: StripeLifecycleRow): Evidence {
     subscriptionId: row.subscriptionId,
     customerId: row.customerId,
     cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+    mrrCents: row.mrrCents,
   };
 }
 
@@ -349,6 +353,7 @@ function subscriptionsOf(rows: Evidence[]): LegacyImportSubscription[] {
       customerId: row.customerId ?? null,
       status,
       cancelAtPeriodEnd: row.cancelAtPeriodEnd === true,
+      mrrCents: status === "canceled" ? 0 : Math.max(0, Number(row.mrrCents ?? 0)),
     });
   }
   return [...porChave.values()].sort((a, b) =>

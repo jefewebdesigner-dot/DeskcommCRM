@@ -217,25 +217,40 @@ export async function applyBillingEntitiesToCrm(
   return result;
 }
 
-/** A fonte original (bridge do admin legado + Stripe direta) — mantida para quem já chamava esta função. */
-export async function syncBillingToCrm(organizationId: string): Promise<SyncResult> {
+export async function syncBillingToCrmWithSnapshot(organizationId: string): Promise<{
+  result: SyncResult;
+  entities: Awaited<ReturnType<typeof buildBillingEntities>>;
+}> {
   const entidades = await buildBillingEntities(organizationId).catch((e: unknown) => {
     // Billing não conectado é "não configurado", não erro; as demais falhas sobem (fail-closed).
     if (e instanceof Error && e.message === "Billing não configurado.") return null;
     throw e;
   });
+
   if (!entidades) {
     return {
-      configured: false,
-      contactsCreated: 0,
-      contactsUpdated: 0,
-      dealsCreated: 0,
-      dealsUpdated: 0,
-      dealsMoved: 0,
-      conflicts: 0,
-      errors: 0,
-      sampleErrors: [],
+      result: {
+        configured: false,
+        contactsCreated: 0,
+        contactsUpdated: 0,
+        dealsCreated: 0,
+        dealsUpdated: 0,
+        dealsMoved: 0,
+        conflicts: 0,
+        errors: 0,
+        sampleErrors: [],
+      },
+      entities: [],
     };
   }
-  return applyBillingEntitiesToCrm(organizationId, entidades);
+
+  return {
+    result: await applyBillingEntitiesToCrm(organizationId, entidades),
+    entities: entidades,
+  };
+}
+
+/** Compatibilidade para consumidores que só precisam do efeito no CRM. */
+export async function syncBillingToCrm(organizationId: string): Promise<SyncResult> {
+  return (await syncBillingToCrmWithSnapshot(organizationId)).result;
 }
