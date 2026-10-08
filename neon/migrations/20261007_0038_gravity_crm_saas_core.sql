@@ -249,7 +249,7 @@ declare
   v_identity_created boolean := false;
   v_contact_linked boolean := false;
 begin
-  if not auth.is_server_service()
+  if not public.fn_neon_service_identity_ok()
      and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;
@@ -380,7 +380,7 @@ as $$
 declare
   v_account_id uuid;
 begin
-  if not auth.is_server_service()
+  if not public.fn_neon_service_identity_ok()
      and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;
@@ -472,7 +472,7 @@ declare
   v_effective_at timestamptz := p_observed_at;
   v_event_id uuid;
 begin
-  if not auth.is_server_service()
+  if not public.fn_neon_service_identity_ok()
      and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;
@@ -639,7 +639,7 @@ language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_event_id uuid;
 begin
-  if not auth.is_server_service()
+  if not public.fn_neon_service_identity_ok()
      and coalesce(auth.jwt()->>'role','') <> 'service_role' then
     raise exception 'server_service_required' using errcode='42501';
   end if;

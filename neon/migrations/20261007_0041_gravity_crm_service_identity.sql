@@ -34,7 +34,7 @@ begin
     );
 
     execute format(
-      'create policy neon_server_service_all on public.%I for all to authenticated using (auth.is_server_service()) with check (auth.is_server_service())',
+      'create policy neon_server_service_all on public.%I for all to authenticated using (public.fn_neon_service_identity_ok()) with check (public.fn_neon_service_identity_ok())',
       t
     );
   end loop;
