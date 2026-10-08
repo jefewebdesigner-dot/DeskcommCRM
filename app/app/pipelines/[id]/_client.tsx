@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/hooks/i18n/useT";
@@ -28,6 +28,7 @@ import { ResumoOperacionalDoFunil } from "@/components/kanban/ResumoOperacionalD
 import { BulkActionBar } from "@/components/kanban/BulkActionBar";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { Button } from "@/components/ui/button";
+import { LayoutList, Columns3 } from "lucide-react";
 import { Plus } from "@/lib/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -77,6 +78,25 @@ export function PipelinePageClient({
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [newOpen, setNewOpen] = useState(false);
+  // Quadro (mapa) ou Lista (fila de trabalho). A escolha é de quem opera e vale
+  // para todos os funis; lida do navegador DEPOIS de montar para a primeira
+  // renderização do servidor e a do cliente serem iguais (sem aviso de hidratação).
+  const [visao, setVisao] = useState<"quadro" | "lista">("quadro");
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("crm.funil.visao") === "lista") setVisao("lista");
+    } catch {
+      /* navegador sem armazenamento: fica no quadro */
+    }
+  }, []);
+  const escolherVisao = useCallback((v: "quadro" | "lista") => {
+    setVisao(v);
+    try {
+      window.localStorage.setItem("crm.funil.visao", v);
+    } catch {
+      /* só não lembra da escolha */
+    }
+  }, []);
 
   function trocarFunil(proximoId: string) {
     if (proximoId === pipelineId) return;
@@ -170,8 +190,40 @@ export function PipelinePageClient({
               <p className="mt-1.5 text-sm text-muted-foreground">{data.pipeline.description}</p>
             ) : null}
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap">
-            <Button variant="outline" asChild className="w-full rounded-xl bg-background/70 sm:w-auto sm:shrink-0">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <div
+              role="group"
+              aria-label={t("Como ver o funil")}
+              className="col-span-2 inline-flex rounded-xl border border-border/70 bg-background/70 p-0.5 sm:col-span-1"
+            >
+              {(
+                [
+                  ["quadro", t("Quadro"), Columns3],
+                  ["lista", t("Lista"), LayoutList],
+                ] as const
+              ).map(([valor, rotulo, Icone]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  aria-pressed={visao === valor}
+                  data-testid={`visao-${valor}`}
+                  onClick={() => escolherVisao(valor)}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 py-1.5 text-sm transition-colors ${
+                    visao === valor
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icone className="h-4 w-4" aria-hidden />
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              asChild
+              className="w-full rounded-xl bg-background/70 sm:w-auto sm:shrink-0"
+            >
               <Link href="/app/kanban/gerenciar">{t("Gerenciar funis")}</Link>
             </Button>
             <Button
@@ -220,6 +272,7 @@ export function PipelinePageClient({
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
           leadInicial={searchParams.get("lead")}
+          visao={visao}
         />
       )}
       <BulkActionBar

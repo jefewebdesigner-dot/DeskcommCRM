@@ -15,6 +15,7 @@ import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { StageColumn } from "./StageColumn";
 import { LeadDossier } from "./LeadDossier";
+import { ListaDoFunil } from "./ListaDoFunil";
 import { camposDoFunil } from "@/lib/leads/campos-do-funil";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ interface KanbanBoardProps {
   onSelectionChange?: (ids: string[]) => void;
   /** Lead a abrir já na montagem (deep link `?lead=` — ver o dossiê abaixo). */
   leadInicial?: string | null;
+  /** Como mostrar o funil: mapa de colunas (padrão) ou fila de trabalho em lista. */
+  visao?: "quadro" | "lista";
 }
 
 function groupLeadsByStage(stages: Stage[], leads: Lead[]): Map<string, Lead[]> {
@@ -81,6 +84,7 @@ export function KanbanBoard({
   pulses: pulsesProp,
   onSelectionChange,
   leadInicial,
+  visao = "quadro",
 }: KanbanBoardProps) {
   const t = useT();
   const useExternal = stagesProp !== undefined && leadsProp !== undefined;
@@ -271,56 +275,66 @@ export function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="relative h-full min-h-[420px] overflow-hidden rounded-[24px] border border-border/60 bg-muted/[0.10] shadow-sm">
-        {podeRolarEsquerda ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label={t("Ver etapas anteriores")}
-            onClick={() => rolarQuadro(-1)}
-            className="absolute top-1/2 left-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        ) : null}
-        {podeRolarDireita ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label={t("Ver próximas etapas")}
-            onClick={() => rolarQuadro(1)}
-            className="absolute top-1/2 right-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        ) : null}
+      {visao === "lista" ? (
+        <ListaDoFunil
+          stages={data.stages}
+          leads={data.leads}
+          pipelineId={pipelineId}
+          ownerNames={ownerNames}
+          onOpen={setDossieId}
+        />
+      ) : (
+        <div className="relative h-full min-h-[420px] overflow-hidden rounded-[24px] border border-border/60 bg-muted/[0.10] shadow-sm">
+          {podeRolarEsquerda ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t("Ver etapas anteriores")}
+              onClick={() => rolarQuadro(-1)}
+              className="absolute top-1/2 left-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {podeRolarDireita ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t("Ver próximas etapas")}
+              onClick={() => rolarQuadro(1)}
+              className="absolute top-1/2 right-2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border-border/60 bg-background/90 shadow-lg backdrop-blur"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : null}
 
-        <div
-          ref={boardScrollRef}
-          onScroll={atualizarNavegacaoHorizontal}
-          className="flex h-full [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] gap-3 overflow-x-auto p-3 sm:p-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-        >
-          {data.stages.map((stage) => (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              leads={grouped.get(stage.id) ?? []}
-              pipelineId={pipelineId}
-              ownerNames={ownerNames}
-              responsibleProfileNames={responsibleProfileNames}
-              coolingIds={coolingIds}
-              reactivations={reactivations}
-              pulses={pulsesProp ?? queryResult.pulses}
-              canonicalTags={canonicalTags}
-              selectedLeadIds={selectedLeadIds}
-              onSelectMany={handleSelectMany}
-              onOpen={setDossieId}
-            />
-          ))}
+          <div
+            ref={boardScrollRef}
+            onScroll={atualizarNavegacaoHorizontal}
+            className="flex h-full [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] gap-3 overflow-x-auto p-3 sm:p-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+          >
+            {data.stages.map((stage) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                leads={grouped.get(stage.id) ?? []}
+                pipelineId={pipelineId}
+                ownerNames={ownerNames}
+                responsibleProfileNames={responsibleProfileNames}
+                coolingIds={coolingIds}
+                reactivations={reactivations}
+                pulses={pulsesProp ?? queryResult.pulses}
+                canonicalTags={canonicalTags}
+                selectedLeadIds={selectedLeadIds}
+                onSelectMany={handleSelectMany}
+                onOpen={setDossieId}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {leadDoDossie && (
         <LeadDossier
           open
@@ -328,7 +342,8 @@ export function KanbanBoard({
           lead={leadDoDossie}
           pipelineId={pipelineId}
           fieldDefs={camposDoFunil(data.pipeline.settings ?? null)}
-          stageName={data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"}
+          stages={data.stages}
+          leadsDoFunil={data.leads}
           ownerNames={ownerNames}
         />
       )}
