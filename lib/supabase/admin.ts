@@ -171,13 +171,44 @@ const authAdminCompat = {
 
 let client: ReturnType<typeof createNeonClient> | null = null;
 
+/**
+ * Funções que o banco também chama por dentro (triggers/outras funções) ou que são SQL puro: não
+ * levam a guarda da identidade técnica no corpo. O servidor as chama pela PORTA `<nome>_servidor`
+ * (migration neon 0045), que tem a guarda e repassa. Quem chama `.rpc("fn_x")` não muda nada.
+ */
+export const RPC_PELA_PORTA_DO_SERVIDOR: ReadonlySet<string> = new Set([
+  "fn_followup_patch",
+  "fn_request_channel_routing",
+  "fn_service_boundary",
+  "fn_service_event_origin",
+  "fn_appointment_enrollment_current",
+  "fn_claim_due_followup_enrollments",
+  "fn_followup_claim_current",
+  "fn_followup_job_current",
+  "fn_reply_delivery_policy",
+  "fn_reply_receipt_policy",
+  "fn_service_observe_command",
+  "fn_support_callback_write_allowed",
+  "fn_accept_team_invite",
+]);
+
+export function nomeDaRpcDoServidor(fn: string): string {
+  return RPC_PELA_PORTA_DO_SERVIDOR.has(fn) ? `${fn}_servidor` : fn;
+}
+
 export function createAdminClient(): SupabaseClient {
-  client ??= createNeonClient({
-    dataApi: {
-      url: env.NEON_DATA_API_URL,
-      getToken: serviceJwt,
-    },
-  });
+  if (!client) {
+    const neon = createNeonClient({
+      dataApi: {
+        url: env.NEON_DATA_API_URL,
+        getToken: serviceJwt,
+      },
+    });
+    const rpcOriginal = neon.rpc.bind(neon) as (fn: string, ...resto: unknown[]) => unknown;
+    client = Object.assign(neon, {
+      rpc: (fn: string, ...resto: unknown[]) => rpcOriginal(nomeDaRpcDoServidor(fn), ...resto),
+    }) as typeof neon;
+  }
 
   return Object.assign(client, {
     storage: neonStorage(),
