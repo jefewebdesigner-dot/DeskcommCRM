@@ -12,6 +12,8 @@ import { visaoEmVigor } from "@/lib/ai/pontos/capacidade-em-vigor";
 import { resolveOrgLlmConfig, type LlmEdgeConfig } from "@/lib/agent-engine/edge/llm/credentials";
 import { createDefaultRegistry } from "@/lib/agent-engine/edge/llm/providers";
 import { createPool } from "@/lib/agent-engine/db/pool";
+import { ehTenantPool } from "@/lib/agent-engine/db/por-organizacao";
+import { createTenantPool } from "@/lib/agent-engine/db/tenant-pool";
 import { env } from "@/lib/env";
 import type { EventRow, HandlerResult } from "@/lib/event-log/dispatcher";
 import { deriveMediaText, type DeriveDeps } from "@/lib/messaging/media/derive";
@@ -35,8 +37,23 @@ const DRAIN_MAX_ATTEMPTS = 5; // espelho de lib/event-log/drain.ts
 // não na construção.
 let _pool: pg.Pool | null = null;
 function derivePool(): pg.Pool {
-  if (!_pool) _pool = createPool(process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL ?? "");
+  if (!_pool) {
+    const base = createPool(process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL ?? "");
+    // Mesma identidade do worker (main.ts): com WORKER_DB_SECRET a role do banco é ESCOPADA por
+    // organização e `organizations` volta vazia sem contexto — era o "organização inexistente".
+    const secret = process.env.WORKER_DB_SECRET;
+    const serviceUserId = process.env.WORKER_SERVICE_USER_ID ?? process.env.NEON_SERVICE_USER_ID;
+    _pool = secret && serviceUserId ? createTenantPool(base, { serviceUserId, secret }) : base;
+  }
   return _pool;
+}
+
+// resolveOrgLlmConfig dentro do contexto da organização da mensagem (no pool escopado).
+function resolverLlmDaOrg(cfg: LlmEdgeConfig, organizationId: string, override?: Parameters<typeof resolveOrgLlmConfig>[3]) {
+  const pool = derivePool();
+  return ehTenantPool(pool)
+    ? pool.withOrganization(organizationId, () => resolveOrgLlmConfig(pool, cfg, organizationId, override))
+    : resolveOrgLlmConfig(pool, cfg, organizationId, override);
 }
 
 interface MessageRow {
@@ -124,7 +141,7 @@ export async function deriveMessageMedia(row: EventRow): Promise<HandlerResult> 
       openrouterApiKey: process.env.OPENROUTER_API_KEY,
       cacheTtl: "1h",
     };
-    let llm = await resolveOrgLlmConfig(derivePool(), llmCfg, row.organization_id);
+    let llm = await resolverLlmDaOrg(llmCfg, row.organization_id);
 
     // ─── O painel de provedores manda AQUI também ────────────────────────────
     //
@@ -151,7 +168,7 @@ export async function deriveMessageMedia(row: EventRow): Promise<HandlerResult> 
     let baseUrlDaVisao: string | null = null;
     if (bindingDaVisao) {
       try {
-        const comBinding = await resolveOrgLlmConfig(derivePool(), llmCfg, row.organization_id, {
+        const comBinding = await resolverLlmDaOrg(llmCfg, row.organization_id, {
           provider: bindingDaVisao.provider,
           credentialId: bindingDaVisao.credential_id,
         });
@@ -183,7 +200,7 @@ export async function deriveMessageMedia(row: EventRow): Promise<HandlerResult> 
       openaiKey = llm.apiKey;
     } else {
       try {
-        const oa = await resolveOrgLlmConfig(derivePool(), llmCfg, row.organization_id, {
+        const oa = await resolverLlmDaOrg(llmCfg, row.organization_id, {
           provider: "openai",
         });
         openaiKey = oa.apiKey;
