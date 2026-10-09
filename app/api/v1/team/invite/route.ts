@@ -2,6 +2,7 @@ import type { EmailDeliveryError } from "@/lib/email/roteador";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { issueInvite } from "@/lib/auth/issue-invite";
 import { emitirConvite } from "@/lib/team/convites";
+import { verificarLimite } from "@/lib/saas/limites-do-plano";
 import { isServiceRoleConfigured } from "@/lib/audit";
 /**
  * POST /api/v1/team/invite — bulk-invite up to 20 emails.
@@ -85,6 +86,24 @@ export async function POST(req: NextRequest): Promise<Response> {
       const { data: u } = await admin.auth.admin.getUserById(m.user_id as string);
       const memberEmail = u?.user?.email?.trim().toLowerCase();
       if (memberEmail) memberEmails.add(memberEmail);
+    }
+  }
+
+  // Limite de usuários do plano (Gravity CRM): conta membros + convites pendentes. Reenvio para quem
+  // já tem convite pendente e quem já é membro não ocupam vaga nova.
+  if (admin) {
+    const novos = input.invitations
+      .map((i) => i.email.trim().toLowerCase())
+      .filter((e) => !memberEmails.has(e));
+    const limite = await verificarLimite(admin, activeOrg.orgId, "usuarios", {
+      novos: new Set(novos).size,
+      ignorarEmails: novos,
+    });
+    if (!limite.ok) {
+      return fail("plan_limit_reached", limite.mensagem, 403, {
+        requestId,
+        details: { recurso: limite.recurso, limite: limite.limite, usados: limite.usados },
+      });
     }
   }
 

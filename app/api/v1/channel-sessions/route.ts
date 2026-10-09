@@ -14,6 +14,7 @@ import { connectWahaChannel, ChannelConnectionError } from "@/lib/channels/conne
 import { connectEvolutionChannel } from "@/lib/channels/connect-evolution";
 import { getEvolutionClient } from "@/lib/channels/evolution/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verificarLimite } from "@/lib/saas/limites-do-plano";
 import { mfaEmDivida } from "@/lib/auth/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
@@ -103,6 +104,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("validation_failed", t("Dados inválidos."), 422, {
       requestId,
       details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
+    });
+  }
+
+  // Limite de números de WhatsApp do plano (Gravity CRM). Organização sem plano não tem limite.
+  const limite = await verificarLimite(createAdminClient(), activeOrg.orgId, "whatsapp");
+  if (!limite.ok) {
+    return fail("plan_limit_reached", t(limite.mensagem), 403, {
+      requestId,
+      details: { recurso: limite.recurso, limite: limite.limite, usados: limite.usados },
     });
   }
 
