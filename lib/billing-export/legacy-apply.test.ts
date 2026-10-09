@@ -359,3 +359,30 @@ describe("planejar — contato do sistema sem evidência no billing vivo (foraDo
     expect(p2.contatosForaDoPlano).toEqual([]);
   });
 });
+
+describe("planejar — nome do cliente vindo da cobrança", () => {
+  const ativo = (id: string, name: string | null, email: string) =>
+    entidade({ id, bucket: "active", name, email, subscriptions: [ass("s-" + id, "active")] });
+
+  it("preenche o nome de quem está sem nome (vazio, 'Sem nome', só telefone ou só e-mail)", () => {
+    const contatos = [
+      contato({ id: "k1", email_normalized: "a@x.com", name: null }),
+      contato({ id: "k2", email_normalized: "b@x.com", name: "Sem nome" }),
+      contato({ id: "k3", email_normalized: "c@x.com", name: "+55 85 99999-0000" }),
+      contato({ id: "k4", email_normalized: "d@x.com", name: "d@x.com" }),
+    ];
+    const r = planejar("sync", [ativo("e1", "Ana Souza", "a@x.com"), ativo("e2", "Bruno Lima", "b@x.com"), ativo("e3", "Carla Dias", "c@x.com"), ativo("e4", "Davi Reis", "d@x.com")], contatos, [], DESTINOS, AGORA);
+    const nomes = Object.fromEntries((r.ops.filter((o) => o.op === "atualizar_contato") as Extract<Operacao, { op: "atualizar_contato" }>[]).map((o) => [o.contatoId, o.patch.name]));
+    expect(nomes).toEqual({ k1: "Ana Souza", k2: "Bruno Lima", k3: "Carla Dias", k4: "Davi Reis" });
+  });
+
+  it("nunca troca um nome que já existe, nem preenche com nome inválido da cobrança", () => {
+    const contatos = [
+      contato({ id: "k1", email_normalized: "a@x.com", name: "Dra. Ana (como o cliente chama)" }),
+      contato({ id: "k2", email_normalized: "b@x.com", name: null }),
+    ];
+    const r = planejar("sync", [ativo("e1", "Ana Souza", "a@x.com"), ativo("e2", "b@x.com", "b@x.com")], contatos, [], DESTINOS, AGORA);
+    const patches = (r.ops.filter((o) => o.op === "atualizar_contato") as Extract<Operacao, { op: "atualizar_contato" }>[]);
+    expect(patches.every((o) => o.patch.name === undefined)).toBe(true);
+  });
+});

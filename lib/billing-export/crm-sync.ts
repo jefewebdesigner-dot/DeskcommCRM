@@ -189,7 +189,7 @@ export async function applyBillingEntitiesToCrm(
   const contatos = await paginar<ContatoDoBanco>((de, ate) =>
     admin
       .from("contacts")
-      .select("id, email_normalized, phone_number, tags, source, source_metadata, custom_fields, client_recognized_at, client_tag_by_system")
+      .select("id, name, email_normalized, phone_number, tags, source, source_metadata, custom_fields, client_recognized_at, client_tag_by_system")
       .eq("organization_id", organizationId)
       .is("is_merged_into", null)
       .range(de, ate),

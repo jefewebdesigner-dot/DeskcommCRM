@@ -87,6 +87,8 @@ export interface DestinosDoBanco {
 
 export interface ContatoDoBanco {
   id: string;
+  /** Opcional para manter compatível quem monta o contato sem o nome (o sync seleciona). */
+  name?: string | null;
   email_normalized: string | null;
   phone_number: string | null;
   tags: string[];
@@ -113,6 +115,7 @@ export interface CardDoBanco {
 }
 
 export interface PatchDeContato {
+  name?: string;
   tags?: string[];
   source_metadata?: Record<string, unknown>;
   custom_fields?: Record<string, unknown>;
@@ -120,6 +123,15 @@ export interface PatchDeContato {
   client_tag_by_system?: string;
   email?: string;
   phone_number?: string;
+}
+
+function nomeAusente(n: string | null | undefined): boolean {
+  const t = String(n ?? "").trim();
+  return !t || /^sem nome$/i.test(t) || /^[+0-9 ()-]+$/.test(t) || /^[^\s@]+@[^\s@]+$/.test(t);
+}
+function nomeValido(n: string | null | undefined): boolean {
+  const t = String(n ?? "").trim();
+  return t.length >= 3 && !nomeAusente(t);
 }
 
 export type Operacao =
@@ -379,6 +391,9 @@ export function planejar(
         patch.email = email;
         emailsNovos.add(email);
       }
+      // Nome: mesma regra — só preenche quando o contato está SEM nome de verdade (vazio, "Sem nome",
+      // só telefone ou só e-mail). Nome que alguém digitou nunca é trocado pela cobrança.
+      if (nomeAusente(atual.name) && nomeValido(e.name)) patch.name = String(e.name).trim().slice(0, 120);
       if (!atual.phone_number && telefone && !idx.porTelefone.has(telefone) && !telefonesNovos.has(telefone)) {
         patch.phone_number = telefone;
         telefonesNovos.add(telefone);
