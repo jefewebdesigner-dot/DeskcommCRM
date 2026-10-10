@@ -341,7 +341,14 @@ async function handle(req: NextRequest): Promise<Response> {
     // `recover-stuck-messages` dá a `emit_event`.
     const db: PodaDb = {
       async rpc(nome, args) {
-        const { data, error } = await admin.rpc(nome as never, args as never);
+        // fn_expurgar_nonces_de_oauth é a única irmã com outros nomes de parâmetro
+        // (p_dias, p_lote — migration 0190). O Data API casa por NOME, então
+        // mandar p_retencao_dias derrubava a poda inteira ("Could not find the function").
+        const parametros =
+          nome === "fn_expurgar_nonces_de_oauth"
+            ? { p_dias: args.p_retencao_dias, p_lote: args.p_limite }
+            : args;
+        const { data, error } = await admin.rpc(nome as never, parametros as never);
         return { data: typeof data === "number" ? data : null, error };
       },
     };
