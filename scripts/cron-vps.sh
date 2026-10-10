@@ -17,7 +17,10 @@ JOB="${1:-}"
 case "$JOB" in
   # manutenção/operação — não enviam mensagem ao cliente
   event-log-drain|routing-worker|recover-stuck-messages|channel-health|snooze-watcher|\
-  webhook-log-retention|storage-redaction|handoff-devolucao|risk-watcher) ;;
+  webhook-log-retention|storage-redaction|handoff-devolucao|risk-watcher|\
+  followup-flow-worker|agenda-reminder|agenda-expira-pendentes|case-stale-watcher|contact-phones|\
+  contact-proposals-watcher|followup-sem-agente|contact-birthdays|lead-date-field-due|canal-mudo-watcher|\
+  customer-health|lgpd-sla-watcher|kb-conversations-batch|sync-model-catalog|data-retention) ;;
   *)
     echo "Job não autorizado: $JOB" >&2
     exit 2
