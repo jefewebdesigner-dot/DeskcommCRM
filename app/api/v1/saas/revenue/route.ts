@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { McpAuthError, ensureScope, validateBearerToken } from "@/lib/mcp/auth";
 import { revenueObservationSchema } from "@/lib/schemas/product-events";
-import { canUseRevenueBaseline, ingestRevenueObservation } from "@/lib/saas/revenue";
+import { canUseRevenueBaseline, ingestRevenueObservation, readRevenueSummary } from "@/lib/saas/revenue";
 import { syncCustomerActionCenter } from "@/lib/saas/actions";
 
 export const dynamic="force-dynamic";
@@ -42,5 +42,24 @@ export async function POST(req:NextRequest):Promise<Response>{
       500,
       {requestId},
     );
+  }
+}
+
+// Leitura agregada (MRR, clientes ativos, assinaturas por status e o movimento do mês) da organização do token.
+export async function GET(req:NextRequest):Promise<Response>{
+  const requestId=randomUUID();
+  let auth:Awaited<ReturnType<typeof validateBearerToken>>;
+  try{auth=await validateBearerToken(req.headers.get("authorization"));ensureScope(auth.scopes,"saas_revenue:read");}
+  catch(error){
+    if(error instanceof McpAuthError)return fail(error.httpStatus===403?"forbidden":"unauthenticated","Token inválido ou sem permissão.",error.httpStatus,{requestId});
+    return fail("internal_error","Não foi possível validar o token.",500,{requestId});
+  }
+  const rate=await checkRateLimit("saas-revenue-read:"+auth.apiTokenId,60,60);
+  if(!rate.allowed)return fail("rate_limited","Limite de leituras excedido.",429,{requestId,headers:{"Retry-After":String(rate.window_sec)}});
+  try{
+    return ok(await readRevenueSummary(auth.organizationId),{requestId});
+  }catch(error){
+    console.error("[gravity-crm.revenue] summary failed",{requestId,error});
+    return fail("internal_error","Não foi possível ler a receita.",500,{requestId});
   }
 }

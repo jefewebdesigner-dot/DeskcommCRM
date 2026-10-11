@@ -150,3 +150,57 @@ export async function loadRevenueOverview(organizationId:string,now=new Date()) 
     grrRate:historyComplete&&opening>0?Math.max(0,opening-contractionMrrCents-churnMrrCents)/opening:null
   };
 }
+
+// Leitura agregada para quem acompanha o portfólio (ex.: painel de Produtos do Gravity IA).
+// Só números da própria organização do token; nenhum dado de cliente individual sai daqui.
+type StateRow = { status: string | null; mrr_cents: number | string | null; account_id: string | null };
+type SnapshotRow = {
+  month: string; opening_mrr_cents: number | null; new_mrr_cents: number | null; expansion_mrr_cents: number | null;
+  reactivation_mrr_cents: number | null; contraction_mrr_cents: number | null; churn_mrr_cents: number | null;
+  closing_mrr_cents: number | null; active_customers: number | null; churned_customers: number | null;
+  nrr_rate: number | string | null; grr_rate: number | string | null; history_complete: boolean | null; calculated_at: string | null;
+};
+
+export function summarizeRevenue(states: StateRow[], snapshot: SnapshotRow | null) {
+  const porStatus = { active: 0, past_due: 0, canceling: 0, canceled: 0, unknown: 0 } as Record<RevenueStatus, number>;
+  let mrr = 0;
+  const contas = new Set<string>();
+  for (const s of states) {
+    const st = (["active", "past_due", "canceling", "canceled"].includes(String(s.status)) ? s.status : "unknown") as RevenueStatus;
+    porStatus[st] += 1;
+    if (recurring(st)) {
+      mrr += Number(s.mrr_cents || 0);
+      if (s.account_id) contas.add(s.account_id);
+    }
+  }
+  const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return {
+    mrr_cents: mrr,
+    active_customers: contas.size,
+    subscriptions: porStatus,
+    month: snapshot ? {
+      month: snapshot.month,
+      opening_mrr_cents: num(snapshot.opening_mrr_cents),
+      new_mrr_cents: num(snapshot.new_mrr_cents) ?? 0,
+      expansion_mrr_cents: num(snapshot.expansion_mrr_cents) ?? 0,
+      reactivation_mrr_cents: num(snapshot.reactivation_mrr_cents) ?? 0,
+      contraction_mrr_cents: num(snapshot.contraction_mrr_cents) ?? 0,
+      churn_mrr_cents: num(snapshot.churn_mrr_cents) ?? 0,
+      churned_customers: num(snapshot.churned_customers) ?? 0,
+      nrr_rate: num(snapshot.nrr_rate),
+      grr_rate: num(snapshot.grr_rate),
+      history_complete: snapshot.history_complete === true,
+      calculated_at: snapshot.calculated_at,
+    } : null,
+  };
+}
+
+export async function readRevenueSummary(organizationId: string) {
+  const admin = createAdminClient();
+  const [sr, sn] = await Promise.all([
+    admin.from("revenue_subscription_states").select("status,mrr_cents,account_id").eq("organization_id", organizationId),
+    admin.from("revenue_monthly_snapshots").select("*").eq("organization_id", organizationId).order("month", { ascending: false }).limit(1),
+  ]);
+  if (sr.error || sn.error) throw sr.error || sn.error;
+  return summarizeRevenue((sr.data ?? []) as StateRow[], ((sn.data ?? [])[0] as SnapshotRow | undefined) ?? null);
+}

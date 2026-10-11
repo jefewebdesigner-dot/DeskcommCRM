@@ -61,3 +61,31 @@ describe("Gravity CRM SaaS core", () => {
       .toBe("critical");
   });
 });
+
+describe("resumo de receita para o portfólio", () => {
+  it("soma só assinaturas recorrentes e conta cada cliente uma vez", async () => {
+    const { summarizeRevenue } = await import("@/lib/saas/revenue");
+    const r = summarizeRevenue([
+      { status: "active", mrr_cents: 9990, account_id: "a" },
+      { status: "active", mrr_cents: 4990, account_id: "a" },
+      { status: "past_due", mrr_cents: "9990", account_id: "b" },
+      { status: "canceling", mrr_cents: 9990, account_id: "c" },
+      { status: "canceled", mrr_cents: 9990, account_id: "d" },
+      { status: "estranho", mrr_cents: 100, account_id: "e" },
+    ], null);
+    expect(r.mrr_cents).toBe(34960);
+    expect(r.active_customers).toBe(3);
+    expect(r.subscriptions).toEqual({ active: 2, past_due: 1, canceling: 1, canceled: 1, unknown: 1 });
+    expect(r.month).toBeNull();
+  });
+
+  it("traz o movimento do mês sem inventar abertura quando o histórico é incompleto", async () => {
+    const { summarizeRevenue } = await import("@/lib/saas/revenue");
+    const r = summarizeRevenue([], {
+      month: "2026-10-01", opening_mrr_cents: null, new_mrr_cents: 2990, expansion_mrr_cents: null,
+      reactivation_mrr_cents: 0, contraction_mrr_cents: 0, churn_mrr_cents: 990, closing_mrr_cents: 0,
+      active_customers: 0, churned_customers: 1, nrr_rate: null, grr_rate: "0.95", history_complete: false, calculated_at: "2026-10-11T09:13:00Z",
+    });
+    expect(r.month).toMatchObject({ opening_mrr_cents: null, new_mrr_cents: 2990, expansion_mrr_cents: 0, churn_mrr_cents: 990, grr_rate: 0.95, history_complete: false });
+  });
+});
