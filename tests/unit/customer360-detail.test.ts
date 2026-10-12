@@ -58,3 +58,17 @@ describe("Customer 360 — ficha", () => {
     expect(f.fontes).toEqual([{ fonte: "periciaia", externo: "cus_1" }]);
   });
 });
+
+describe("Saúde da base", () => {
+  it("distribui clientes e MRR por faixa, na ordem do mais grave", async () => {
+    const { distribuicaoDeSaude, coberturaDeUso, filtrarPorFaixa } = await import("@/lib/saas/saude-da-base");
+    const d = distribuicaoDeSaude(base);
+    expect(d.map((x) => x.id)).toEqual(["critical", "high_risk", "attention", "healthy", "insufficient_data"]);
+    expect(d.find((x) => x.id === "critical")).toMatchObject({ clientes: 1, mrrCents: 29700 });
+    expect(d.reduce((n, x) => n + x.clientes, 0)).toBe(base.length);
+    expect(filtrarPorFaixa(base, "healthy").map((x) => x.name)).toEqual(["Clínica Sorriso"]);
+    expect(filtrarPorFaixa(base, "inventada")).toHaveLength(base.length);
+    expect(coberturaDeUso([...base, c({ name: "Usa", totalEvents: 5, lastUseAt: "2026-10-10" })])).toEqual({ pagantes: 4, comUso: 1, taxa: 0.25 });
+    expect(coberturaDeUso([]).taxa).toBeNull();
+  });
+});
