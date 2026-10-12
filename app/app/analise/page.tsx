@@ -4,7 +4,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Análise" };
+export const metadata: Metadata = { title: "Visão geral" };
 
 /**
  * Hub da Análise.
@@ -36,7 +36,7 @@ export default async function AnaliseHubPage() {
       isPlatformAdmin={user.is_platform_admin && !user.support}
       role={activeOrg?.role ?? null}
       interfaceSettings={activeOrg?.interface_settings}
-      title={traduzir("Análise", idioma)}
+      title={traduzir("Visão geral", idioma)}
       subtitle={traduzir(
         "Como o negócio foi no período — e o histórico para quando alguém perguntar por quê.",
         idioma,

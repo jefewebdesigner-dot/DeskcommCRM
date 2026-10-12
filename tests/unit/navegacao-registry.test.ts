@@ -111,11 +111,16 @@ describe("sidebarGroups", () => {
     //
     // A lista é EXATA de propósito. `toContain` deixaria um sexto item entrar
     // calado no sidebar e reabrir a mesma corrida por pixel.
+    // Organização por setor (2026-10-12): Agenda e Radar passaram do antigo
+    // "Atendimento" para Vendas, como no Gravity CRM — o grupo sem hub
+    // (Suporte) encolheu na mesma medida, então o menu não ficou mais alto.
     const crm = sidebarGroups(true, null).find((g) => g.group.id === "crm");
     expect(crm?.items.map((i) => i.href)).toEqual([
       "/app/kanban",
       "/app/contacts",
       "/app/tasks",
+      "/app/agenda",
+      "/app/radar",
     ]);
     expect(NAV_GROUPS.find((g) => g.id === "crm")?.hub?.href).toBe("/app/crm");
   });
@@ -142,7 +147,7 @@ describe("sidebarGroups", () => {
 });
 
 describe("hubSections", () => {
-  it("o hub do CRM é inventário: as cinco telas do grupo, nas duas seções", () => {
+  it("o hub de Vendas é inventário: as sete telas do grupo, nas duas seções", () => {
     // As seções são a régua do sidebar escrita por extenso — o que se abre todo
     // dia contra o que se define uma vez. Lista EXATA: `toContain` deixaria uma
     // tela nova entrar sem que ninguém decidisse de que lado dela ela cai.
@@ -152,6 +157,8 @@ describe("hubSections", () => {
       "/app/kanban",
       "/app/contacts",
       "/app/tasks",
+      "/app/agenda",
+      "/app/radar",
       "/app/products",
       "/app/settings/tenant/pipelines",
     ]);
@@ -192,5 +199,25 @@ describe("searchable", () => {
   it("respeita o papel", () => {
     const hrefs = searchable(AGENT.platform, AGENT.role).map((d) => d.href);
     expect(hrefs).not.toContain("/app/audit");
+  });
+});
+
+describe("organização por setor (fusão com o Gravity CRM)", () => {
+  it("os setores aparecem na ordem do Gravity CRM", () => {
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual([
+      "Visão geral", "Marketing", "Vendas", "Customer Success", "Suporte", "Receita",
+      "Agente de IA", "Canais", "Administração",
+    ]);
+  });
+
+  it("cada tela-chave mora no setor de quem a usa", () => {
+    expect(dest("/app/assinaturas").group).toBe("analise");
+    expect(dest("/app/ads/meta").group).toBe("marketing");
+    expect(dest("/app/agenda").group).toBe("crm");
+    expect(dest("/app/radar").group).toBe("crm");
+    expect(dest("/app/saas/customers").group).toBe("financeiro");
+    expect(dest("/app/saas/retention").group).toBe("financeiro");
+    expect(dest("/app/inbox").group).toBe("atendimento");
+    expect(dest("/app/saas/revenue").group).toBe("receita");
   });
 });

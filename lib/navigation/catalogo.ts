@@ -15,13 +15,18 @@ import type { Role } from "@/lib/auth/types";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
+// Os ids são estáveis (hubs, testes e preferências salvas apontam para eles);
+// o que mudou na organização por setores (Vendas, Customer Success, Suporte…)
+// foi o RÓTULO e o que cada grupo contém — ver NAV_GROUPS.
 export type NavGroupId =
+  | "analise"
+  | "marketing"
+  | "crm"
   | "financeiro"
   | "atendimento"
-  | "crm"
+  | "receita"
   | "ia"
   | "canais"
-  | "analise"
   | "organizacao";
 
 export interface NavGroup {
@@ -73,19 +78,21 @@ export interface NavMetadata {
  * mesma conversa para a sexta tela.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  // Acima do Atendimento de propósito: pedido direto do dono do produto (sessão
-  // de 2026-09-26) — a visão financeira/comercial é o que ele quer ver primeiro
-  // ao abrir o CRM, antes até da fila de conversas. Um grupo de item único não
-  // precisa de hub.
-  { id: "financeiro", label: "SaaS", hub: { href: "/app/saas", label: "Operação SaaS" } },
-  { id: "atendimento", label: "Atendimento" },
-  { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
+  // ORGANIZAÇÃO POR SETOR (fusão com o Gravity CRM, 2026-10-12): cada time acha
+  // o seu canto — Vendas, Customer Success, Suporte, Receita — em vez de grupos
+  // por tipo de tela. A visão geral continua primeiro, como o dono pediu em
+  // 2026-09-26: é o que ele quer ver ao abrir o CRM.
+  { id: "analise", label: "Visão geral", hub: { href: "/app/analise", label: "Ver tudo em Visão geral" } },
+  { id: "marketing", label: "Marketing" },
+  { id: "crm", label: "Vendas", hub: { href: "/app/crm", label: "Ver tudo em Vendas" } },
+  { id: "financeiro", label: "Customer Success", hub: { href: "/app/saas", label: "Operação SaaS" } },
+  { id: "atendimento", label: "Suporte" },
+  { id: "receita", label: "Receita" },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
-  { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
   {
     id: "organizacao",
-    label: "Organização",
+    label: "Administração",
     hub: { href: "/app/settings", label: "Configurações" },
   },
 ];
@@ -121,34 +128,6 @@ export const NAV_CATALOG = [
     label: "Inbox",
     description: "As conversas de WhatsApp, com você e a IA atendendo lado a lado.",
     icon: "Inbox",
-    group: "atendimento",
-    sidebar: true,
-  },
-  {
-    href: "/app/radar",
-    label: "Radar",
-    description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
-    icon: "ClockCountdown",
-    group: "atendimento",
-    sidebar: true,
-  },
-  {
-    // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
-    // dia acontece e não onde ele se configura: quem atende abre isto de manhã
-    // junto com o Inbox. Os TIPOS de agendamento — que são configuração de
-    // verdade — foram para Configurações, como este comentário previa: ver
-    // `/app/settings/tenant/agenda` no grupo "organizacao".
-    //
-    // ⚠️ ESTA FRASE ESTAVA VENCIDA: dizia "a disponibilidade ainda não tem tela",
-    // e tem — é a aba "Atendimento" de `/app/team`, com editor de fuso e janelas
-    // (`app/app/team/_components/AttendantsClient.tsx`). Ela chegou a custar uma
-    // investigação inteira: quem leu isto aqui concluiu que faltava construir a
-    // tela, quando o que faltava era o CAMINHO até ela. O aviso da Agenda agora
-    // aponta para `/app/team?aba=atendimento`.
-    href: "/app/agenda",
-    label: "Agenda",
-    description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
-    icon: "CalendarBlank",
     group: "atendimento",
     sidebar: true,
   },
@@ -203,6 +182,38 @@ export const NAV_CATALOG = [
     label: "Tarefas",
     description: "O que ficou combinado, com prazo — e o que já venceu sem ninguém fazer.",
     icon: "ListChecks",
+    group: "crm",
+    section: "O dia a dia da venda",
+    sidebar: true,
+  },
+  {
+    // Entra em "atendimento", e não em "organizacao", porque a Agenda é onde o
+    // dia acontece e não onde ele se configura: quem atende abre isto de manhã
+    // junto com o Inbox. Os TIPOS de agendamento — que são configuração de
+    // verdade — foram para Configurações, como este comentário previa: ver
+    // `/app/settings/tenant/agenda` no grupo "organizacao".
+    //
+    // ⚠️ ESTA FRASE ESTAVA VENCIDA: dizia "a disponibilidade ainda não tem tela",
+    // e tem — é a aba "Atendimento" de `/app/team`, com editor de fuso e janelas
+    // (`app/app/team/_components/AttendantsClient.tsx`). Ela chegou a custar uma
+    // investigação inteira: quem leu isto aqui concluiu que faltava construir a
+    // tela, quando o que faltava era o CAMINHO até ela. O aviso da Agenda agora
+    // aponta para `/app/team?aba=atendimento`.
+    href: "/app/agenda",
+    label: "Agenda",
+    description: "O que está marcado, com quem, e quem atende — seu e da equipe.",
+    icon: "CalendarBlank",
+    // Setor Vendas (reunião, demonstração, retorno marcado) — como no Gravity CRM.
+    group: "crm",
+    section: "O dia a dia da venda",
+    sidebar: true,
+  },
+  {
+    href: "/app/radar",
+    label: "Radar",
+    description: "Quem esfriou e ainda está aberto — o que corre risco de morrer sem resposta.",
+    icon: "ClockCountdown",
+    // Setor Vendas: lead que esfriou é oportunidade de venda correndo risco.
     group: "crm",
     section: "O dia a dia da venda",
     sidebar: true,
@@ -319,9 +330,9 @@ export const NAV_CATALOG = [
     label: "Revenue OS",
     description: "MRR, ARR, expansão, contração, churn, NRR e GRR.",
     icon: "ChartLineUp",
-    group: "financeiro",
-    section: "Receita e retenção",
+    group: "receita",
     minRole: "manager",
+    sidebar: true,
   },
   {
     href: "/app/saas/retention",
@@ -329,7 +340,7 @@ export const NAV_CATALOG = [
     description: "Motivos de churn, prevenção de cancelamento e MRR preservado.",
     icon: "Gauge",
     group: "financeiro",
-    section: "Receita e retenção",
+    section: "Retenção",
     minRole: "manager",
   },
 
@@ -562,11 +573,11 @@ export const NAV_CATALOG = [
     label: "Dashboard",
     description: "Visão geral da operação: clientes, vendas, atendimento, tarefas, agenda e receita.",
     icon: "ChartLineUp",
-    // Estava em "analise"/"Resultados" — movido para o grupo próprio acima do
-    // Atendimento a pedido do dono do produto (ver comentário em NAV_GROUPS).
-    group: "financeiro",
-    section: "Visão geral",
+    // Primeiro da Visão geral: é o painel que o dono abre ao chegar.
+    group: "analise",
+    section: "Os números do período",
     minRole: "manager",
+    sidebar: true,
   },
   {
     href: "/app/metrics",
@@ -585,8 +596,8 @@ export const NAV_CATALOG = [
     label: "Meta Ads",
     description: "Quanto custou cada resultado das campanhas que trazem gente para cá.",
     icon: "Megaphone",
-    group: "analise",
-    section: "Os números do período",
+    // Setor Marketing: quanto custou trazer quem chegou.
+    group: "marketing",
     // `manager`, e não o `viewer` de Desempenho: aqui não há recorte por
     // pessoa — orçamento e criativo são da empresa inteira. Mesmo grau dos
     // outros dois vizinhos do grupo.

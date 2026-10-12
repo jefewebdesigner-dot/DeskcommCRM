@@ -56,7 +56,10 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Atendimento", "CRM", "Agente de IA", "Canais", "Análise"]);
+    expect(titulos).toEqual([
+      "Visão geral", "Marketing", "Vendas", "Customer Success", "Suporte", "Receita",
+      "Agente de IA", "Canais",
+    ]);
   });
 
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
@@ -70,7 +73,7 @@ describe("Sidebar agrupado", () => {
     //
     // O que este teste prende é a porta EXISTIR no grupo certo do sidebar; que
     // ela desemboca na tela é o e2e `navegacao.spec.ts` que percorre, clicando.
-    const hub = screen.getByRole("link", { name: /Ver tudo em CRM/ });
+    const hub = screen.getByRole("link", { name: /Ver tudo em Vendas/ });
     expect(hub).toHaveAttribute("href", "/app/crm");
     expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
   });
@@ -96,7 +99,7 @@ describe("Sidebar agrupado", () => {
     //
     // Canal oficial não está aqui de propósito: virou aba de Conexões no PR
     // #105, e Conexões é a porta.
-    const hubAnalise = screen.getByRole("link", { name: /Ver tudo em Análise/ });
+    const hubAnalise = screen.getByRole("link", { name: /Ver tudo em Visão geral/ });
     expect(hubAnalise).toHaveAttribute("href", "/app/analise");
     expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
 
@@ -127,7 +130,7 @@ describe("Sidebar agrupado", () => {
     render(<Sidebar collapsed={false} />);
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
     expect(titulos).not.toContain("Canais");
-    expect(titulos).toContain("Atendimento");
+    expect(titulos).toContain("Suporte");
   });
 
   it("oferece o hub dos grupos que têm um", () => {

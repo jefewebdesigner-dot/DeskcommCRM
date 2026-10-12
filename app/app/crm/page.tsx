@@ -7,7 +7,7 @@ import type { ExtensionGuideView } from "@/lib/extensions/view";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "CRM" };
+export const metadata: Metadata = { title: "Vendas" };
 
 /**
  * Hub do CRM.
@@ -54,7 +54,7 @@ export default async function CrmHubPage() {
       isPlatformAdmin={user.is_platform_admin && !user.support}
       role={activeOrg?.role ?? null}
       interfaceSettings={activeOrg?.interface_settings}
-      title={traduzir("CRM", idioma)}
+      title={traduzir("Vendas", idioma)}
       subtitle={traduzir(
         "Onde a venda acontece — e o que você define uma vez para ela funcionar.",
         idioma,
