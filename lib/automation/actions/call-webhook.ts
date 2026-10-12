@@ -10,6 +10,7 @@ import type { ActionCtx, ActionResultDetail } from "@/lib/automation/types";
 import { assertDestinoResolvidoSeguro } from "@/lib/automation/outbound-ip";
 import { assertSafeOutboundUrl } from "@/lib/automation/outbound-url";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
+import { ehPassageiro, enfileirar } from "@/lib/automation/fila-de-webhooks";
 
 const TIMEOUT_MS = 10_000;
 const RETRY_DELAYS_MS = [1_000, 5_000]; // total 3 tentativas
@@ -61,7 +62,7 @@ function sleep(ms: number): Promise<void> {
 export async function executeCallWebhook(
   ctx: ActionCtx,
   config: Record<string, unknown>,
-  opts: { skipUrlCheck?: boolean; retryDelaysMs?: number[] } = {},
+  opts: { skipUrlCheck?: boolean; retryDelaysMs?: number[]; semFila?: boolean } = {},
 ): Promise<ActionResultDetail> {
   const url = typeof config.url === "string" ? config.url : null;
   if (!url) return { type: "call_webhook", status: "failed", error: "missing_url" };
@@ -130,6 +131,29 @@ export async function executeCallWebhook(
     }
     const delay = retryDelaysMs[attempt - 1];
     if (delay !== undefined) await sleep(delay);
+  }
+  // Destino fora do ar / erro passageiro: em vez de perder a entrega, ela vai
+  // para a fila e o cron `webhook-retry` reenvia o MESMO corpo por ~16 h.
+  // Se nem enfileirar der certo, continua sendo uma falha honesta.
+  if (ehPassageiro(lastStatus, lastError) && !opts.semFila) {
+    try {
+      const fila = await enfileirar(ctx.admin, {
+        organizationId: ctx.organizationId,
+        ruleId: ctx.ruleId ?? null,
+        eventId: ctx.event?.id ?? null,
+        url, headers, body,
+        ultimoStatus: lastStatus,
+        ultimoErro: lastError,
+      });
+      return {
+        type: "call_webhook",
+        status: "postponed",
+        error: lastError,
+        detail: { response_status: lastStatus, attempts: retryDelaysMs.length + 1, fila_de_reenvio: fila },
+      };
+    } catch (err) {
+      console.error("[call_webhook] não consegui enfileirar o reenvio", err);
+    }
   }
   return {
     type: "call_webhook",

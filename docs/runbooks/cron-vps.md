@@ -24,6 +24,7 @@ caminho direto `worker → transporte` que contorne guarda. O worker usa a role 
 | `channel-health` | X/C | **ativo** (5/5 min) — consulta a Evolution e abre aviso interno |
 | `snooze-watcher` | C | **ativo** (5/5 min) — reabre conversa adiada e cria aviso interno; não envia |
 | `webhook-log-retention` | M | **ativo** (5/5 min) |
+| `webhook-retry` | X | **ativo** (5/5 min) — reenvia `call_webhook` que falhou por motivo passageiro (destino fora do ar, 5xx), com espera crescente por ~16 h; não envia mensagem ao cliente, só repete a entrega que a regra já fazia |
 | `storage-redaction` | M | **ativo** (5/5 min) |
 | `handoff-devolucao` | C | **ativo** (5/5 min) — devolve conversa ao agente após silêncio; não envia por si |
 | `risk-watcher` | C | **ativo** (15/15 min) — atualiza o Radar, registra travessias e cria propostas internas; não envia mensagem ao cliente |

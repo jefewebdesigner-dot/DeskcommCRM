@@ -66,6 +66,7 @@ CRONS="
 */5 * * * *|25|api/v1/cron/snooze-watcher
 */5 * * * *|60|api/v1/cron/handoff-devolucao
 */5 * * * *|60|api/v1/cron/webhook-log-retention
+*/5 * * * *|55|api/v1/cron/webhook-retry
 */5 * * * *|45|api/v1/cron/channel-health
 */10 * * * *|60|api/v1/cron/contact-avatars
 */10 * * * *|60|api/v1/cron/agenda-google-refresh

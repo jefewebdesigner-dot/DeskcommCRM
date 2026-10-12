@@ -20,7 +20,7 @@ case "$JOB" in
   webhook-log-retention|storage-redaction|handoff-devolucao|risk-watcher|\
   followup-flow-worker|agenda-reminder|agenda-expira-pendentes|case-stale-watcher|contact-phones|\
   contact-proposals-watcher|followup-sem-agente|contact-birthdays|lead-date-field-due|canal-mudo-watcher|\
-  customer-health|lgpd-sla-watcher|kb-conversations-batch|sync-model-catalog|data-retention) ;;
+  customer-health|lgpd-sla-watcher|kb-conversations-batch|sync-model-catalog|data-retention|webhook-retry) ;;
   *)
     echo "Job não autorizado: $JOB" >&2
     exit 2
