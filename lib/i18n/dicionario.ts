@@ -595,6 +595,7 @@ export const DICIONARIO: Traducoes = {
   "Ver tudo em Visão geral": { es: "Ver todo en Visión general" },
   "Retenção": { es: "Retención" },
   "Revenue OS": { es: "Revenue OS" },
+  "Conciliação": { es: "Conciliación" },
   Conexões: { es: "Conexiones" },
   Webhooks: { es: "Webhooks" },
   Desempenho: { es: "Rendimiento" },

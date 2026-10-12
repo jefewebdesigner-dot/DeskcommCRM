@@ -335,6 +335,17 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
+    // Veio do Gravity CRM (crm.ia) na fusão: o passo "reconciliar sem duplicar"
+    // do cutover da PeríciaIA — onde funil e cobrança discordam.
+    href: "/app/saas/reconciliation",
+    label: "Conciliação",
+    description: "Onde o funil de vendas e a cobrança discordam sobre quem é lead e quem já é cliente.",
+    icon: "ScalesSimple",
+    group: "receita",
+    minRole: "manager",
+    sidebar: true,
+  },
+  {
     href: "/app/saas/retention",
     label: "Retenção",
     description: "Motivos de churn, prevenção de cancelamento e MRR preservado.",
