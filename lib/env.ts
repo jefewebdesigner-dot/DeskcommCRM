@@ -142,6 +142,19 @@ const schema = z.object({
    */
   LEAD_CAPTURE_RETENTION_DAYS: z.string().optional().default(""),
 
+  /**
+   * Site de venda do Gravity CRM na raiz (`/`). Lista de domínios separada por
+   * vírgula; em qualquer outro domínio a raiz continua indo direto ao painel.
+   * Vazio = nenhum domínio mostra o site (comportamento de sempre).
+   */
+  SITE_DE_VENDA_HOSTS: z.string().optional().default(""),
+  /**
+   * Para onde o formulário "Agende uma demonstração" do site envia o pedido
+   * (JSON { nome, whatsapp, email, mensagem, origem }). Em geral a entrada de
+   * contatos do Gravity IA. Vazio = o formulário avisa que não pôde enviar.
+   */
+  SITE_DE_VENDA_FORM_URL: z.string().optional().default(""),
+
   // Encryption keys (pgcrypto)
   CPF_ENCRYPTION_KEY: required("CPF_ENCRYPTION_KEY"),
   // Opcional (template genérico) — só necessária ao ligar NUVEMSHOP_ENABLED.

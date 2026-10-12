@@ -1,0 +1,990 @@
+/* Estilos da landing page pública (Gravit. IA). Prefixo `mkt-` em toda classe
+   pra nunca colidir com o design system do app (globals.css / Tailwind). */
+
+.mkt-page * {
+  box-sizing: border-box;
+}
+
+.mkt-page {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* :not(.mkt-btn) — sem isso, essa regra (tag+classe) tem mais especificidade
+   que .mkt-btn-solid/.mkt-btn-outline (só classe) e vence a cor deles, deixando
+   o texto do botão preto sobre fundo preto (invisível). */
+.mkt-page a:not(.mkt-btn) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mkt-page button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+html:has(.mkt-page) {
+  scroll-behavior: smooth;
+}
+
+/* ── Hero shell ─────────────────────────────────────────────── */
+
+.mkt-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* ── Navbar ─────────────────────────────────────────────────── */
+
+.mkt-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  pointer-events: none;
+  /* Sem fundo, a barra fixa flutua transparente por cima do conteúdo das
+     seções abaixo do hero ao rolar a página, embaralhando o texto. */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mkt-navbar > * {
+  pointer-events: auto;
+}
+
+.mkt-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mkt-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #000;
+}
+
+.mkt-brand-text {
+  display: none;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.mkt-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #000;
+  border-radius: 9999px;
+  padding: 4px 14px 4px 4px;
+}
+
+.mkt-menu-btn-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #fff;
+  color: #000;
+}
+
+.mkt-menu-btn-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.mkt-nav-tags {
+  display: none;
+  align-items: center;
+  gap: 18px;
+  background: #f4f4f6;
+  border-radius: 9999px;
+  padding: 10px 20px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.mkt-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mkt-login-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+  padding: 8px 4px;
+}
+
+.mkt-login-link:hover {
+  opacity: 0.6;
+}
+
+.mkt-nav-right-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f4f4f6;
+  border-radius: 9999px;
+  padding: 4px;
+}
+
+.mkt-dots-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #000;
+}
+
+.mkt-nav-right-label {
+  display: none;
+  font-size: 12px;
+  padding-right: 14px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* ── Background video ───────────────────────────────────────── */
+
+.mkt-video-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mkt-video-wrap {
+  width: 80%;
+  height: 80%;
+}
+
+.mkt-video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Footer content (dobra do hero) ─────────────────────────── */
+
+.mkt-footer {
+  position: relative;
+  z-index: 30;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 48px 16px 24px;
+  background: linear-gradient(
+    to top,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    transparent 100%
+  );
+}
+
+.mkt-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 14px;
+}
+
+.mkt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #000;
+}
+
+.mkt-heading {
+  font-size: clamp(2rem, 8vw, 4.5rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.mkt-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  border-radius: 9999px;
+  padding: 12px 22px;
+  transition: opacity 0.2s ease;
+}
+
+.mkt-btn:hover {
+  opacity: 0.8;
+}
+
+.mkt-btn-solid {
+  background: #000;
+  color: #fff;
+}
+
+.mkt-btn-outline {
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  color: #000;
+}
+
+.mkt-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mkt-tag-pill {
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+@media (min-width: 768px) {
+  .mkt-navbar {
+    padding: 24px 32px;
+  }
+  .mkt-brand-text {
+    display: inline;
+  }
+  .mkt-menu-btn-circle {
+    width: 32px;
+    height: 32px;
+  }
+  .mkt-nav-tags {
+    display: flex;
+  }
+  .mkt-dots-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .mkt-nav-right-label {
+    display: inline;
+  }
+  .mkt-video-wrap {
+    width: 100%;
+    height: 100%;
+  }
+  .mkt-footer {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 96px 32px 32px;
+  }
+  .mkt-heading {
+    font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+  }
+  .mkt-footer-right {
+    flex-wrap: nowrap;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Seções abaixo da dobra
+   ══════════════════════════════════════════════════════════════ */
+
+.mkt-section {
+  padding: 88px 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.mkt-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.5);
+  margin-bottom: 12px;
+}
+
+.mkt-eyebrow.mkt-center {
+  text-align: center;
+}
+
+.mkt-section-heading {
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+
+.mkt-section-heading.mkt-center {
+  text-align: center;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Why not chatbot ─────────────────────────────────────────── */
+
+.mkt-why-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-why-inner {
+  max-width: 720px;
+}
+
+.mkt-why-heading {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 24px;
+}
+
+.mkt-why-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 32px;
+  max-width: 560px;
+}
+
+/* ── Pillars ──────────────────────────────────────────────────── */
+
+.mkt-pillars-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-pillars-grid {
+  margin-top: 56px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-pillar-card {
+  background: #fff;
+  padding: 32px 24px;
+}
+
+.mkt-pillar-index {
+  display: block;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.35);
+  margin-bottom: 20px;
+}
+
+.mkt-pillar-card h3 {
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.mkt-pillar-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* ── Segments ─────────────────────────────────────────────────── */
+
+.mkt-segments-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-segments-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 40px 0;
+}
+
+.mkt-segment-tab {
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease;
+}
+
+.mkt-segment-tab.mkt-active {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+
+.mkt-segment-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+.mkt-segment-panel-text h3 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.mkt-segment-panel-text p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 20px;
+}
+
+.mkt-segment-panel-text ul {
+  list-style: none;
+  margin-bottom: 28px;
+  padding: 0;
+}
+
+.mkt-segment-panel-text li {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.75);
+  padding-left: 18px;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.mkt-segment-panel-text li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #000;
+}
+
+.mkt-segment-panel-visual {
+  display: none;
+  min-height: 260px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f4f4f6, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 768px) {
+  .mkt-segment-panel {
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+  }
+  .mkt-segment-panel-visual {
+    display: block;
+  }
+}
+
+/* ── Comparison ───────────────────────────────────────────────── */
+
+.mkt-comparison-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-comparison-table {
+  margin-top: 48px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mkt-comparison-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+}
+
+.mkt-comparison-row:first-child {
+  border-top: none;
+}
+
+.mkt-comparison-head {
+  background: #f4f4f6;
+  font-weight: 500;
+  display: none;
+}
+
+.mkt-comparison-row .mkt-criterio {
+  font-weight: 500;
+}
+
+.mkt-comparison-row .mkt-mercado,
+.mkt-comparison-row .mkt-gravit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.mkt-comparison-row .mkt-mercado svg {
+  color: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.mkt-comparison-row .mkt-gravit svg {
+  color: #000;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .mkt-comparison-row {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    align-items: center;
+  }
+  .mkt-comparison-head {
+    display: grid;
+  }
+}
+
+/* ── Testimonials ─────────────────────────────────────────────── */
+
+.mkt-testimonials-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-testimonials-grid {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.mkt-testimonial-card {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.mkt-testimonial-quote {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.mkt-testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mkt-testimonial-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: #000;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.mkt-testimonial-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mkt-testimonial-role {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* ── Pricing ──────────────────────────────────────────────────── */
+
+.mkt-pricing-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-pricing-sub {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.5);
+  margin-bottom: 48px;
+}
+
+.mkt-pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.mkt-pricing-card {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  padding: 32px 28px;
+}
+
+.mkt-pricing-card.mkt-highlighted {
+  border-color: #000;
+  background: #000;
+  color: #fff;
+}
+
+.mkt-pricing-badge {
+  position: absolute;
+  top: -12px;
+  left: 28px;
+  background: #fff;
+  color: #000;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mkt-pricing-card h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.mkt-pricing-tagline {
+  font-size: 13px;
+  opacity: 0.6;
+  margin-bottom: 24px;
+}
+
+.mkt-pricing-price {
+  font-size: 28px;
+  font-weight: 400;
+  margin-bottom: 24px;
+}
+
+.mkt-pricing-price span {
+  font-size: 13px;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.mkt-pricing-features {
+  list-style: none;
+  margin-bottom: 28px;
+  padding: 0;
+}
+
+.mkt-pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  padding: 7px 0;
+  opacity: 0.85;
+}
+
+/* Card em destaque tem fundo preto — o botão precisa inverter (branco sobre
+   preto), senão .mkt-btn-solid (preto sobre preto) fica invisível ali dentro. */
+.mkt-pricing-card.mkt-highlighted .mkt-btn-solid {
+  background: #fff;
+  color: #000;
+}
+
+.mkt-pricing-card .mkt-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .mkt-pricing-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Demo form ────────────────────────────────────────────────── */
+
+.mkt-demo-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-demo-inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+}
+
+.mkt-demo-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 24px;
+}
+
+.mkt-demo-points {
+  list-style: none;
+  padding: 0;
+}
+
+.mkt-demo-points li {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.75);
+  padding: 8px 0 8px 18px;
+  position: relative;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-demo-points li:first-child {
+  border-top: none;
+}
+
+.mkt-demo-points li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #000;
+}
+
+.mkt-demo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #f9f9fa;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.mkt-demo-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.mkt-demo-form input,
+.mkt-demo-form select {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: #000;
+}
+
+.mkt-demo-form input:focus,
+.mkt-demo-form select:focus {
+  outline: 2px solid #000;
+  outline-offset: 1px;
+}
+
+.mkt-demo-submit {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.mkt-demo-error {
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.mkt-demo-success {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f9f9fa;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.mkt-demo-success-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: #000;
+}
+
+@media (min-width: 768px) {
+  .mkt-demo-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+  }
+}
+
+/* ── FAQ ──────────────────────────────────────────────────────── */
+
+.mkt-faq-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mkt-faq-list {
+  margin-top: 40px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mkt-faq-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mkt-faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.mkt-faq-chevron {
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.mkt-faq-chevron.mkt-rotated {
+  transform: rotate(180deg);
+}
+
+.mkt-faq-answer {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.6);
+  padding: 0 4px 20px;
+}
+
+/* ── Site footer ──────────────────────────────────────────────── */
+
+.mkt-site-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f9f9fa;
+  padding: 56px 16px 24px;
+}
+
+.mkt-site-footer-top {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  padding-bottom: 40px;
+}
+
+.mkt-site-footer-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.mkt-site-footer-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.55);
+  max-width: 280px;
+}
+
+.mkt-site-footer-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.mkt-site-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mkt-site-footer-col a {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.mkt-site-footer-col a:hover {
+  color: #000;
+}
+
+.mkt-site-footer-bottom {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.mkt-site-footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.mkt-site-footer-links a {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 768px) {
+  .mkt-site-footer-top {
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  }
+  .mkt-site-footer-bottom {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* Fusão com o CRM principal: as animações deixaram de usar a lib `motion` e
+   viraram CSS — mesmo efeito de entrada, sem dependência nova. */
+@keyframes mkt-sobe { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes mkt-aparece { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: none; } }
+.mkt-entra { animation: mkt-sobe 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.mkt-entra-lento { animation: mkt-aparece 1.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .mkt-entra, .mkt-entra-lento { animation: none; } }
+/* Campo-isca do formulário (anti-robô): fora da tela, nunca visível. */
+.mkt-isca { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
