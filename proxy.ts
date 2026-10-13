@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { avisarWorker, deveAvisar } from "@/lib/despertar-worker";
 import { env } from "@/lib/env";
 import { isPublicPath } from "@/lib/auth/public-paths";
 import { neonAuth } from "@/lib/neon/auth-server";
@@ -61,7 +62,12 @@ function copiarCookiesDeAuth(origem: NextResponse, destino: NextResponse) {
   if (combinado) destino.headers.append("set-cookie", combinado);
 }
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event?: NextFetchEvent) {
+  // Despertador do worker (Neon grátis): mensagem, formulário ou clique = trabalho novo.
+  if (deveAvisar(request.method)) {
+    const aviso = avisarWorker();
+    if (event) event.waitUntil(aviso);
+  }
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const { pathname, search } = request.nextUrl;
   request.headers.set("x-pathname", pathname);

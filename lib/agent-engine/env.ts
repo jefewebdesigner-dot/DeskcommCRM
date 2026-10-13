@@ -66,6 +66,10 @@ const envSchema = z.object({
   // para quem já a configurou, cabe 4× dentro do INBOUND_DEBOUNCE_MS (8000) e fica
   // abaixo do idleTimeoutMillis do pool (10s), acima do qual cada rodada reconecta.
   QUEUE_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2_000),
+  // Neon grátis: batimento e despertador (lib/agent-engine/despertador.ts). Com o despertador
+  // ligado, os intervalos OCIOSOS podem ser longos (ex. 15 min) e o banco dorme sem trabalho.
+  WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  WORKER_DESPERTADOR: z.coerce.number().int().min(0).max(1).default(0),
   // Ritmo do "havia trabalho e eu não peguei" — cap QUEUE_MAX_CONCURRENCY cheio ou
   // lane do contato ocupada. Aqui há job vencido esperando vaga, então recolher o
   // ritmo custaria throughput no pico sem economizar nada no ocioso: é o único

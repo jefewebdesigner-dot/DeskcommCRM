@@ -41,6 +41,7 @@
  * já escreve para a marca ("resolvedor NUNCA lança"), aplicada onde também vale:
  * o laço se desliga sozinho, avisa, e o resto do worker sobe.
  */
+import { aguardar } from "@/lib/agent-engine/despertador";
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Logger } from '@/lib/agent-engine/obs/logger';
@@ -187,17 +188,7 @@ export function proximaEspera(resumo: DrainSummary, knobs: EventLogDrainKnobs): 
 }
 
 function esperar(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
-  });
+  return aguardar(ms, signal);
 }
 
 export async function runEventLogDrainLoop(
