@@ -229,9 +229,9 @@ async function checkWaha(): Promise<Check> {
 }
 
 /** O batimento acima disto = worker parado (o intervalo do worker é 30 s). */
-// Neon grátis: o worker bate a cada 15 min em modo econômico (WORKER_HEARTBEAT_INTERVAL_MS), então
-// "parado" é mais de 20 min sem batimento. Ajustável por AGENT_WORKER_MAX_SEM_BATER_S.
-const WORKER_SEM_BATER_S = Number(process.env.AGENT_WORKER_MAX_SEM_BATER_S) || 1_200;
+// Neon grátis: o worker bate a cada 30 min em modo econômico (WORKER_HEARTBEAT_INTERVAL_MS), então
+// "parado" é mais de 40 min sem batimento. Ajustável por AGENT_WORKER_MAX_SEM_BATER_S.
+const WORKER_SEM_BATER_S = Number(process.env.AGENT_WORKER_MAX_SEM_BATER_S) || 2_400;
 /** Erro antigo continua no banco para auditoria, mas não deve parecer falha atual com worker saudável. */
 const WORKER_ERRO_RECENTE_MS = 5 * 60 * 1000;
 

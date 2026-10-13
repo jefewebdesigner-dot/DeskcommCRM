@@ -69,8 +69,8 @@ describe("GET /api/v1/health — agent_worker", () => {
     expect(c.detalhe).toMatchObject({ ultimo_erro: null, ultimo_erro_em: null });
   });
 
-  it("sem batimento há mais de 20 min → down e a instalação fica unhealthy", async () => {
-    rpc.mockResolvedValue({ data: { ...base, ultimo_batimento_s: 1_500, ultimo_erro: "reaper falhou" }, error: null });
+  it("sem batimento há mais de 40 min → down e a instalação fica unhealthy", async () => {
+    rpc.mockResolvedValue({ data: { ...base, ultimo_batimento_s: 3_000, ultimo_erro: "reaper falhou" }, error: null });
     const s = await saude();
     expect(s.checks.agent_worker).toMatchObject({ status: "down", reason: "worker_parado" });
     expect(s.checks.agent_worker!.detalhe?.ultimo_erro).toBe("reaper falhou");
