@@ -12,6 +12,7 @@
  *   - grupos @g.us: skip (regra dura nº 12) — evento marcado done sem job;
  *   - eventos 'processing' órfãos (crash do worker) voltam a 'pending' por timeout.
  */
+import { aguardar } from '../../despertador';
 import { z } from 'zod';
 import type pg from 'pg';
 
@@ -501,17 +502,7 @@ export async function runDrainLoop(
     // custo de quem não tem atendimento nenhum.
     const waitMs =
       drained >= knobs.batchSize ? 0 : drained > 0 ? knobs.intervalMs : knobs.idleIntervalMs;
-    await new Promise<void>((resolve) => {
-      // O listener é REMOVIDO no fim de cada espera. Sem isso, um loop de dias
-      // acumula um listener por tick no mesmo AbortSignal — vazamento que só
-      // aparece como memória crescendo no worker, sem erro nenhum.
-      const finish = (): void => {
-        clearTimeout(timer);
-        signal.removeEventListener('abort', finish);
-        resolve();
-      };
-      const timer = setTimeout(finish, waitMs);
-      signal.addEventListener('abort', finish, { once: true });
-    });
+    // `aguardar` remove os próprios listeners e volta cedo quando o despertador toca.
+    await aguardar(waitMs, signal);
   }
 }

@@ -70,7 +70,6 @@ if (!sentryDsn) {
 
 import http from "node:http";
 import { hostname } from "node:os";
-import { setTimeout as sleep } from "node:timers/promises";
 
 import type pg from "pg";
 
@@ -119,6 +118,8 @@ import {
   type CacheAlertKnobs,
 } from "@/lib/agent-engine/obs/metrics";
 import { rodarLoopDaFila } from "@/lib/agent-engine/queue/loop";
+import { aguardar } from "@/lib/agent-engine/despertador";
+import { escutarDespertador } from "@/lib/agent-engine/despertador-redis";
 import {
   cancelJob,
   claimJobs,
@@ -361,7 +362,7 @@ export async function startWorker(
       });
   };
   baterCoracao();
-  const heartbeatTimer = setInterval(baterCoracao, 30_000);
+  const heartbeatTimer = setInterval(baterCoracao, env.WORKER_HEARTBEAT_INTERVAL_MS);
 
   const reaperTimer = setInterval(() => {
     // Recarrega o comportamento da INSTALAÇÃO no ritmo do reaper: é o que faz
@@ -647,6 +648,16 @@ export async function startWorker(
     return claimed;
   };
 
+  // Despertador (Neon grátis): o CRM avisa pelo Redis quando há trabalho; sem aviso, os laços
+  // esperam o intervalo ocioso inteiro e o banco dorme.
+  const urlDoRedis = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/^"|"$/g, "");
+  const tokenDoRedis = process.env.UPSTASH_REDIS_REST_TOKEN?.trim().replace(/^"|"$/g, "");
+  if (env.WORKER_DESPERTADOR === 1 && urlDoRedis && tokenDoRedis) {
+    void escutarDespertador({ url: urlDoRedis, token: tokenDoRedis, signal: loopsAbort.signal, log });
+  } else if (env.WORKER_DESPERTADOR === 1) {
+    log.warn("WORKER_DESPERTADOR=1 sem UPSTASH_REDIS_REST_URL/TOKEN — o worker não será acordado cedo", {});
+  }
+
   const workerLoop = rodarLoopDaFila<JobRow>({
     relogio: () => (tenant ? msParaOProximoJob(tenant) : faltaParaOProximoJob(pool)),
     claimar: claimarEmTodas,
@@ -661,7 +672,8 @@ export async function startWorker(
     // e é por isso que `rodarLoopDaFila` trata a rejeição em vez de propagá-la:
     // `sleep` abortado REJEITA, e essa rejeição chegaria ao `await workerLoop`
     // logo abaixo, matando o processo antes do drain dos jobs em voo.
-    dormir: (ms) => sleep(ms, undefined, { signal: loopsAbort.signal }),
+    // `aguardar` = sleep cancelável que também volta quando o despertador toca (aviso no Redis).
+    dormir: (ms) => aguardar(ms, loopsAbort.signal),
     deveParar: () => shuttingDown,
     intervalos: {
       ociosoMs: env.QUEUE_POLL_INTERVAL_MS,
